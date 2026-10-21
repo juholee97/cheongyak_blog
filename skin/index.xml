@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<skin>
+  <information>
+    <name>청약달력</name>
+    <version>1.0</version>
+    <description><![CDATA[홈 상단에 전국 청약 일정 캘린더(지역 필터·단계 필터·상세 모달)를 보여주는 스킨입니다.]]></description>
+    <license><![CDATA[개인 블로그용]]></license>
+  </information>
+  <author>
+    <name>청약달력</name>
+    <homepage></homepage>
+    <email></email>
+  </author>
+  <default>
+    <recentEntries>5</recentEntries>
+    <recentComments>5</recentComments>
+    <recentTrackbacks>5</recentTrackbacks>
+    <itemsOnGuestbook>10</itemsOnGuestbook>
+    <tagsInCloud>12</tagsInCloud>
+    <sortInCloud>1</sortInCloud>
+    <expandComment>1</expandComment>
+    <expandTrackback>0</expandTrackback>
+    <lengthOfRecentNotice>25</lengthOfRecentNotice>
+    <lengthOfRecentEntry>27</lengthOfRecentEntry>
+    <lengthOfRecentComment>30</lengthOfRecentComment>
+    <lengthOfRecentTrackback>30</lengthOfRecentTrackback>
+    <lengthOfLink>30</lengthOfLink>
+    <entriesOnPage>9</entriesOnPage>
+    <entriesOnList>12</entriesOnList>
+    <showListOnCategory>1</showListOnCategory>
+    <showListOnArchive>1</showListOnArchive>
+    <tree>
+      <color>1c1d1f</color>
+      <bgColor>ffffff</bgColor>
+      <activeColor>0b7a55</activeColor>
+      <activeBgColor>ffffff</activeBgColor>
+      <labelLength>27</labelLength>
+      <showValue>1</showValue>
+    </tree>
+    <contentWidth>760</contentWidth>
+  </default>
+  <variables>
+    <variablegroup name="청약 일정">
+      <variable>
+        <name>schedule-url</name>
+        <label><![CDATA[일정 데이터 주소 (schedule.json)]]></label>
+        <type>STRING</type>
+        <option />
+        <default><![CDATA[]]></default>
+        <description><![CDATA[GitHub Pages에 배포된 schedule.json 주소. 예: https://아이디.github.io/cheongyak_blog/schedule.json]]></description>
+      </variable>
+    </variablegroup>
+  </variables>
+</skin>

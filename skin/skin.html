@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>[##_page_title_##]</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="./style.css">
+</head>
+<body id="[##_body_id_##]">
+<s_t3>
+<div class="wrap">
+  <header class="site-header">
+    <div class="inner">
+      <a class="brand" href="[##_blog_link_##]">
+        <span class="brand-title">[##_title_##]</span>
+        <span class="brand-desc">[##_desc_##]</span>
+      </a>
+      <nav class="site-nav">[##_blog_menu_##]</nav>
+    </div>
+  </header>
+
+  <section id="cal" class="cal">
+    <div class="filter">
+      <div class="filter-head">
+        <div class="filter-title"><span class="filter-name">지역 필터</span><span class="filter-summary" data-ref="summary"></span></div>
+        <div class="filter-btns">
+          <button type="button" class="btn" data-act="all">전체 선택</button>
+          <button type="button" class="btn" data-act="none">전체 해제</button>
+          <button type="button" class="btn btn-primary" data-act="save" data-ref="save">내 지역 저장</button>
+        </div>
+      </div>
+      <div data-ref="groups"></div>
+    </div>
+
+    <div class="cal-body">
+      <div class="cal-card">
+        <div class="cal-toolbar">
+          <div class="cal-nav">
+            <button type="button" class="btn btn-square" data-act="prev" aria-label="이전 달">‹</button>
+            <span class="cal-month" data-ref="month"></span>
+            <button type="button" class="btn btn-square" data-act="next" aria-label="다음 달">›</button>
+            <button type="button" class="btn btn-today" data-act="today">오늘</button>
+          </div>
+          <div class="legend" data-ref="legend"></div>
+        </div>
+        <div class="cal-scroll">
+          <div class="cal-grid">
+            <div class="cal-dow"><div class="sun">일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div class="sat">토</div></div>
+            <div data-ref="weeks"></div>
+          </div>
+        </div>
+      </div>
+
+      <aside class="cal-aside">
+        <div class="day-card">
+          <div class="day-head"><span class="day-title" data-ref="dayTitle"></span><span class="day-count" data-ref="dayCount"></span></div>
+          <div class="day-list" data-ref="dayList"></div>
+        </div>
+        <div class="source">출처: 청약홈(한국부동산원) 공고 · 매일 06:00 자동 수집<br><span data-ref="updated"></span></div>
+      </aside>
+    </div>
+    <a class="to-blog" href="#blog">최신 글 보기 ↓</a>
+    <div data-ref="modal"></div>
+  </section>
+
+  <main id="blog" class="blog">
+    <div class="blog-main">
+      [##_revenue_list_upper_##]
+
+      <s_list>
+        <div class="section-head"><span class="section-title">[##_list_conform_##]</span><span class="section-count">전체 [##_list_count_##]</span></div>
+        <div class="post-grid">
+          <s_list_rep>
+            <a class="card" href="[##_list_rep_link_##]">
+              <div class="thumb"><s_list_rep_thumbnail><img src="[##_list_rep_thumbnail_url_##]" alt="" loading="lazy"></s_list_rep_thumbnail></div>
+              <div class="card-text">
+                <span class="cat">[##_list_rep_category_##]</span>
+                <span class="title">[##_list_rep_title_text_##]</span>
+                <span class="summary">[##_list_rep_summary_##]</span>
+                <span class="date">[##_list_rep_regdate_##]<span class="rp"> · 댓글 [##_list_rep_rp_cnt_##]</span></span>
+              </div>
+            </a>
+          </s_list_rep>
+        </div>
+        <s_list_empty><p class="empty">글이 없습니다.</p></s_list_empty>
+      </s_list>
+
+      <div class="post-grid">
+        <div class="section-head latest-head"><span class="section-title">최신 글</span></div>
+        <s_article_rep>
+          <s_index_article_rep>
+            <a class="card" href="[##_article_rep_link_##]">
+              <div class="thumb"><s_article_rep_thumbnail><img src="[##_article_rep_thumbnail_url_##]" alt="" loading="lazy"></s_article_rep_thumbnail></div>
+              <div class="card-text">
+                <span class="cat">[##_article_rep_category_##]</span>
+                <span class="title">[##_article_rep_title_##]</span>
+                <span class="summary">[##_article_rep_summary_##]</span>
+                <span class="date">[##_article_rep_simple_date_##]<s_rp_count><span class="rp"> · 댓글 [##_article_rep_rp_cnt_##]</span></s_rp_count></span>
+              </div>
+            </a>
+          </s_index_article_rep>
+          <s_permalink_article_rep>
+            <article class="post">
+              <a class="post-cat" href="[##_article_rep_category_link_##]">[##_article_rep_category_##]</a>
+              <h1 class="post-title">[##_article_rep_title_##]</h1>
+              <div class="post-meta">[##_article_rep_date_##]</div>
+              <div class="post-body tt_article_useless_p_margin contents_style">[##_article_rep_desc_##]</div>
+              <s_tag_label><div class="post-tags">[##_tag_label_rep_##]</div></s_tag_label>
+              <s_ad_div>
+                <div class="post-admin">
+                  <a href="[##_s_ad_m_link_##]">수정</a>
+                  <a href="#" onclick="[##_s_ad_s2_onclick_##]">[##_s_ad_s2_label_##]</a>
+                  <a href="#" onclick="[##_s_ad_d_onclick_##]">삭제</a>
+                </div>
+              </s_ad_div>
+              <p class="post-disclaimer">청약 일정·분양가는 참고용입니다. 정확한 내용은 입주자모집공고를 확인하세요.</p>
+              <div class="post-comments">[##_comment_group_##]</div>
+            </article>
+          </s_permalink_article_rep>
+        </s_article_rep>
+      </div>
+
+      <s_notice_rep>
+        <s_permalink_article_rep>
+          <article class="post">
+            <h1 class="post-title">[##_notice_rep_title_##]</h1>
+            <div class="post-meta">[##_notice_rep_date_##]</div>
+            <div class="post-body tt_article_useless_p_margin contents_style">[##_notice_rep_desc_##]</div>
+          </article>
+        </s_permalink_article_rep>
+      </s_notice_rep>
+
+      <s_guest>
+        <div class="section-head"><span class="section-title">방명록</span></div>
+        [##_guestbook_group_##]
+      </s_guest>
+
+      <s_tag>
+        <div class="section-head"><span class="section-title">태그</span></div>
+        <div class="tags"><s_tag_rep><a href="[##_tag_link_##]" class="[##_tag_class_##]">#[##_tag_name_##]</a></s_tag_rep></div>
+      </s_tag>
+
+      <s_paging>
+        <nav class="paging">
+          <a [##_prev_page_##] class="prev [##_no_more_prev_##]">‹ 이전</a>
+          <s_paging_rep><a [##_paging_rep_link_##] class="num">[##_paging_rep_link_num_##]</a></s_paging_rep>
+          <a [##_next_page_##] class="next [##_no_more_next_##]">다음 ›</a>
+        </nav>
+      </s_paging>
+
+      [##_revenue_list_lower_##]
+    </div>
+
+    <aside class="sidebar">
+      <s_sidebar>
+        <s_sidebar_element>
+          <!-- 카테고리 -->
+          <div class="side-block side-category">
+            <span class="side-title">카테고리</span>
+            [##_category_list_##]
+          </div>
+        </s_sidebar_element>
+        <s_sidebar_element>
+          <!-- 인기 글 -->
+          <div class="side-block">
+            <span class="side-title">인기 글</span>
+            <ol class="popular">
+              <s_rctps_popular_rep>
+                <li><a href="[##_rctps_rep_link_##]">[##_rctps_rep_title_##]</a></li>
+              </s_rctps_popular_rep>
+            </ol>
+          </div>
+        </s_sidebar_element>
+        <s_sidebar_element>
+          <!-- 태그 -->
+          <div class="side-block">
+            <span class="side-title">태그</span>
+            <div class="tags">
+              <s_random_tags><a href="[##_tag_link_##]">#[##_tag_name_##]</a></s_random_tags>
+            </div>
+          </div>
+        </s_sidebar_element>
+      </s_sidebar>
+    </aside>
+  </main>
+
+  <footer class="site-footer">
+    <div class="inner">
+      <span>© 2026 [##_title_##] · Powered by Tistory</span>
+      <span>청약 일정은 참고용이며 정확한 내용은 입주자모집공고를 확인하세요.</span>
+    </div>
+  </footer>
+</div>
+<script>window.CHEONGYAK_SCHEDULE_URL = '[##_var_schedule-url_##]';</script>
+<script src="./images/calendar.js"></script>
+</s_t3>
+</body>
+</html>

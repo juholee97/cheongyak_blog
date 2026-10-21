@@ -1,0 +1,21 @@
+# 청약달력 (티스토리 스킨 + 매일 수집)
+
+## 처음 한 번 설정
+1. **API 키** — 공공데이터포털(data.go.kr)에서 「한국부동산원_청약홈 분양정보 조회 서비스」 활용신청 → 개발계정은 자동 승인. 마이페이지의 일반 인증키(Decoding)를 복사.
+2. **GitHub 저장소** — 이 폴더를 공개 저장소로 올린다(무료 Pages는 공개 저장소). 저장소 Settings → Secrets and variables → Actions → `DATA_GO_KR_KEY`에 키 저장. Settings → Pages → Source를 **GitHub Actions**로.
+3. **첫 수집** — Actions 탭 → daily-schedule → Run workflow. 끝나면 `https://<아이디>.github.io/<저장소>/schedule.json`이 열린다.
+4. **티스토리 스킨** — 관리 → 꾸미기 → 스킨 편집 → HTML 편집 → 파일업로드로 `skin/` 안 파일을 모두 올린다(`calendar.js`는 images 폴더로). `skin.html`·`style.css`는 각 탭에 붙여넣기.
+5. **스킨 옵션** — 꾸미기 → 스킨 편집 → 스킨 옵션 → "일정 데이터 주소"에 3번 주소 입력.
+6. **모바일** — 꾸미기 → 모바일에서 "티스토리 모바일웹 자동 연결"을 끈다(켜져 있으면 휴대폰에 기본 스킨이 떠서 캘린더가 안 보임).
+7. **메뉴** — 꾸미기 → 메뉴에서 청약일정·분양분석·청약가이드·당첨후기·방명록 순으로. 첫 항목이 초록색 강조.
+
+## 로컬
+- `preview.bat` — 미리보기(홈 `/`, 글 `/post`, 목록 `/category`). `site/schedule.json`이 있으면 실제 데이터, 없으면 샘플.
+- `preview.bat check` — 자동 점검.
+- 직접 수집: `set DATA_GO_KR_KEY=키` 후 `node crawler/fetch.mjs` → `site/schedule.json`.
+
+## 데이터 메모
+- 단계 날짜는 시작일만(특공·1순위·2순위는 해당지역 접수일).
+- 분양가(3.3㎡) = 주택형별 최고분양가 ÷ 공급면적 × 3.3, 세대수 가중 평균. 오피스텔·도시형은 비움.
+- 오피스텔·도시형·무순위의 첫 단계는 "접수"로 표시.
+- 민간임대·생활숙박·공공지원민간임대·임의공급은 아직 수집하지 않음.

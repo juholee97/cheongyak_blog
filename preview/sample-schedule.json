@@ -1,0 +1,766 @@
+{
+ "updatedAt": "2026-10-21T06:02:00+09:00",
+ "sample": true,
+ "items": [
+  {
+   "id": "sample-0",
+   "name": "래미안 원펜타스 2차",
+   "region": "서울",
+   "district": "서초구",
+   "kind": "APT",
+   "units": 641,
+   "pricePerPyeong": 7200,
+   "applyhomeUrl": "https://www.applyhome.co.kr",
+   "homepageUrl": null,
+   "phases": [
+    {
+     "k": "sp",
+     "date": "2026-10-05"
+    },
+    {
+     "k": "p1",
+     "date": "2026-10-06"
+    },
+    {
+     "k": "p2",
+     "date": "2026-10-07"
+    },
+    {
+     "k": "win",
+     "date": "2026-10-13"
+    },
+    {
+     "k": "con",
+     "date": "2026-10-25"
+    }
+   ]
+  },
+  {
+   "id": "sample-1",
+   "name": "힐스테이트 광명 센트럴",
+   "region": "경기",
+   "district": "광명시",
+   "kind": "APT",
+   "units": 1120,
+   "pricePerPyeong": 3400,
+   "applyhomeUrl": "https://www.applyhome.co.kr",
+   "homepageUrl": null,
+   "phases": [
+    {
+     "k": "sp",
+     "date": "2026-10-06"
+    },
+    {
+     "k": "p1",
+     "date": "2026-10-07"
+    },
+    {
+     "k": "p2",
+     "date": "2026-10-08"
+    },
+    {
+     "k": "win",
+     "date": "2026-10-14"
+    },
+    {
+     "k": "con",
+     "date": "2026-10-26"
+    }
+   ]
+  },
+  {
+   "id": "sample-2",
+   "name": "검단 푸르지오 더 파크",
+   "region": "인천",
+   "district": "서구",
+   "kind": "APT",
+   "units": 892,
+   "pricePerPyeong": 1750,
+   "applyhomeUrl": "https://www.applyhome.co.kr",
+   "homepageUrl": null,
+   "phases": [
+    {
+     "k": "sp",
+     "date": "2026-10-07"
+    },
+    {
+     "k": "p1",
+     "date": "2026-10-08"
+    },
+    {
+     "k": "p2",
+     "date": "2026-10-09"
+    },
+    {
+     "k": "win",
+     "date": "2026-10-15"
+    },
+    {
+     "k": "con",
+     "date": "2026-10-27"
+    }
+   ]
+  },
+  {
+   "id": "sample-3",
+   "name": "e편한세상 동탄 레이크",
+   "region": "경기",
+   "district": "화성시",
+   "kind": "APT",
+   "units": 748,
+   "pricePerPyeong": 2100,
+   "applyhomeUrl": "https://www.applyhome.co.kr",
+   "homepageUrl": null,
+   "phases": [
+    {
+     "k": "sp",
+     "date": "2026-10-12"
+    },
+    {
+     "k": "p1",
+     "date": "2026-10-13"
+    },
+    {
+     "k": "p2",
+     "date": "2026-10-14"
+    },
+    {
+     "k": "win",
+     "date": "2026-10-20"
+    },
+    {
+     "k": "con",
+     "date": "2026-11-01"
+    }
+   ]
+  },
+  {
+   "id": "sample-4",
+   "name": "더샵 센텀 리버뷰",
+   "region": "부산",
+   "district": "해운대구",
+   "kind": "APT",
+   "units": 530,
+   "pricePerPyeong": 2600,
+   "applyhomeUrl": "https://www.applyhome.co.kr",
+   "homepageUrl": null,
+   "phases": [
+    {
+     "k": "sp",
+     "date": "2026-10-13"
+    },
+    {
+     "k": "p1",
+     "date": "2026-10-14"
+    },
+    {
+     "k": "p2",
+     "date": "2026-10-15"
+    },
+    {
+     "k": "win",
+     "date": "2026-10-21"
+    },
+    {
+     "k": "con",
+     "date": "2026-11-02"
+    }
+   ]
+  },
+  {
+   "id": "sample-5",
+   "name": "자이 더 헤리티지",
+   "region": "서울",
+   "district": "마포구",
+   "kind": "APT",
+   "units": 312,
+   "pricePerPyeong": 6100,
+   "applyhomeUrl": "https://www.applyhome.co.kr",
+   "homepageUrl": null,
+   "phases": [
+    {
+     "k": "sp",
+     "date": "2026-10-13"
+    },
+    {
+     "k": "p1",
+     "date": "2026-10-14"
+    },
+    {
+     "k": "p2",
+     "date": "2026-10-15"
+    },
+    {
+     "k": "win",
+     "date": "2026-10-21"
+    },
+    {
+     "k": "con",
+     "date": "2026-11-02"
+    }
+   ]
+  },
+  {
+   "id": "sample-6",
+   "name": "수성 롯데캐슬 포레",
+   "region": "대구",
+   "district": "수성구",
+   "kind": "APT",
+   "units": 688,
+   "pricePerPyeong": 2300,
+   "applyhomeUrl": "https://www.applyhome.co.kr",
+   "homepageUrl": null,
+   "phases": [
+    {
+     "k": "sp",
+     "date": "2026-10-14"
+    },
+    {
+     "k": "p1",
+     "date": "2026-10-15"
+    },
+    {
+     "k": "p2",
+     "date": "2026-10-16"
+    },
+    {
+     "k": "win",
+     "date": "2026-10-22"
+    },
+    {
+     "k": "con",
+     "date": "2026-11-03"
+    }
+   ]
+  },
+  {
+   "id": "sample-7",
+   "name": "세종 한신더휴 6-3",
+   "region": "세종",
+   "district": "나성동",
+   "kind": "APT",
+   "units": 406,
+   "pricePerPyeong": 1600,
+   "applyhomeUrl": "https://www.applyhome.co.kr",
+   "homepageUrl": null,
+   "phases": [
+    {
+     "k": "sp",
+     "date": "2026-10-19"
+    },
+    {
+     "k": "p1",
+     "date": "2026-10-20"
+    },
+    {
+     "k": "p2",
+     "date": "2026-10-21"
+    },
+    {
+     "k": "win",
+     "date": "2026-10-27"
+    },
+    {
+     "k": "con",
+     "date": "2026-11-08"
+    }
+   ]
+  },
+  {
+   "id": "sample-8",
+   "name": "둔산 아이파크 시티",
+   "region": "대전",
+   "district": "서구",
+   "kind": "APT",
+   "units": 955,
+   "pricePerPyeong": 1900,
+   "applyhomeUrl": "https://www.applyhome.co.kr",
+   "homepageUrl": null,
+   "phases": [
+    {
+     "k": "sp",
+     "date": "2026-10-20"
+    },
+    {
+     "k": "p1",
+     "date": "2026-10-21"
+    },
+    {
+     "k": "p2",
+     "date": "2026-10-22"
+    },
+    {
+     "k": "win",
+     "date": "2026-10-28"
+    },
+    {
+     "k": "con",
+     "date": "2026-11-09"
+    }
+   ]
+  },
+  {
+   "id": "sample-9",
+   "name": "광교 SK뷰 레이크 2단지",
+   "region": "경기",
+   "district": "수원시",
+   "kind": "무순위",
+   "units": 27,
+   "pricePerPyeong": 2900,
+   "applyhomeUrl": "https://www.applyhome.co.kr",
+   "homepageUrl": null,
+   "phases": [
+    {
+     "k": "p1",
+     "date": "2026-10-21"
+    },
+    {
+     "k": "win",
+     "date": "2026-10-24"
+    }
+   ]
+  },
+  {
+   "id": "sample-10",
+   "name": "상무 호반써밋",
+   "region": "광주",
+   "district": "서구",
+   "kind": "APT",
+   "units": 584,
+   "pricePerPyeong": 1800,
+   "applyhomeUrl": "https://www.applyhome.co.kr",
+   "homepageUrl": null,
+   "phases": [
+    {
+     "k": "sp",
+     "date": "2026-10-21"
+    },
+    {
+     "k": "p1",
+     "date": "2026-10-22"
+    },
+    {
+     "k": "p2",
+     "date": "2026-10-23"
+    },
+    {
+     "k": "win",
+     "date": "2026-10-29"
+    },
+    {
+     "k": "con",
+     "date": "2026-11-10"
+    }
+   ]
+  },
+  {
+   "id": "sample-11",
+   "name": "청주 테크노폴리스 지웰",
+   "region": "충북",
+   "district": "청주시",
+   "kind": "APT",
+   "units": 1240,
+   "pricePerPyeong": 1350,
+   "applyhomeUrl": "https://www.applyhome.co.kr",
+   "homepageUrl": null,
+   "phases": [
+    {
+     "k": "sp",
+     "date": "2026-10-22"
+    },
+    {
+     "k": "p1",
+     "date": "2026-10-23"
+    },
+    {
+     "k": "p2",
+     "date": "2026-10-24"
+    },
+    {
+     "k": "win",
+     "date": "2026-10-30"
+    },
+    {
+     "k": "con",
+     "date": "2026-11-11"
+    }
+   ]
+  },
+  {
+   "id": "sample-12",
+   "name": "원주 더샵 센트럴",
+   "region": "강원",
+   "district": "원주시",
+   "kind": "APT",
+   "units": 612,
+   "pricePerPyeong": 1250,
+   "applyhomeUrl": "https://www.applyhome.co.kr",
+   "homepageUrl": null,
+   "phases": [
+    {
+     "k": "sp",
+     "date": "2026-10-26"
+    },
+    {
+     "k": "p1",
+     "date": "2026-10-27"
+    },
+    {
+     "k": "p2",
+     "date": "2026-10-28"
+    },
+    {
+     "k": "win",
+     "date": "2026-11-03"
+    },
+    {
+     "k": "con",
+     "date": "2026-11-15"
+    }
+   ]
+  },
+  {
+   "id": "sample-13",
+   "name": "송도 자이 크리스탈오션",
+   "region": "인천",
+   "district": "연수구",
+   "kind": "APT",
+   "units": 1503,
+   "pricePerPyeong": 2200,
+   "applyhomeUrl": "https://www.applyhome.co.kr",
+   "homepageUrl": null,
+   "phases": [
+    {
+     "k": "sp",
+     "date": "2026-10-27"
+    },
+    {
+     "k": "p1",
+     "date": "2026-10-28"
+    },
+    {
+     "k": "p2",
+     "date": "2026-10-29"
+    },
+    {
+     "k": "win",
+     "date": "2026-11-04"
+    },
+    {
+     "k": "con",
+     "date": "2026-11-16"
+    }
+   ]
+  },
+  {
+   "id": "sample-14",
+   "name": "울산 문수로 한화포레나",
+   "region": "울산",
+   "district": "남구",
+   "kind": "APT",
+   "units": 461,
+   "pricePerPyeong": 2050,
+   "applyhomeUrl": "https://www.applyhome.co.kr",
+   "homepageUrl": null,
+   "phases": [
+    {
+     "k": "sp",
+     "date": "2026-10-27"
+    },
+    {
+     "k": "p1",
+     "date": "2026-10-28"
+    },
+    {
+     "k": "p2",
+     "date": "2026-10-29"
+    },
+    {
+     "k": "win",
+     "date": "2026-11-04"
+    },
+    {
+     "k": "con",
+     "date": "2026-11-16"
+    }
+   ]
+  },
+  {
+   "id": "sample-15",
+   "name": "천안 불당 디에트르",
+   "region": "충남",
+   "district": "천안시",
+   "kind": "APT",
+   "units": 822,
+   "pricePerPyeong": 1700,
+   "applyhomeUrl": "https://www.applyhome.co.kr",
+   "homepageUrl": null,
+   "phases": [
+    {
+     "k": "sp",
+     "date": "2026-11-02"
+    },
+    {
+     "k": "p1",
+     "date": "2026-11-03"
+    },
+    {
+     "k": "p2",
+     "date": "2026-11-04"
+    },
+    {
+     "k": "win",
+     "date": "2026-11-10"
+    },
+    {
+     "k": "con",
+     "date": "2026-11-22"
+    }
+   ]
+  },
+  {
+   "id": "sample-16",
+   "name": "과천 지식정보타운 S5",
+   "region": "경기",
+   "district": "과천시",
+   "kind": "APT",
+   "units": 504,
+   "pricePerPyeong": 4100,
+   "applyhomeUrl": "https://www.applyhome.co.kr",
+   "homepageUrl": null,
+   "phases": [
+    {
+     "k": "sp",
+     "date": "2026-11-03"
+    },
+    {
+     "k": "p1",
+     "date": "2026-11-04"
+    },
+    {
+     "k": "p2",
+     "date": "2026-11-05"
+    },
+    {
+     "k": "win",
+     "date": "2026-11-11"
+    },
+    {
+     "k": "con",
+     "date": "2026-11-23"
+    }
+   ]
+  },
+  {
+   "id": "sample-17",
+   "name": "창원 중동 유니시티 2차",
+   "region": "경남",
+   "district": "창원시",
+   "kind": "APT",
+   "units": 990,
+   "pricePerPyeong": 1900,
+   "applyhomeUrl": "https://www.applyhome.co.kr",
+   "homepageUrl": null,
+   "phases": [
+    {
+     "k": "sp",
+     "date": "2026-11-04"
+    },
+    {
+     "k": "p1",
+     "date": "2026-11-05"
+    },
+    {
+     "k": "p2",
+     "date": "2026-11-06"
+    },
+    {
+     "k": "win",
+     "date": "2026-11-12"
+    },
+    {
+     "k": "con",
+     "date": "2026-11-24"
+    }
+   ]
+  },
+  {
+   "id": "sample-18",
+   "name": "포항 자이 디오션",
+   "region": "경북",
+   "district": "포항시",
+   "kind": "APT",
+   "units": 704,
+   "pricePerPyeong": 1300,
+   "applyhomeUrl": "https://www.applyhome.co.kr",
+   "homepageUrl": null,
+   "phases": [
+    {
+     "k": "sp",
+     "date": "2026-11-09"
+    },
+    {
+     "k": "p1",
+     "date": "2026-11-10"
+    },
+    {
+     "k": "p2",
+     "date": "2026-11-11"
+    },
+    {
+     "k": "win",
+     "date": "2026-11-17"
+    },
+    {
+     "k": "con",
+     "date": "2026-11-29"
+    }
+   ]
+  },
+  {
+   "id": "sample-19",
+   "name": "제주 노형 오션뷰",
+   "region": "제주",
+   "district": "제주시",
+   "kind": "오피스텔",
+   "units": 198,
+   "pricePerPyeong": 2400,
+   "applyhomeUrl": "https://www.applyhome.co.kr",
+   "homepageUrl": null,
+   "phases": [
+    {
+     "k": "p1",
+     "date": "2026-11-11"
+    },
+    {
+     "k": "win",
+     "date": "2026-11-18"
+    },
+    {
+     "k": "con",
+     "date": "2026-11-30"
+    }
+   ]
+  },
+  {
+   "id": "sample-20",
+   "name": "강동 헤리티지 자이",
+   "region": "서울",
+   "district": "강동구",
+   "kind": "APT",
+   "units": 1299,
+   "pricePerPyeong": 4800,
+   "applyhomeUrl": "https://www.applyhome.co.kr",
+   "homepageUrl": null,
+   "phases": [
+    {
+     "k": "sp",
+     "date": "2026-11-10"
+    },
+    {
+     "k": "p1",
+     "date": "2026-11-11"
+    },
+    {
+     "k": "p2",
+     "date": "2026-11-12"
+    },
+    {
+     "k": "win",
+     "date": "2026-11-18"
+    },
+    {
+     "k": "con",
+     "date": "2026-11-30"
+    }
+   ]
+  },
+  {
+   "id": "sample-21",
+   "name": "전주 에코시티 한양수자인",
+   "region": "전북",
+   "district": "전주시",
+   "kind": "APT",
+   "units": 736,
+   "pricePerPyeong": 1350,
+   "applyhomeUrl": "https://www.applyhome.co.kr",
+   "homepageUrl": null,
+   "phases": [
+    {
+     "k": "sp",
+     "date": "2026-11-16"
+    },
+    {
+     "k": "p1",
+     "date": "2026-11-17"
+    },
+    {
+     "k": "p2",
+     "date": "2026-11-18"
+    },
+    {
+     "k": "win",
+     "date": "2026-11-24"
+    },
+    {
+     "k": "con",
+     "date": "2026-12-06"
+    }
+   ]
+  },
+  {
+   "id": "sample-22",
+   "name": "여수 웅천 디아이델",
+   "region": "전남",
+   "district": "여수시",
+   "kind": "APT",
+   "units": 482,
+   "pricePerPyeong": 1250,
+   "applyhomeUrl": "https://www.applyhome.co.kr",
+   "homepageUrl": null,
+   "phases": [
+    {
+     "k": "sp",
+     "date": "2026-11-17"
+    },
+    {
+     "k": "p1",
+     "date": "2026-11-18"
+    },
+    {
+     "k": "p2",
+     "date": "2026-11-19"
+    },
+    {
+     "k": "win",
+     "date": "2026-11-25"
+    },
+    {
+     "k": "con",
+     "date": "2026-12-07"
+    }
+   ]
+  },
+  {
+   "id": "sample-23",
+   "name": "잠실 르엘",
+   "region": "서울",
+   "district": "송파구",
+   "kind": "무순위",
+   "units": 38,
+   "pricePerPyeong": 5600,
+   "applyhomeUrl": "https://www.applyhome.co.kr",
+   "homepageUrl": null,
+   "phases": [
+    {
+     "k": "p1",
+     "date": "2026-11-18"
+    },
+    {
+     "k": "win",
+     "date": "2026-11-21"
+    }
+   ]
+  }
+ ]
+}
