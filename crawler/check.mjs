@@ -36,6 +36,11 @@ assert.equal(toItem({ SUBSCRPT_AREA_CODE_NM: '서울', HSSPLY_ADRES: '서울시 
 const remndr = toItem({ HOUSE_MANAGE_NO: '1', PBLANC_NO: '2', HOUSE_NM: '잠실 르엘', SUBSCRPT_AREA_CODE_NM: '서울', SUBSCRPT_RCEPT_BGNDE: '2026-11-18', PRZWNER_PRESNATN_DE: '2026-11-21', CNTRCT_CNCLS_BGNDE: '2026-12-01' }, '무순위');
 assert.deepEqual(remndr.phases.map((p) => p.k), ['p1', 'win']); // 무순위는 접수·발표만
 
+// 종료일·모집공고일
+const withEnd = toItem({ HOUSE_NM: 'x', SUBSCRPT_AREA_CODE_NM: '경기', RCRIT_PBLANC_DE: '2026-10-10', SPSPLY_RCEPT_BGNDE: '2026-10-26', SPSPLY_RCEPT_ENDDE: '2026-10-27', GNRL_RNK1_CRSPAREA_RCPTDE: '2026-10-28', GNRL_RNK1_CRSPAREA_ENDDE: '2026-10-28', CNTRCT_CNCLS_BGNDE: '2026-11-09', CNTRCT_CNCLS_ENDDE: '2026-11-11' }, 'APT');
+assert.equal(withEnd.noticeDate, '2026-10-10');
+assert.deepEqual(withEnd.phases, [{ k: 'sp', date: '2026-10-26', end: '2026-10-27' }, { k: 'p1', date: '2026-10-28' }, { k: 'con', date: '2026-11-09', end: '2026-11-11' }]);
+
 const ofc = toItem({ HOUSE_MANAGE_NO: '3', PBLANC_NO: '4', HOUSE_DTL_SECD: '02', HOUSE_NM: '제주 노형', HSSPLY_ADRES: '제주특별자치도 제주시 노형동', SUBSCRPT_RCEPT_BGNDE: '20261110' }, 'URBTY');
 assert.equal(ofc.kind, '오피스텔');
 assert.equal(ofc.region, '제주'); // 공급지역명이 없으면 주소로

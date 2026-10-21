@@ -16,10 +16,16 @@ const SOURCES = [
 const REGIONS = ['서울', '경기', '인천', '부산', '대구', '광주', '대전', '울산', '세종', '강원', '충북', '충남', '전북', '전남', '경북', '경남', '제주'];
 const SEOUL_GU = new Set('강남구 강동구 강북구 강서구 관악구 광진구 구로구 금천구 노원구 도봉구 동대문구 동작구 마포구 서대문구 서초구 성동구 성북구 송파구 양천구 영등포구 용산구 은평구 종로구 중구 중랑구'.split(' '));
 const LONG = { 충청북: '충북', 충청남: '충남', 전라북: '전북', 전라남: '전남', 경상북: '경북', 경상남: '경남' };
+// [단계, 시작일 필드, 종료일 필드(있으면)] — 1·2순위는 해당지역 접수일 기준
 const PHASE_FIELDS = {
-  APT: [['sp', 'SPSPLY_RCEPT_BGNDE'], ['p1', 'GNRL_RNK1_CRSPAREA_RCPTDE'], ['p2', 'GNRL_RNK2_CRSPAREA_RCPTDE'], ['win', 'PRZWNER_PRESNATN_DE'], ['con', 'CNTRCT_CNCLS_BGNDE']],
-  오피스텔: [['p1', 'SUBSCRPT_RCEPT_BGNDE'], ['win', 'PRZWNER_PRESNATN_DE'], ['con', 'CNTRCT_CNCLS_BGNDE']],
-  무순위: [['p1', 'SUBSCRPT_RCEPT_BGNDE'], ['win', 'PRZWNER_PRESNATN_DE']],
+  APT: [['sp', 'SPSPLY_RCEPT_BGNDE', 'SPSPLY_RCEPT_ENDDE'], ['p1', 'GNRL_RNK1_CRSPAREA_RCPTDE', 'GNRL_RNK1_CRSPAREA_ENDDE'], ['p2', 'GNRL_RNK2_CRSPAREA_RCPTDE', 'GNRL_RNK2_CRSPAREA_ENDDE'], ['win', 'PRZWNER_PRESNATN_DE'], ['con', 'CNTRCT_CNCLS_BGNDE', 'CNTRCT_CNCLS_ENDDE']],
+  오피스텔: [['p1', 'SUBSCRPT_RCEPT_BGNDE', 'SUBSCRPT_RCEPT_ENDDE'], ['win', 'PRZWNER_PRESNATN_DE'], ['con', 'CNTRCT_CNCLS_BGNDE', 'CNTRCT_CNCLS_ENDDE']],
+  무순위: [['p1', 'SUBSCRPT_RCEPT_BGNDE', 'SUBSCRPT_RCEPT_ENDDE'], ['win', 'PRZWNER_PRESNATN_DE']],
+};
+// 종료일은 시작일보다 뒤일 때만 둔다(같은 날이면 생략)
+const phaseOf = (row) => ([k, f, fe]) => {
+  const date = ymd(row[f]), end = fe ? ymd(row[fe]) : null;
+  return end && date && end > date ? { k, date, end } : { k, date };
 };
 PHASE_FIELDS.도시형 = PHASE_FIELDS.임의공급 = PHASE_FIELDS['공공지원 민간임대'] = PHASE_FIELDS.오피스텔;
 
@@ -61,9 +67,10 @@ export function toItem(row, sourceKind) {
     kind,
     units: num(row.TOT_SUPLY_HSHLDCO) || null,
     pricePerPyeong: null,
+    noticeDate: ymd(row.RCRIT_PBLANC_DE),
     applyhomeUrl: url(row.PBLANC_URL),
     homepageUrl: url(row.HMPG_ADRES),
-    phases: PHASE_FIELDS[kind].map(([k, f]) => ({ k, date: ymd(row[f]) })).filter((p) => p.date),
+    phases: PHASE_FIELDS[kind].map(phaseOf(row)).filter((p) => p.date),
   };
 }
 
@@ -166,7 +173,7 @@ async function main() {
   console.log(`${out}: ${items.size}건 (${from} ~ ${to})`);
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   main().catch((e) => {
     console.error(e.message);
     process.exit(1);

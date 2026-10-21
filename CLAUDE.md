@@ -8,6 +8,7 @@
 - `.github/workflows/daily.yml` — 매일 06:00 KST 수집 → GitHub Pages 배포. 키는 Secrets `DATA_GO_KR_KEY`.
 - `skin/` — 티스토리 스킨(스킨 편집기에 그대로 업로드). `images/calendar.js`가 스킨 옵션 `schedule-url`에서 JSON을 읽는다.
 - `preview/serve.mjs` — 티스토리 치환자를 흉내 내는 로컬 미리보기(`/` 홈, `/post` 글, `/category` 목록). `--check`는 자동 점검.
+- `posts/weekly.mjs` — schedule.json → 주간 글 초안(`drafts/{월요일}_weekly.json` + 수집본 사본 `.data.json`). `--render`로 summary 고친 뒤 본문 다시 그림. `posts/check.mjs` — 본문 재현·요약 숫자·금지 표현·필수 문구 검수. 미리보기 `/draft/{이름}`. 설계: `docs/weekly-post-design.md`.
 - `preview.bat` — 미리보기 실행기(`preview.bat check` = 자동 점검). 바로가기는 `D:\AI_산출물`.
 - 디자인 원본: `docs/design_handoff/README.md` (v2, 레퍼런스 `design-reference-v2.dc.html`). 이 문서와 다르게 정한 점은 `README.md` 데이터 메모.
 
@@ -21,6 +22,7 @@
 ## 변경 이력
 | 날짜 | 변경 | 사유 |
 |------|------|------|
+| 2026-10-22 | 3단계 1·2: 수집기 단계 종료일(end)·모집공고일(noticeDate), 주간 초안 생성·검수·미리보기 | 주간 청약 일정 글 자동 초안 |
 | 2026-10-22 | 블로그 aulee.tistory.com 개설·스킨 적용(로고 "우"), 메뉴 밑줄을 현재 페이지 기준으로, 방명록 제목 중복 제거, 메뉴 "당첨후기" → "대출·정책" | 운영자가 당첨 당사자가 아니라 후기를 쓸 근거가 없음(사실 규칙) · 처음 범위(정부 지원 대출·개정사항)와 맞춤 |
 | 2026-10-21 | 1단계: 폴더·수집기·Actions·스킨·미리보기 | 플랫폼 검토 후 티스토리 본진 결정 |
 | 2026-10-22 | 디자인 v2(남색 공공포털 톤·표형 지역 필터·서울 자치구 25개 필터·2열 표 모달) 적용, 서울 district는 25개 구 중 하나 아니면 null | 사용자 v2 핸드오프 |

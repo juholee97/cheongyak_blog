@@ -1,0 +1,156 @@
+// schedule.json → "이번 주 청약 일정" 초안 (drafts/{월요일}_weekly.json + 본문 HTML)
+// node posts/weekly.mjs [--week 2026-10-26] [--data <파일|URL>]   새 초안 (summary는 비워 둠)
+// node posts/weekly.mjs --render drafts/2026-10-26_weekly.json      summary를 고친 뒤 본문만 다시 그림
+import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { pathToFileURL } from 'node:url';
+
+export const SCHEDULE_URL = 'https://juholee97.github.io/cheongyak_blog/schedule.json';
+export const BLOG_URL = 'https://aulee.tistory.com/';
+export const DISCLAIMER = '청약 일정은 입주자모집공고 기준이며 사업주체 사정에 따라 변경될 수 있습니다. 신청 전 반드시 청약홈의 입주자모집공고를 확인하세요.';
+const PH = { sp: '특별공급', p1: '1순위', p2: '2순위', win: '당첨자 발표', con: '계약' };
+const RECEIPT = ['sp', 'p1', 'p2'];
+const W = '일월화수목금토';
+const KIND_TAG = { 무순위: '무순위청약', 오피스텔: '오피스텔청약', 도시형: '도시형생활주택', 임의공급: '임의공급', '공공지원 민간임대': '민간임대' };
+
+const pad = (n) => String(n).padStart(2, '0');
+const toDate = (s) => new Date(s + 'T00:00:00Z');
+const iso = (d) => d.toISOString().slice(0, 10);
+const addDays = (s, n) => { const d = toDate(s); d.setUTCDate(d.getUTCDate() + n); return iso(d); };
+const dow = (s) => W[toDate(s).getUTCDay()];
+export const md = (s) => `${+s.slice(5, 7)}.${s.slice(8, 10)}(${dow(s)})`; // 10.26(월)
+export const mdKo = (s) => `${+s.slice(5, 7)}월 ${+s.slice(8, 10)}일`; // 10월 26일
+export const full = (s) => `${s.slice(0, 4)}.${s.slice(5, 7)}.${s.slice(8, 10)} (${dow(s)})`; // 2026.10.26 (월)
+const span = (p, f = md) => (p.end ? `${f(p.date)} ~ ${f(p.end)}` : f(p.date));
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+const label = (it, k) => (k === 'p1' && it.kind !== 'APT' ? '접수' : PH[k]);
+const where = (it) => [it.region, it.district].filter(Boolean).join(' ');
+export const updatedLabel = (u) => (/^(\d{4})-(\d\d)-(\d\d)T(\d\d):(\d\d)/.exec(u) || []).slice(1).reduce((s, v, i) => s + ['', '.', '.', ' ', ':'][i] + v, '');
+
+// 오늘(KST) 다음 월요일
+export function nextMonday(now = new Date()) {
+  const kst = new Date(now.getTime() + 9 * 3600e3);
+  const d = iso(kst), wd = kst.getUTCDay();
+  return addDays(d, ((8 - wd) % 7) || 7);
+}
+
+// 주간 집계: 기간이 이번 주와 겹치는 단계만
+export function build(data, start) {
+  const end = addDays(start, 6);
+  const hit = (p) => p.date <= end && (p.end || p.date) >= start;
+  const receipt = [], win = [], con = [];
+  for (const it of data.items) {
+    const ph = it.phases.filter(hit);
+    const r = ph.filter((p) => RECEIPT.includes(p.k));
+    if (r.length) receipt.push({ it, first: r[0].date, firstK: r[0].k }); // 이번 주에 걸친 첫 접수 단계
+    ph.filter((p) => p.k === 'win').forEach((p) => win.push({ it, date: p.date }));
+    ph.filter((p) => p.k === 'con').forEach((p) => con.push({ it, p, date: p.date < start ? start : p.date }));
+  }
+  const byDate = (a, b) => a.date.localeCompare(b.date) || a.it.name.localeCompare(b.it.name, 'ko');
+  receipt.sort((a, b) => a.first.localeCompare(b.first) || a.it.name.localeCompare(b.it.name, 'ko'));
+  win.sort(byDate); con.sort(byDate);
+  const kinds = {}, regions = {};
+  receipt.forEach(({ it }) => { kinds[it.kind] = (kinds[it.kind] || 0) + 1; regions[it.region] = (regions[it.region] || 0) + 1; });
+  return {
+    start, end, updatedAt: data.updatedAt, receipt, win, con,
+    facts: { receipt: receipt.length, win: win.length, con: con.length, kinds, regions },
+  };
+}
+
+export function titleOf(w) {
+  return `이번 주 청약 일정 (${mdKo(w.start)}~${mdKo(w.end)}) | 접수 ${w.facts.receipt}곳·발표 ${w.facts.win}곳`;
+}
+
+export function tagsOf(w) {
+  const t = ['청약일정', '이번주청약', '아파트청약'];
+  Object.keys(w.facts.kinds).forEach((k) => KIND_TAG[k] && t.push(KIND_TAG[k]));
+  w.receipt.forEach(({ it }) => t.push(it.region + '청약'));
+  return [...new Set(t)].slice(0, 10);
+}
+
+const TH = 'style="background:#f4f6f9;text-align:left;padding:8px 10px;border-bottom:1px solid #e4e8ee;white-space:nowrap"';
+const TD = 'style="padding:8px 10px;border-bottom:1px solid #e4e8ee"';
+
+export function render(w, summary = []) {
+  const kindText = Object.entries(w.facts.kinds).map(([k, n]) => `${k} ${n}`).join(' · ');
+  const out = [];
+  summary.filter(Boolean).forEach((s) => out.push(`<p>${esc(s)}</p>`));
+  out.push(`<div style="border:1px solid #d6dbe3;border-top:2px solid #0f2557;padding:12px 16px;margin:16px 0">
+<p><b>기간</b> ${full(w.start)} ~ ${full(w.end)}</p>
+<p><b>접수</b> ${w.facts.receipt}곳${kindText ? ` (${esc(kindText)})` : ''} · <b>당첨자 발표</b> ${w.facts.win}곳 · <b>계약</b> ${w.facts.con}곳</p>
+<p>기준: ${updatedLabel(w.updatedAt)} 수집 · 출처: 청약홈(한국부동산원) 분양정보, 공공데이터포털</p>
+</div>`);
+
+  out.push('<h2>이번 주 접수 단지</h2>');
+  if (!w.receipt.length) out.push('<p>이번 주에 접수가 있는 단지가 없습니다.</p>');
+  else out.push(`<table style="border-collapse:collapse;width:100%"><thead><tr><th ${TH}>이번 주 접수</th><th ${TH}>단지명</th><th ${TH}>지역</th><th ${TH}>종류</th><th ${TH}>공급</th></tr></thead><tbody>
+${w.receipt.map(({ it, first, firstK }) => `<tr><td ${TD}>${md(first)} ${label(it, firstK)}</td><td ${TD}>${esc(it.name)}</td><td ${TD}>${esc(where(it))}</td><td ${TD}>${esc(it.kind)}</td><td ${TD}>${it.units ? it.units.toLocaleString() + '세대' : '-'}</td></tr>`).join('\n')}
+</tbody></table>`);
+
+  if (w.receipt.length) {
+    out.push('<h2>단지별 일정</h2>');
+    for (const { it } of w.receipt) {
+      const facts = [esc(where(it)), esc(it.kind), it.units ? it.units.toLocaleString() + '세대' : null, it.pricePerPyeong ? `분양가(3.3㎡) ${it.pricePerPyeong.toLocaleString()}만원*` : null].filter(Boolean).join(' · ');
+      out.push(`<h3>${esc(it.name)}</h3>
+<p>${facts}</p>
+<table style="border-collapse:collapse;width:100%"><tbody>
+${it.phases.map((p) => `<tr><th ${TH}>${label(it, p.k)}</th><td ${TD}>${span(p, full)}</td></tr>`).join('\n')}
+</tbody></table>${it.applyhomeUrl ? `\n<p><a href="${esc(it.applyhomeUrl)}" target="_blank" rel="noopener">청약홈 공고 보기</a></p>` : ''}`);
+    }
+  }
+
+  const list = (rows, fmt) => (rows.length ? `<ul>\n${rows.map(fmt).join('\n')}\n</ul>` : '<p>이번 주에는 없습니다.</p>');
+  out.push('<h2>이번 주 당첨자 발표</h2>', list(w.win, ({ it, date }) => `<li>${md(date)} ${esc(it.name)} · ${esc(where(it))}</li>`));
+  out.push('<h2>이번 주 계약</h2>', list(w.con, ({ it, p }) => `<li>${span(p)} ${esc(it.name)} · ${esc(where(it))}</li>`));
+
+  out.push(`<h2>지역별로 보려면</h2>
+<p>시·도와 서울 자치구별 일정은 블로그 홈의 청약 달력에서 매일 아침 갱신됩니다. <a href="${BLOG_URL}">청약 달력 바로가기</a></p>`);
+  if (w.receipt.some(({ it }) => it.pricePerPyeong)) out.push('<p style="font-size:13px;color:#6d7882">* 분양가(3.3㎡): 주택형별 최고분양가를 공급면적 3.3㎡당으로 환산해 세대수로 가중 평균한 값입니다.</p>');
+  out.push(`<p style="font-size:13px;color:#6d7882">※ ${DISCLAIMER}</p>`);
+  return out.join('\n');
+}
+
+export async function loadData(src = SCHEDULE_URL) {
+  if (/^https?:/.test(src)) {
+    const r = await fetch(src, { cache: 'no-store' });
+    if (!r.ok) throw new Error(`${src} HTTP ${r.status}`);
+    return r.json();
+  }
+  return JSON.parse(await readFile(src, 'utf8'));
+}
+
+export function draftOf(data, start, summary = []) {
+  const w = build(data, start);
+  return {
+    week: { start: w.start, end: w.end }, dataUpdatedAt: data.updatedAt, dataSource: SCHEDULE_URL,
+    title: titleOf(w), category: '청약일정', tags: tagsOf(w), summary, facts: w.facts,
+    html: render(w, summary),
+  };
+}
+
+async function main() {
+  const arg = (k) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : null; };
+  const renderPath = arg('--render');
+  if (renderPath) {
+    // 같은 수집본으로 다시 그려야 사실 대조가 맞는다: 초안에 기록된 데이터를 다시 받지 않고 저장된 사본을 쓴다
+    const d = JSON.parse(await readFile(renderPath, 'utf8'));
+    const data = JSON.parse(await readFile(renderPath.replace(/\.json$/, '.data.json'), 'utf8'));
+    const next = draftOf(data, d.week.start, d.summary);
+    await writeFile(renderPath, JSON.stringify(next, null, 2));
+    console.log(`다시 그림: ${renderPath} (${next.title})`);
+    return;
+  }
+  const start = arg('--week') || nextMonday();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(start) || toDate(start).getUTCDay() !== 1) throw new Error(`--week는 월요일 날짜(YYYY-MM-DD): ${start}`);
+  const data = await loadData(arg('--data') || SCHEDULE_URL);
+  const draft = draftOf(data, start);
+  await mkdir('drafts', { recursive: true });
+  const base = `drafts/${start}_weekly`;
+  await writeFile(base + '.data.json', JSON.stringify(data)); // 검수·다시 그리기용 수집본 사본
+  await writeFile(base + '.json', JSON.stringify(draft, null, 2));
+  console.log(`${base}.json — ${draft.title}`);
+  console.log(`접수 ${draft.facts.receipt} · 발표 ${draft.facts.win} · 계약 ${draft.facts.con} · 기준 ${updatedLabel(data.updatedAt)}`);
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch((e) => { console.error(e.message); process.exit(1); });
+}

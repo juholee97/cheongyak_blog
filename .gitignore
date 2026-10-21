@@ -1,3 +1,4 @@
 site/
 .env
 node_modules/
+drafts/

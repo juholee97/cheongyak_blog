@@ -6,6 +6,8 @@ import { readFile, access } from 'node:fs/promises';
 import { execFileSync, exec } from 'node:child_process';
 import { join, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { draftOf } from '../posts/weekly.mjs';
+import { checkDraft } from '../posts/check.mjs';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const SKIN = join(ROOT, 'skin');
@@ -46,12 +48,12 @@ function postVals(p) {
   return {
     article_rep_link: p.link, article_rep_title: p.title, article_rep_category: p.cat, article_rep_category_link: `/category/${p.cat}`,
     article_rep_summary: p.summary, article_rep_simple_date: p.date, article_rep_date: p.date + ' 09:00', article_rep_rp_cnt: p.rp,
-    article_rep_thumbnail_url: p.thumb, article_rep_desc: '<p>본문 예시입니다. 표·이미지·인용 등 에디터 내용이 여기에 들어갑니다.</p><table><tr><th>단계</th><th>날짜</th></tr><tr><td>특별공급</td><td>10.05 (월)</td></tr></table>',
+    article_rep_thumbnail_url: p.thumb, article_rep_desc: p.desc ?? '<p>본문 예시입니다. 표·이미지·인용 등 에디터 내용이 여기에 들어갑니다.</p><table><tr><th>단계</th><th>날짜</th></tr><tr><td>특별공급</td><td>10.05 (월)</td></tr></table>',
     list_rep_link: p.link, list_rep_title_text: p.title, list_rep_category: p.cat, list_rep_summary: p.summary, list_rep_regdate: p.date.replace(/\. ?/g, '.').replace(/\.$/, ''), list_rep_rp_cnt: p.rp, list_rep_thumbnail_url: p.thumb,
   };
 }
 
-export async function render(page) {
+export async function render(page, post = POSTS[0]) {
   let html = await readFile(join(SKIN, 'skin.html'), 'utf8');
   const unknown = new Set();
   for (const m of html.matchAll(/\[##_([\w-]+)_##\]/g)) if (!KNOWN.has(m[1])) unknown.add(`[##_${m[1]}_##]`);
@@ -65,7 +67,7 @@ export async function render(page) {
     : drop);
   html = group(html, 'article_rep', (inner) => {
     if (page === 'index') return POSTS.map((p) => fill(withThumb(group(group(inner, 'permalink_article_rep', drop), 'index_article_rep', keep), p), postVals(p))).join('');
-    if (page === 'post') return fill(group(group(inner, 'index_article_rep', drop), 'permalink_article_rep', keep), postVals(POSTS[0]));
+    if (page === 'post') return fill(group(group(inner, 'index_article_rep', drop), 'permalink_article_rep', keep), postVals(post));
     return '';
   });
   for (const g of ['rp_count', 'sidebar', 'sidebar_element']) html = group(html, g, keep);
@@ -109,6 +111,14 @@ async function check() {
   try { execFileSync(process.execPath, [join(ROOT, 'crawler', 'check.mjs')], { stdio: 'inherit' }); } catch { fail('crawler/check.mjs 실패'); }
   const sch = JSON.parse(await readFile(await schedulePath(), 'utf8'));
   if (!sch.items?.length) fail('schedule.json 비어 있음'); else console.log(`  schedule.json ${sch.items.length}건${sch.sample ? ' (샘플)' : ''}`);
+  // 주간 글: 샘플 수집본으로 초안을 만들고 검수가 통과하는지, 틀린 숫자를 잡는지
+  const sample = JSON.parse(await readFile(join(ROOT, 'preview', 'sample-schedule.json'), 'utf8'));
+  const good = draftOf(sample, '2026-10-19', ['이번 주 일정 요약입니다.']);
+  const bad = { ...good, summary: ['접수 999곳'] };
+  const gi = checkDraft(good, sample), bi = checkDraft(bad, sample);
+  if (gi.length || !good.facts.receipt) fail('주간 초안 검수: ' + (gi.join(' / ') || '접수 0곳'));
+  else if (!bi.some((i) => i.includes('999'))) fail('주간 초안 검수가 틀린 숫자를 못 잡음');
+  else console.log(`  주간 초안 생성·검수 확인 (샘플 접수 ${good.facts.receipt}곳)`);
   console.log(ok ? '점검 통과' : '점검 실패');
   return ok;
 }
@@ -119,6 +129,14 @@ if (process.argv.includes('--check')) {
   createServer(async (req, res) => {
     try {
       const path = decodeURIComponent(new URL(req.url, 'http://x').pathname);
+      // 주간 초안 미리보기: /draft/2026-10-26_weekly → 글 화면에 drafts/…json 본문을 넣어 보여 준다
+      const dm = /^\/draft\/([\w-]+)$/.exec(path);
+      if (dm) {
+        const d = JSON.parse(await readFile(join(ROOT, 'drafts', dm[1] + '.json'), 'utf8'));
+        const { html } = await render('post', { cat: d.category, title: d.title, date: '[발행일]', rp: 0, link: '#', summary: '', thumb: '', desc: d.html });
+        res.writeHead(200, { 'content-type': TYPES['.html'] });
+        return res.end(html);
+      }
       const page = path.startsWith('/category') ? 'category' : { '/': 'index', '/post': 'post' }[path];
       if (page) {
         const { html } = await render(page);
