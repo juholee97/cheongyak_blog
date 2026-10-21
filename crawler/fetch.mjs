@@ -74,21 +74,38 @@ export function pricePerPyeong(models) {
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// 오류 메시지에 URL을 넣지 않는다(serviceKey가 로그에 남지 않게).
+async function getPage(op, params, key) {
+  const u = new URL(BASE + op);
+  u.searchParams.set('serviceKey', key);
+  u.searchParams.set('returnType', 'JSON');
+  for (const [k, v] of Object.entries(params)) u.searchParams.set(k, v);
+  const r = await fetch(u);
+  const text = await r.text();
+  if (!r.ok) throw new Error(`${op} HTTP ${r.status}: ${text.slice(0, 200)}`);
+  return JSON.parse(text);
+}
+
 async function getAll(op, cond, key) {
   const out = [];
   for (let page = 1; ; page++) {
-    const u = new URL(BASE + op);
-    u.searchParams.set('serviceKey', key);
-    u.searchParams.set('page', page);
-    u.searchParams.set('perPage', 500);
-    u.searchParams.set('returnType', 'JSON');
-    for (const [k, v] of Object.entries(cond)) u.searchParams.set(k, v);
-    const r = await fetch(u);
-    const text = await r.text();
-    if (!r.ok) throw new Error(`${op} HTTP ${r.status}: ${text.slice(0, 200)}`);
-    const j = JSON.parse(text);
+    const j = await getPage(op, { page, perPage: 500, ...cond }, key);
     out.push(...(j.data || []));
     if (!j.data || j.data.length < 500 || out.length >= j.matchCount) return out;
+  }
+}
+
+// 조건 조회가 0건일 때: 조건 없이 전체 건수와 마지막 페이지(최근 공고 쪽) 공고일 형식을 찍는다.
+async function diagnoseEmpty(op, key) {
+  try {
+    const { totalCount } = await getPage(op, { page: 1, perPage: 1 }, key);
+    const per = 5, last = Math.max(1, Math.ceil(totalCount / per));
+    const pick = (j) => (j.data || []).map((d) => JSON.stringify(d.RCRIT_PBLANC_DE)).join(', ');
+    const head = await getPage(op, { page: 1, perPage: per }, key);
+    const tail = await getPage(op, { page: last, perPage: per }, key);
+    console.log(`  [진단] ${op}: 조건 없이 totalCount=${totalCount}, 첫 페이지 공고일 ${pick(head)} / 마지막 페이지(${last}) 공고일 ${pick(tail)}`);
+  } catch (e) {
+    console.log(`  [진단] ${op}: 실패 ${e.message}`);
   }
 }
 
@@ -112,11 +129,13 @@ async function main() {
   const items = new Map();
   for (const src of SOURCES) {
     const rows = await getAll(src.detail, { 'cond[RCRIT_PBLANC_DE::GTE]': noticeFrom }, key);
+    if (!rows.length) await diagnoseEmpty(src.detail, key);
     let kept = 0;
     for (const row of rows) {
       const it = toItem(row, src.kind);
       if (!it || !it.region || !it.phases.some((p) => p.date >= from && p.date <= to)) continue;
-      if (src.model) {
+      // 분양전환 임대(RENT_SECD 1)는 공급금액이 분양가가 아니라 비워 둔다
+      if (src.model && row.RENT_SECD !== '1') {
         try {
           const models = await getAll(src.model, { 'cond[HOUSE_MANAGE_NO::EQ]': row.HOUSE_MANAGE_NO, 'cond[PBLANC_NO::EQ]': row.PBLANC_NO }, key);
           it.pricePerPyeong = pricePerPyeong(models);
