@@ -74,7 +74,7 @@ export async function render(page) {
   html = group(html, 'rctps_popular_rep', (rep) => POPULAR.map((t) => fill(rep, { rctps_rep_link: '/post', rctps_rep_title: t })).join(''));
   html = group(html, 'random_tags', (rep) => TAGS.map((t) => fill(rep, { tag_link: '#', tag_name: t })).join(''));
   html = fill(html, {
-    page_title: '청약달력', title: '청약달력', desc: '전국 아파트·오피스텔 청약 일정 안내', blog_link: '/', rss_url: '/rss',
+    page_title: 'aulee의 청약달력', title: 'aulee의 청약달력', desc: '우리의 청약 일정, 매일 아침 갱신', blog_link: '/', rss_url: '/rss',
     body_id: { index: 'tt-body-index', post: 'tt-body-page', category: 'tt-body-category' }[page],
     blog_menu: MENU_HTML, category_list: CATEGORY_HTML, comment_group: '<p class="empty">(댓글 영역)</p>',
     'var_schedule-url': '/schedule.json', prev_page: 'href="#"', next_page: 'href="#"', no_more_prev: 'no-more-prev', no_more_next: '',
