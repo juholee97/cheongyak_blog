@@ -8,7 +8,10 @@ const BASE = 'https://api.odcloud.kr/api/ApplyhomeInfoDetailSvc/v1/';
 const SOURCES = [
   { kind: 'APT', detail: 'getAPTLttotPblancDetail', model: 'getAPTLttotPblancMdl' },
   { kind: 'URBTY', detail: 'getUrbtyOfctlLttotPblancDetail' }, // 오피스텔·도시형 (민간임대·생숙은 제외)
-  { kind: '무순위', detail: 'getRemndrLttotPblancDetail', model: 'getRemndrLttotPblancMdl' },
+  { kind: '무순위', detail: 'getRemndrLttotPblancDetail', model: 'getRemndrLttotPblancMdl' }, // 2026-10 현재 API 전체 0건
+  // 아래 둘은 공고일이 YYYYMMDD라 조건도 같은 형식으로. 공급금액이 전용면적 기준·임대보증금이라 분양가는 비운다.
+  { kind: '임의공급', detail: 'getOPTLttotPblancDetail', compactDate: true },
+  { kind: '공공지원 민간임대', detail: 'getPblPvtRentLttotPblancDetail', compactDate: true },
 ];
 const REGIONS = ['서울', '경기', '인천', '부산', '대구', '광주', '대전', '울산', '세종', '강원', '충북', '충남', '전북', '전남', '경북', '경남', '제주'];
 const LONG = { 충청북: '충북', 충청남: '충남', 전라북: '전북', 전라남: '전남', 경상북: '경북', 경상남: '경남' };
@@ -17,7 +20,7 @@ const PHASE_FIELDS = {
   오피스텔: [['p1', 'SUBSCRPT_RCEPT_BGNDE'], ['win', 'PRZWNER_PRESNATN_DE'], ['con', 'CNTRCT_CNCLS_BGNDE']],
   무순위: [['p1', 'SUBSCRPT_RCEPT_BGNDE'], ['win', 'PRZWNER_PRESNATN_DE']],
 };
-PHASE_FIELDS.도시형 = PHASE_FIELDS.오피스텔;
+PHASE_FIELDS.도시형 = PHASE_FIELDS.임의공급 = PHASE_FIELDS['공공지원 민간임대'] = PHASE_FIELDS.오피스텔;
 
 export function regionOf(s) {
   s = String(s || '').trim();
@@ -128,7 +131,8 @@ async function main() {
 
   const items = new Map();
   for (const src of SOURCES) {
-    const rows = await getAll(src.detail, { 'cond[RCRIT_PBLANC_DE::GTE]': noticeFrom }, key);
+    const since = src.compactDate ? noticeFrom.replace(/-/g, '') : noticeFrom;
+    const rows = await getAll(src.detail, { 'cond[RCRIT_PBLANC_DE::GTE]': since }, key);
     if (!rows.length) await diagnoseEmpty(src.detail, key);
     let kept = 0;
     for (const row of rows) {

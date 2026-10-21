@@ -37,6 +37,21 @@ assert.equal(ofc.region, '제주'); // 공급지역명이 없으면 주소로
 assert.deepEqual(ofc.phases, [{ k: 'p1', date: '2026-11-10' }]);
 assert.equal(toItem({ HOUSE_DTL_SECD: '03' }, 'URBTY'), null); // 민간임대 제외
 
+// 임의공급·공공지원 민간임대: 날짜 YYYYMMDD, 단계는 접수·발표·계약 (실제 응답 2026-10-22 기준)
+const opt = toItem({
+  HOUSE_MANAGE_NO: '2026940231', PBLANC_NO: '2026940231', HOUSE_NM: '의정부역 센트럴 아이파크 (5차)', SUBSCRPT_AREA_CODE_NM: '경기',
+  HSSPLY_ADRES: '경기도 의정부시 의정부동 253-19번지 일원', TOT_SUPLY_HSHLDCO: 8, RCRIT_PBLANC_DE: '20261020',
+  SPSPLY_RCEPT_BGNDE: null, GNRL_RCEPT_BGNDE: null, SUBSCRPT_RCEPT_BGNDE: '20261023', PRZWNER_PRESNATN_DE: '20261028', CNTRCT_CNCLS_BGNDE: '20261030',
+}, '임의공급');
+assert.equal(opt.kind, '임의공급');
+assert.equal(opt.district, '의정부시');
+assert.equal(opt.units, 8);
+assert.deepEqual(opt.phases, [{ k: 'p1', date: '2026-10-23' }, { k: 'win', date: '2026-10-28' }, { k: 'con', date: '2026-10-30' }]);
+const rent = toItem({ HOUSE_MANAGE_NO: '5', PBLANC_NO: '6', HOUSE_NM: '울산반구 수자인 더센트럴', SUBSCRPT_AREA_CODE_NM: '울산', HSSPLY_ADRES: '울산광역시 중구 반구동', SUBSCRPT_RCEPT_BGNDE: '20261020', PRZWNER_PRESNATN_DE: '20261026', CNTRCT_CNCLS_BGNDE: '20261029' }, '공공지원 민간임대');
+assert.equal(rent.kind, '공공지원 민간임대');
+assert.equal(rent.pricePerPyeong, null);
+assert.deepEqual(rent.phases.map((p) => p.k), ['p1', 'win', 'con']);
+
 // 84.99㎡ 최고 12억(120,000만원) → 약 4,668만원/3.3㎡
 assert.equal(pricePerPyeong([{ LTTOT_TOP_AMOUNT: '120,000', SUPLY_AR: '84.99', SUPLY_HSHLDCO: '10', SPSPLY_HSHLDCO: '0' }]), 4668);
 assert.equal(pricePerPyeong([{ LTTOT_TOP_AMOUNT: '', SUPLY_AR: '84', SUPLY_HSHLDCO: '1' }]), null);
