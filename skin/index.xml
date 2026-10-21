@@ -46,7 +46,7 @@
         <label><![CDATA[일정 데이터 주소 (schedule.json)]]></label>
         <type>STRING</type>
         <option />
-        <default><![CDATA[]]></default>
+        <default><![CDATA[https://juholee97.github.io/cheongyak_blog/schedule.json]]></default>
         <description><![CDATA[GitHub Pages에 배포된 schedule.json 주소. 예: https://아이디.github.io/cheongyak_blog/schedule.json]]></description>
       </variable>
     </variablegroup>

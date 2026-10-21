@@ -161,6 +161,7 @@ button { font: inherit; color: inherit; white-space: nowrap; flex: none; cursor:
 .section-count b { color: var(--primary); }
 .latest-head { display: none; }
 #tt-body-index .latest-head { display: flex; }
+#tt-body-index .list-head { display: none; } /* 홈이 글 목록형이면 티스토리가 "전체 글" 목록을 그린다: 머리는 "최신 게시물" 하나만 */
 .post-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 28px 20px; }
 .post-grid:empty { display: none; }
 .card { display: flex; flex-direction: column; gap: 8px; }
