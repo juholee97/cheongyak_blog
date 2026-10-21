@@ -7,6 +7,22 @@
     e.textContent = e.textContent.replace(/[()\s]/g, '');
   });
 
+  // 현재 페이지에 해당하는 메뉴에 밑줄 (글 화면은 그 글의 카테고리 기준, 가장 길게 맞는 링크 하나)
+  (function () {
+    var norm = function (u) {
+      try { return decodeURIComponent(new URL(u, location.href).pathname).replace(/\/+$/, '') || '/'; } catch (e) { return ''; }
+    };
+    var cat = document.body.id === 'tt-body-page' && document.querySelector('.post-cat');
+    var here = norm(cat ? cat.href : location.href), best = null, bestLen = -1;
+    document.querySelectorAll('.site-nav a').forEach(function (a) {
+      if (a.host !== location.host) return;
+      var p = norm(a.href);
+      var hit = p === '/' ? document.body.id === 'tt-body-index' : here === p || here.indexOf(p + '/') === 0;
+      if (hit && p.length > bestLen) { best = a; bestLen = p.length; }
+    });
+    if (best) best.classList.add('is-active');
+  })();
+
   var root = document.getElementById('cal');
   if (!root || document.body.id !== 'tt-body-index') return;
 

@@ -35,7 +35,7 @@ const POSTS = [
 ].map(([cat, title, date, rp], i) => ({ cat, title, date, rp, link: '/post', summary: '분양가 상한제 적용 단지와 특별공급 비중이 높은 단지를 중심으로 일정과 예상 경쟁률을 정리했습니다.', thumb: i === 2 ? 'https://picsum.photos/seed/cy/800/500' : '' }));
 const CATEGORY_HTML = `<ul class="tt_category"><li><a href="/category" class="link_tit">분류 전체보기 <span class="c_cnt">(248)</span></a>
 <ul class="category_list">${[['청약일정', 96], ['분양분석', 71], ['청약가이드', 52], ['당첨후기', 29]].map(([n, c]) => `<li><a href="/category" class="link_item">${n} <span class="c_cnt">(${c})</span></a></li>`).join('')}</ul></li></ul>`;
-const MENU_HTML = `<ul>${['청약일정', '분양분석', '청약가이드', '당첨후기', '방명록'].map((n) => `<li><a href="/">${n}</a></li>`).join('')}</ul>`;
+const MENU_HTML = `<ul>${[['청약일정', '/'], ['분양분석', '/category/분양분석'], ['청약가이드', '/category/청약가이드'], ['당첨후기', '/category/당첨후기'], ['방명록', '/guestbook']].map(([n, h]) => `<li><a href="${h}">${n}</a></li>`).join('')}</ul>`;
 const POPULAR = ['청약 가점 계산법 총정리 (2026 최신)', '특별공급 중복 신청, 되는 것과 안 되는 것', '서울 분양가 상한제 단지 리스트', '계약금 10% vs 5%, 자금 계획 세우기'];
 const TAGS = ['청약가점', '특별공급', '무순위', '분양가상한제', '신혼부부', '생애최초', '서울분양', '경기분양'];
 
@@ -44,7 +44,7 @@ const fill = (html, vals) => html.replace(/\[##_([\w-]+)_##\]/g, (m, k) => (k in
 
 function postVals(p) {
   return {
-    article_rep_link: p.link, article_rep_title: p.title, article_rep_category: p.cat, article_rep_category_link: '/category',
+    article_rep_link: p.link, article_rep_title: p.title, article_rep_category: p.cat, article_rep_category_link: `/category/${p.cat}`,
     article_rep_summary: p.summary, article_rep_simple_date: p.date, article_rep_date: p.date + ' 09:00', article_rep_rp_cnt: p.rp,
     article_rep_thumbnail_url: p.thumb, article_rep_desc: '<p>본문 예시입니다. 표·이미지·인용 등 에디터 내용이 여기에 들어갑니다.</p><table><tr><th>단계</th><th>날짜</th></tr><tr><td>특별공급</td><td>10.05 (월)</td></tr></table>',
     list_rep_link: p.link, list_rep_title_text: p.title, list_rep_category: p.cat, list_rep_summary: p.summary, list_rep_regdate: p.date.replace(/\. ?/g, '.').replace(/\.$/, ''), list_rep_rp_cnt: p.rp, list_rep_thumbnail_url: p.thumb,
@@ -80,6 +80,7 @@ export async function render(page) {
     'var_schedule-url': '/schedule.json', prev_page: 'href="#"', next_page: 'href="#"', no_more_prev: 'no-more-prev', no_more_next: '',
   });
   html = html.replace(/\[##_[\w-]+_##\]/g, ''); // 광고 등 나머지는 빈 값
+  html = html.replace(/(href|src)="\.\//g, '$1="/'); // 티스토리처럼 스킨 파일은 절대 경로로(/category/... 아래에서도 열리게)
   const leftover = [...html.matchAll(/<\/?s_\w+>|\[##_/g)].map((m) => m[0]);
   return { html, unknown: [...unknown], leftover };
 }
@@ -118,7 +119,7 @@ if (process.argv.includes('--check')) {
   createServer(async (req, res) => {
     try {
       const path = decodeURIComponent(new URL(req.url, 'http://x').pathname);
-      const page = { '/': 'index', '/post': 'post', '/category': 'category' }[path];
+      const page = path.startsWith('/category') ? 'category' : { '/': 'index', '/post': 'post' }[path];
       if (page) {
         const { html } = await render(page);
         res.writeHead(200, { 'content-type': TYPES['.html'] });

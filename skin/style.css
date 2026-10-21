@@ -37,7 +37,7 @@ button { font: inherit; color: inherit; white-space: nowrap; flex: none; cursor:
 .site-nav li { display: flex; }
 .site-nav a { display: flex; align-items: center; padding: 0 16px; min-height: 48px; }
 .site-nav a:hover { text-decoration: none; }
-.site-nav li:first-child a { color: var(--primary); box-shadow: inset 0 -3px 0 var(--primary); }
+.site-nav a.is-active { color: var(--primary); box-shadow: inset 0 -3px 0 var(--primary); } /* calendar.js가 현재 페이지 메뉴에 붙임 */
 
 /* 캘린더 섹션 — 홈에서만 */
 .cal { display: none; background: var(--surface); border-bottom: 1px solid var(--line); }
