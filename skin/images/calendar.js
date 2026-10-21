@@ -76,7 +76,7 @@
 
   var today = new Date();
   var S = {
-    regions: load(STORE, ALL), gu: load(STORE_GU, GU), guOpen: false,
+    regions: load(STORE, ALL), gu: load(STORE_GU, GU), guOpen: false, filterOpen: false, // filterOpen은 휴대폰에서만 의미 있음
     phases: PH.map(function (p) { return p.k; }),
     y: today.getFullYear(), m: today.getMonth(), sel: key(today),
     modal: null, saved: false, data: [], status: 'loading', updatedAt: '',
@@ -139,6 +139,9 @@
     refs.summary.textContent = names.length === ALL.length && !guPart ? '선택 지역: 전국' + tail
       : names.length ? '선택 지역: ' + names.join(', ') + tail : '조회할 지역을 선택해 주세요.';
     refs.save.textContent = S.saved ? '저장되었습니다' : '관심 지역 저장';
+    refs.fopen.textContent = S.filterOpen ? '접기 ▴' : '지역 선택 ▾';
+    refs.fopen.setAttribute('aria-expanded', S.filterOpen);
+    root.querySelector('.filter').classList.toggle('collapsed', !S.filterOpen);
 
     var guOn = rs.has('서울') ? S.gu.length : 0;
     var subRow = '<div class="f-row sub"><button type="button" class="f-head" data-act="guall">' + box(guOn > 0, guOn < GU.length) + '└ 서울 자치구</button>' +
@@ -184,8 +187,14 @@
             return '<div class="ev" style="' + pvars(x.p) + '" title="' + esc(x.p.label + ' · ' + x.it.name) + '" data-act="open" data-id="' + esc(x.it.id) + '">' +
               '<b>' + x.p.label + '</b> ' + esc(x.it.name) + '</div>';
           }).join('') + (list.length > 3 ? '<span class="more">+' + (list.length - 3) + '건 더보기</span>' : '');
+        // 휴대폰용: 그날 있는 단계 색 점 + 건수 (CSS가 폭에 따라 칩/점 중 하나만 보여줌)
+        var has = {};
+        list.forEach(function (x) { has[x.p.k] = true; });
+        var dots = list.length ? '<div class="day-dots">' + PH.filter(function (p) { return has[p.k]; }).map(function (p) {
+          return '<i style="' + pvars(p) + '"></i>';
+        }).join('') + '<span>' + list.length + '</span></div>' : '';
         html += '<div class="day' + (k === S.sel ? ' sel' : '') + (cur.getMonth() !== S.m ? ' out' : '') + '" data-act="sel" data-d="' + k + '">' +
-          '<div class="day-num-row"><span class="' + numCls + '">' + cur.getDate() + '</span></div><div class="day-evs">' + evs + '</div></div>';
+          '<div class="day-num-row"><span class="' + numCls + '">' + cur.getDate() + '</span></div><div class="day-evs">' + evs + '</div>' + dots + '</div>';
         cur.setDate(cur.getDate() + 1);
       }
       html += '</div>';
@@ -274,7 +283,17 @@
       case 'prev': return set(S.m === 0 ? { y: S.y - 1, m: 11 } : { m: S.m - 1 });
       case 'next': return set(S.m === 11 ? { y: S.y + 1, m: 0 } : { m: S.m + 1 });
       case 'today': return set({ y: today.getFullYear(), m: today.getMonth(), sel: key(today) });
-      case 'sel': return set({ sel: d.d });
+      case 'fopen': return set({ filterOpen: !S.filterOpen });
+      case 'tocal': return root.querySelector('.cal-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      case 'sel': {
+        set({ sel: d.d });
+        // 휴대폰: 목록이 화면 아래에 있으면 목록으로 내려 준다
+        var card = root.querySelector('.day-card');
+        if (window.matchMedia('(max-width: 700px)').matches && card.getBoundingClientRect().top > window.innerHeight - 80) {
+          card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+        return;
+      }
       case 'open': return set({ modal: d.id });
       case 'close': return set({ modal: null });
     }
