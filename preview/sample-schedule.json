@@ -1,5 +1,5 @@
 {
- "updatedAt": "2026-10-21T06:02:00+09:00",
+ "updatedAt": "2026-10-22T06:02:00+09:00",
  "sample": true,
  "items": [
   {
@@ -809,6 +809,192 @@
     {
      "k": "con",
      "date": "2026-10-29"
+    }
+   ]
+  },
+  {
+   "id": "sample-gu0",
+   "name": "래미안 레미넨티 대치",
+   "region": "서울",
+   "district": "강남구",
+   "kind": "APT",
+   "units": 282,
+   "pricePerPyeong": 7800,
+   "applyhomeUrl": "https://www.applyhome.co.kr",
+   "homepageUrl": null,
+   "phases": [
+    {
+     "k": "sp",
+     "date": "2026-10-14"
+    },
+    {
+     "k": "p1",
+     "date": "2026-10-15"
+    },
+    {
+     "k": "p2",
+     "date": "2026-10-16"
+    },
+    {
+     "k": "win",
+     "date": "2026-10-22"
+    },
+    {
+     "k": "con",
+     "date": "2026-11-03"
+    }
+   ]
+  },
+  {
+   "id": "sample-gu1",
+   "name": "아크로 성수 리버파크",
+   "region": "서울",
+   "district": "성동구",
+   "kind": "APT",
+   "units": 455,
+   "pricePerPyeong": 6300,
+   "applyhomeUrl": "https://www.applyhome.co.kr",
+   "homepageUrl": null,
+   "phases": [
+    {
+     "k": "sp",
+     "date": "2026-10-20"
+    },
+    {
+     "k": "p1",
+     "date": "2026-10-21"
+    },
+    {
+     "k": "p2",
+     "date": "2026-10-22"
+    },
+    {
+     "k": "win",
+     "date": "2026-10-28"
+    },
+    {
+     "k": "con",
+     "date": "2026-11-09"
+    }
+   ]
+  },
+  {
+   "id": "sample-gu2",
+   "name": "힐스테이트 은평 연신",
+   "region": "서울",
+   "district": "은평구",
+   "kind": "APT",
+   "units": 874,
+   "pricePerPyeong": 3300,
+   "applyhomeUrl": "https://www.applyhome.co.kr",
+   "homepageUrl": null,
+   "phases": [
+    {
+     "k": "sp",
+     "date": "2026-10-26"
+    },
+    {
+     "k": "p1",
+     "date": "2026-10-27"
+    },
+    {
+     "k": "p2",
+     "date": "2026-10-28"
+    },
+    {
+     "k": "win",
+     "date": "2026-11-03"
+    },
+    {
+     "k": "con",
+     "date": "2026-11-15"
+    }
+   ]
+  },
+  {
+   "id": "sample-gu3",
+   "name": "노원 상계 자이 포레",
+   "region": "서울",
+   "district": "노원구",
+   "kind": "APT",
+   "units": 1036,
+   "pricePerPyeong": 2900,
+   "applyhomeUrl": "https://www.applyhome.co.kr",
+   "homepageUrl": null,
+   "phases": [
+    {
+     "k": "sp",
+     "date": "2026-10-28"
+    },
+    {
+     "k": "p1",
+     "date": "2026-10-29"
+    },
+    {
+     "k": "p2",
+     "date": "2026-10-30"
+    },
+    {
+     "k": "win",
+     "date": "2026-11-05"
+    },
+    {
+     "k": "con",
+     "date": "2026-11-17"
+    }
+   ]
+  },
+  {
+   "id": "sample-gu4",
+   "name": "영등포 푸르지오 더 센트럴",
+   "region": "서울",
+   "district": "영등포구",
+   "kind": "무순위",
+   "units": 21,
+   "pricePerPyeong": 4400,
+   "applyhomeUrl": "https://www.applyhome.co.kr",
+   "homepageUrl": null,
+   "phases": [
+    {
+     "k": "p1",
+     "date": "2026-10-23"
+    },
+    {
+     "k": "win",
+     "date": "2026-10-26"
+    }
+   ]
+  },
+  {
+   "id": "sample-gu5",
+   "name": "서울 구 미확인 단지",
+   "region": "서울",
+   "district": null,
+   "kind": "APT",
+   "units": 100,
+   "pricePerPyeong": 3000,
+   "applyhomeUrl": "https://www.applyhome.co.kr",
+   "homepageUrl": null,
+   "phases": [
+    {
+     "k": "sp",
+     "date": "2026-10-22"
+    },
+    {
+     "k": "p1",
+     "date": "2026-10-23"
+    },
+    {
+     "k": "p2",
+     "date": "2026-10-24"
+    },
+    {
+     "k": "win",
+     "date": "2026-10-30"
+    },
+    {
+     "k": "con",
+     "date": "2026-11-11"
     }
    ]
   }

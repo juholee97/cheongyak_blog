@@ -12,7 +12,7 @@ const SKIN = join(ROOT, 'skin');
 const PORT = 5178;
 
 // skin.html에 쓴 치환자는 모두 여기 있어야 한다(문서에 있는 이름만).
-const KNOWN = new Set(`page_title title desc blog_link body_id blog_menu category_list comment_group guestbook_group
+const KNOWN = new Set(`page_title title desc blog_link rss_url body_id blog_menu category_list comment_group guestbook_group
 revenue_list_upper revenue_list_lower var_schedule-url list_conform list_count list_rep_link list_rep_thumbnail_url
 list_rep_category list_rep_title_text list_rep_summary list_rep_regdate list_rep_rp_cnt article_rep_link
 article_rep_thumbnail_url article_rep_category article_rep_title article_rep_summary article_rep_simple_date
@@ -74,7 +74,7 @@ export async function render(page) {
   html = group(html, 'rctps_popular_rep', (rep) => POPULAR.map((t) => fill(rep, { rctps_rep_link: '/post', rctps_rep_title: t })).join(''));
   html = group(html, 'random_tags', (rep) => TAGS.map((t) => fill(rep, { tag_link: '#', tag_name: t })).join(''));
   html = fill(html, {
-    page_title: '청약달력', title: '청약달력', desc: '매일 아침 갱신되는 전국 청약 일정', blog_link: '/',
+    page_title: '청약달력', title: '청약달력', desc: '전국 아파트·오피스텔 청약 일정 안내', blog_link: '/', rss_url: '/rss',
     body_id: { index: 'tt-body-index', post: 'tt-body-page', category: 'tt-body-category' }[page],
     blog_menu: MENU_HTML, category_list: CATEGORY_HTML, comment_group: '<p class="empty">(댓글 영역)</p>',
     'var_schedule-url': '/schedule.json', prev_page: 'href="#"', next_page: 'href="#"', no_more_prev: 'no-more-prev', no_more_next: '',

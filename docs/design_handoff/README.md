@@ -1,245 +1,270 @@
-# Handoff: 청약달력 — 티스토리 스킨 (청약 일정 캘린더 + 블로그 홈)
+# Handoff v2: 청약달력 — 티스토리 스킨 (공공포털 스타일 + 서울 자치구 필터)
 
-## Overview
-티스토리 블로그 홈 화면.
-- 상단: 지역 멀티 체크 필터 + 월간 달력. 매일 수집한 전국 청약 일정을 표시함.
-- 아래로 스크롤: 일반 블로그 메인. 대표 글, 최신 글 그리드, 페이지네이션, 사이드바(카테고리/인기 글/태그).
+> **이 문서는 v1 핸드오프를 대체한다.** 데이터 파이프라인(공공데이터 API → GitHub Actions → GitHub Pages `schedule.json`)은 v1 계획대로 진행 중이라고 가정한다. 이번 변경의 핵심은 **스킨 디자인 전면 교체**와 **서울 자치구 필터 추가**다. 파이프라인 쪽 변경은 아래 「1. 데이터 파이프라인 변경점」만 반영하면 된다.
 
 ## About the Design Files
-`design-reference.dc.html`은 **HTML로 만든 디자인 레퍼런스**다. 생김새와 동작을 보여주는 프로토타입이지 그대로 붙여넣을 프로덕션 코드가 아니다. 브라우저에서 열면 동작한다(같은 폴더의 `support.js` 필요). 내부는 커스텀 템플릿 런타임(`{{ }}` 바인딩, `<sc-for>`, `<sc-if>`)과 JS 클래스로 작성되어 있다.
-**과제:** 이 디자인을 **티스토리 스킨**(`skin.html` + `style.css` + `index.xml` + `images/`)으로 재구현한다. 캘린더는 바닐라 JS로 작성하고, 블로그 영역은 티스토리 치환자로 작성한다. 빌드 도구나 프레임워크는 쓰지 않는다(티스토리 스킨 편집기에 그대로 업로드할 수 있어야 함).
+`design-reference-v2.dc.html`은 **HTML로 만든 디자인 레퍼런스**다. 같은 폴더의 `support.js`와 함께 브라우저에서 열면 그대로 동작한다. 이 파일은 커스텀 템플릿 런타임으로 작성되었으므로 **티스토리 스킨**(`skin.html` / `style.css` / `index.xml` / `images/calendar.js`)으로 재구현한다. 조건은 다음과 같다.
+- 바닐라 JS를 쓰고 빌드 도구는 쓰지 않는다.
+- 인라인 스타일은 클래스로 옮긴다.
+- `support.js`는 스킨에 포함하지 않는다.
 
-## Fidelity
-**High-fidelity.** 색상, 타이포, 간격, 인터랙션이 확정 상태다. 픽셀 단위로 재현한다.
+**Fidelity: High-fidelity.** 색상, 크기, 간격, 문구를 그대로 재현한다. 값이 애매하면 레퍼런스 파일의 인라인 스타일을 기준으로 삼는다.
 
-## 결과물 (Claude Code가 만들어야 할 것)
-```
-skin/
-  index.xml        # 스킨 메타 (이름: 청약달력, 버전, 기본 설정)
-  skin.html        # 전체 레이아웃 + 티스토리 치환자 + 캘린더 마크업
-  style.css        # 아래 토큰 기반 스타일 (인라인 스타일 → 클래스로 옮김)
-  images/
-    calendar.js    # 캘린더/필터 로직 (바닐라 JS, ES2017)
-crawler/
-  fetch.mjs        # 청약 일정 수집 → schedule.json 생성
-  .github/workflows/daily.yml   # 매일 06:00 KST 실행 후 GitHub Pages로 배포
-```
-※ 티스토리 스킨은 `images/` 폴더의 파일을 `./images/calendar.js`로 참조한다.
+---
 
-## 데이터 파이프라인 ("크롤링")
-티스토리 자체에서는 서버 코드를 돌릴 수 없다. 그래서 외부에서 매일 JSON을 만들어 정적 호스팅에 올린다.
-1. **소스:** 공공데이터포털 「한국부동산원_청약홈 분양정보 조회 서비스」(APT 분양정보 상세 / 오피스텔·도시형 / APT 무순위·잔여세대). API 키는 GitHub Secrets의 `DATA_GO_KR_KEY`에 넣는다.
-   - HTML 스크래핑보다 API를 우선한다. 응답 필드명(예: 공급지역명, 특별공급 접수 시작일, 1·2순위 접수일, 당첨자 발표일, 계약 시작일 등)은 API 문서를 보고 매핑한다.
-2. **GitHub Actions** 크론 `0 21 * * *`(UTC, KST 06:00)으로 `fetch.mjs`를 실행한다. 이번 달 기준 −1개월부터 +2개월까지 수집해 `schedule.json`을 만든다.
-3. 결과를 **GitHub Pages**에 배포한다. CORS는 Pages가 기본으로 허용한다.
-4. `calendar.js`가 `SCHEDULE_URL`(index.xml의 스킨 변수로 노출)에서 fetch한다.
+## 0. v1 → v2 변경 요약 (체크리스트)
+- [ ] 전체 톤을 연두·라운드에서 **남색/블루 공공포털 스타일**로 바꾼다. 모서리는 2–3px로 줄인다.
+- [ ] 최상단에 **유틸리티 바**(남색 `#0f2557`)를 추가한다.
+- [ ] 헤더는 로고마크 "청", 블로그명과 설명 2줄, nav 활성 탭 하단 3px 라인으로 구성한다.
+- [ ] 캘린더 섹션 상단에 **브레드크럼 + H1 "전국 청약 일정" + 기준일시/출처**를 둔다.
+- [ ] 지역 필터를 pill 칩에서 **표 형태(좌측 그룹 헤더 셀 + 네모 체크박스)**로 바꾼다.
+- [ ] **서울 자치구 25개 하위 필터**를 신규로 추가한다(펼치기/접기, 부분 선택 상태, 저장).
+- [ ] 단계 범례를 **체크박스형 토글**로 바꾼다. 라벨은 특별공급/1순위/2순위/당첨발표/계약이다.
+- [ ] 캘린더 셀을 바꾼다. 전체 테두리, 선택일에는 2px 블루 inset 링, 오늘은 남색 사각 배지로 표시한다.
+- [ ] 우측 패널은 리스트형으로 바꾼다. 항목 사이에 구분선을 넣고 단계 배지는 테두리형으로 한다. 하단에 고지 문구를 둔다.
+- [ ] 상세 모달을 **2열 표(th/td)** 형태로 바꾼다. Esc로 닫는다.
+- [ ] 블로그 영역을 바꾼다. "최신 게시물" 헤더, 사이드바 박스형, 짙은 회색 푸터를 적용한다.
 
-### schedule.json 스키마
+---
+
+## 1. 데이터 파이프라인 변경점
+기존 `schedule.json` 스키마를 유지한다. 아래 항목만 확인 또는 추가한다.
+
+1. **`district` 필드 정규화 (필수).** 서울 자치구 필터가 이 값과 **정확히 일치하는지** 비교한다.
+   - 서울 항목은 반드시 아래 25개 중 하나로 저장한다. API의 공급위치 주소(예: "서울특별시 강남구 대치동 …")에서 두 번째 토큰을 파싱한다.
+     ```
+     강남구 강동구 강북구 강서구 관악구 광진구 구로구 금천구 노원구 도봉구
+     동대문구 동작구 마포구 서대문구 서초구 성동구 성북구 송파구 양천구 영등포구
+     용산구 은평구 종로구 중구 중랑구
+     ```
+   - 파싱에 실패하면 `district: null`로 둔다. 프론트는 이런 항목을 "서울 전체 선택" 상태에서만 표시한다.
+2. **`region` 값**은 17개 시·도 축약명으로 통일한다: 서울 경기 인천 부산 대구 광주 대전 울산 세종 강원 충북 충남 전북 전남 경북 경남 제주.
+   - "강원특별자치도"는 `강원`, "전북특별자치도"는 `전북`, "세종특별자치시"는 `세종`으로 변환한다.
+3. **단계 키**: `sp`(특별공급), `p1`(1순위), `p2`(2순위), `win`(당첨발표), `con`(계약).
+   - 무순위·잔여세대: `p1`(라벨 "접수") + `win`.
+   - 오피스텔·도시형: `p1`, `win`, `con`.
+4. **`updatedAt`**(ISO 8601, +09:00): 화면 상단 "기준일시 YYYY.MM.DD HH:mm"에 쓴다.
+
 ```json
 {
-  "updatedAt": "2026-10-21T06:02:00+09:00",
-  "items": [
-    {
-      "id": "2026000123",
-      "name": "래미안 원펜타스 2차",
-      "region": "서울",          // 17개 시·도 축약명 중 하나 (아래 목록)
-      "district": "서초구",
-      "kind": "APT",            // "APT" | "오피스텔" | "무순위"
-      "units": 641,
-      "pricePerPyeong": 7200,   // 만원/3.3㎡, 없으면 null
-      "noticeUrl": "https://...",
-      "applyhomeUrl": "https://www.applyhome.co.kr/...",
-      "phases": [               // 날짜는 YYYY-MM-DD
-        { "k": "sp",  "date": "2026-10-05" },
-        { "k": "p1",  "date": "2026-10-06" },
-        { "k": "p2",  "date": "2026-10-07" },
-        { "k": "win", "date": "2026-10-13" },
-        { "k": "con", "date": "2026-10-25" }
-      ]
-    }
-  ]
+  "updatedAt": "2026-10-22T06:02:00+09:00",
+  "items": [{
+    "id": "2026000123", "name": "래미안 레미넌티 대치",
+    "region": "서울", "district": "강남구", "kind": "APT",
+    "units": 282, "pricePerPyeong": 7800,
+    "noticeUrl": "https://...", "applyhomeUrl": "https://www.applyhome.co.kr/...",
+    "phases": [{"k":"sp","date":"2026-10-14"},{"k":"p1","date":"2026-10-15"},{"k":"p2","date":"2026-10-16"},{"k":"win","date":"2026-10-22"},{"k":"con","date":"2026-11-03"}]
+  }]
 }
 ```
-- 접수 기간이 여러 날이면 날짜별로 이벤트를 펼치거나 시작일만 쓴다. 기본은 시작일만 쓴다.
-- 무순위는 `p1`(라벨 "접수")과 `win`만 가진다. 오피스텔은 `p1`, `win`, `con`만 가진다.
 
-## Screens / Views
+---
 
-전체 페이지는 다음 순서로 쌓인다. 배경 `#f6f5f1`. 콘텐츠는 `max-width:1200px; margin:0 auto; padding:0 24px`.
+## 2. Design Tokens (v2)
+| 용도 | 값 |
+|---|---|
+| Navy (유틸바, 강조 상단선, 오늘 배지, 모달 상단선) | `#0f2557` |
+| Primary (링크/활성/체크/버튼) | `#0a4ec2` |
+| Primary tint (선택일 셀, 서울 하위 행 헤더) | `#f3f7fe` / `#eaf0fb` / 서브행 배경 `#f8faff` |
+| Primary 태그 | 글자 `#0a4ec2`, 배경 `#eef3fc`, 테두리 `#a9c1ee` |
+| Text | 본문 `#1e2124` · 보조 `#464c53` · 약함 `#6d7882` · 비활성 체크 테두리 `#8a949e` |
+| Border | 강 `#c4cad4` · 기본 `#d6dbe3` · 약 `#e4e8ee` · 최약 `#eef1f5` |
+| Surface | 페이지 `#fff` · 캘린더 섹션 `#f4f6f9` · 헤더셀/표 th `#f4f6f9` · 바닥줄 `#fafbfc` |
+| 요일 | 일 `#c4261d` · 토 `#0a4ec2` |
+| Footer | 배경 `#1e2124`, 글자 `#aeb5bf`, 제목 `#fff` |
+| 유틸바 글자 | `#c9d3e8` |
+| 단계 색 / 칩 배경 | 특별공급 `#0a4ec2`/`#eaf0fb` · 1순위 `#00745f`/`#e5f3ef` · 2순위 `#9a5a00`/`#f8f0e2` · 당첨발표 `#b3261e`/`#fbebea` · 계약 `#4b4f9c`/`#eeeef8` |
+| Radius | 체크박스·칩·카드 2px, 버튼 3px, 모달 3px (원형/pill 사용 금지) |
+| Shadow | 모달만 `0 20px 50px -20px rgba(0,0,0,.45)`. 그 외 그림자 없음 |
+| Font | Pretendard v1.3.9 CDN (`https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css`) |
+| 전역 | `letter-spacing:-0.01em`, `font-feature-settings:'tnum'`, `-webkit-font-smoothing:antialiased` |
+| 링크 | 기본 `#1e2124`. hover 시 `#0a4ec2`에 밑줄 |
 
-**캘린더 영역은 홈에서만 노출한다:** `<s_index_article_rep>`가 아닌 홈 판별 조건을 쓴다. `[##_body_id_##]`가 `tt-body-index`일 때만 보이게 하거나, JS로 `location.pathname === '/'`를 체크한다. 글 상세나 카테고리 페이지에서는 숨긴다.
+타이포 스케일: 11 / 12 / 13 / 14 / 15 / 16 / 17 / 20 / 22 / 24 / 28px. 굵기는 400 / 600 / 700 / 800.
 
-### 1. Header
-- 흰 배경, 하단 `1px solid #e6e4dd`, 안쪽 padding `18px 24px`.
-- 좌측: 블로그명 `[##_title_##]`(22px/800, letter-spacing −0.03em). 옆에 설명 `[##_desc_##]`(13px, `#6f716f`), gap 10px, baseline 정렬.
-- 우측 nav: `[##_blog_menu_##]` 또는 직접 링크. 메뉴는 청약일정 · 분양분석 · 청약가이드 · 당첨후기 · 방명록. 14px/500, gap 22px. 현재 항목은 `#0b7a55`, 700.
-- 좁으면 flex-wrap으로 줄바꿈한다.
+---
 
-### 2. 지역 필터 (sticky)
-- `position:sticky; top:0; z-index:5`. 흰 배경, border `1px #e6e4dd`, radius 14px, padding `16px 18px`. shadow `0 6px 20px -14px rgba(0,0,0,.25)`. 내부는 세로 flex, gap 12px. 섹션 상단 padding은 `28px 24px 8px`.
-- 첫 줄: 좌측에 "지역 필터"(15px/700)와 요약 텍스트(13px `#6f716f`)를 둔다.
-  - 요약 문구는 세 가지 중 하나: `전국 · 이번 달 N개 단지` / `K개 지역 선택 · 이번 달 N개 단지` / `지역을 선택하세요`.
-- 첫 줄 우측 버튼 3개:
-  - "전체 선택", "전체 해제": 흰 배경, border `#d9d7cf`, radius 8px, padding `6px 12px`, 13px.
-  - "내 지역 저장": 배경 `#0b7a55`, 흰 글자, 600. 저장 후에는 라벨이 "저장됨 ✓"로 바뀐다. 필터를 다시 바꾸면 원래 라벨로 돌아온다.
-- 그룹 3줄(그룹 라벨 + 칩):
-  - 수도권: 서울, 경기, 인천
-  - 광역시: 부산, 대구, 광주, 대전, 울산, 세종
-  - 지방: 강원, 충북, 충남, 전북, 전남, 경북, 경남, 제주
-- **그룹 라벨**(width 72px, 12px/700 `#6f716f`): 클릭하면 그룹 전체를 토글한다.
-  - 앞의 14×14 체크박스(radius 4px, border 1.5px) 상태는 세 가지다. 전체 선택은 `✓`, 일부 선택은 `–`, 해제는 빈칸.
-  - 선택이 하나라도 있으면 배경과 테두리가 `#0b7a55`, 없으면 흰 배경에 테두리 `#c9c7bf`.
-  - 동작: 그룹이 전부 선택된 상태면 그룹 전체를 해제하고, 아니면 전체를 선택한다.
-- **지역 칩**: pill(radius 999px), padding `6px 11px`, 13px/500, gap 6px.
-  - 칩 안의 표시: `✓`/`+`, 지역명, 이번 달 단지 수(11px, opacity .7, 0이면 생략).
-  - ON 상태: bg `#e3f3ec`, 글자 `#0b5c41`, border `#9fd3bd`.
-  - OFF 상태: bg `#fff`, 글자 `#6f716f`, border `#e0ded6`.
-- 모든 버튼과 칩에 `white-space:nowrap; flex:none`을 준다. 한글이 글자 단위로 줄바꿈되는 것을 막기 위함이다.
+## 3. 화면 구성 (위→아래)
+콘텐츠 폭은 `max-width:1200px; margin:0 auto; padding:0 24px`다.
 
-### 3. 캘린더 + 날짜 패널
-- 래퍼는 `display:flex; flex-wrap:wrap; gap:20px; margin-top:20px`.
-  - 캘린더 카드: `flex:999 1 660px`.
-  - 우측 aside: `flex:1 1 280px`.
-  - 좁아지면 aside가 아래로 내려간다.
-- **캘린더 카드:** 흰 배경, border `#e6e4dd`, radius 14px, overflow hidden.
-- **툴바**(padding `16px 18px`, 하단 border `#eeece6`):
-  - 좌측: ‹ 버튼(32×32, radius 8px), 월 제목 "2026년 10월"(20px/800, min-width 132px, 가운데 정렬), › 버튼, "오늘" 버튼(height 32px).
-  - 우측: 단계 범례 칩 5개. 클릭하면 단계 표시를 ON/OFF 한다.
-    - 칩 스타일: 12px/600, padding `4px 9px`, radius 6px. 앞에 7×7 색 점(radius 2px).
-    - ON이면 단계 bg/색을 쓴다. OFF면 bg `#f1efea`, 글자 `#8a8c88`, opacity .7.
-- **요일 헤더:** 7열 grid, 12px/600 `#6f716f`, padding `8px 10px`. 일요일은 `#d1443b`, 토요일은 `#2f62d6`.
-- **그리드:** 래퍼 `overflow-x:auto`, 내부 `min-width:640px`. 주마다 7열 grid, 하단 border `#eeece6`.
-- **날짜 셀:**
-  - 크기와 배경: min-height 112px, padding 6px, 우측 border `#f1efea`. 세로 flex, gap 3px. 배경 `#fff`, 선택된 날은 `#f2faf6`.
-  - 이번 달이 아닌 날은 opacity .45.
-  - 날짜 숫자: 13px/600, 22px 원형. 일요일 `#d1443b`, 토요일 `#2f62d6`. 오늘은 bg `#0b7a55`, 흰 글자, 800.
-  - 일정 칩은 최대 3개까지 보인다. 11.5px, line-height 1.35, padding `2px 5px`, radius 4px, 단계 bg/색. 한 줄 말줄임으로 처리한다.
-  - 칩 내용은 `<b>단계라벨</b> 단지명`, title 속성은 `"단계 · 단지명"`.
-  - 칩이 4개 이상이면 `+N개 더`(11px `#6f716f`)를 표시한다.
-  - 셀을 클릭하면 그 날짜를 선택해 우측 패널에 반영한다. 칩을 클릭하면 상세 모달을 연다(이벤트 전파 중단).
-- **우측 aside 카드**(흰 배경, radius 14px, padding 16px):
-  - 제목: "10월 21일 (수) · 오늘"(오늘일 때만 " · 오늘"), 15px/700. 우측에 "N건"(12px).
-  - 일정 리스트: 세로 gap 8px. 각 항목은 버튼이다.
-    - 항목 스타일: bg `#faf9f6`, border `#eeece6`, radius 10px, padding `10px 12px`.
-    - 윗줄: 단계 배지(11px/700) + "서울 서초구 · APT"(11px/500 `#6f716f`).
-    - 아랫줄: 단지명(14px/600).
-    - 클릭하면 상세 모달을 연다.
-  - 일정이 없으면 "선택한 지역에 이 날 일정이 없어요."를 표시한다.
-  - 카드 아래 출처 표기(12px `#8a8c88`, line-height 1.6): "출처: 청약홈(한국부동산원) 공고 · 매일 06:00 자동 수집 / 마지막 갱신 {updatedAt}".
-- 섹션 하단에 "최신 글 보기 ↓" 링크(가운데, 13px `#6f716f`, margin-top 28px)를 두고 `#blog`로 앵커 이동한다.
+### 3-1. 유틸리티 바
+- 배경 `#0f2557`, 12px, 글자 `#c9d3e8`, padding `7px 24px`.
+- 좌측: "공공데이터 기반 전국 청약 일정 정보".
+- 우측 링크(gap 14px): 구독하기 · RSS · 관리자. RSS는 `[##_rss_url_##]`, 관리자는 `[##_blog_link_##]manage`.
 
-### 4. 상세 모달
-- 오버레이: fixed, `rgba(20,21,22,.45)`, z-index 50, 가운데 정렬, padding 20px. 오버레이 클릭이나 ✕, Esc로 닫는다.
-- 패널: max-width 440px, 흰 배경, radius 16px, padding 22px, gap 16px. shadow `0 30px 60px -20px rgba(0,0,0,.4)`.
-- 상단: "서울 서초구 · APT"(12px/600 `#6f716f`), 단지명(20px/800), ✕ 버튼(32×32).
-- 2열 정보 박스(bg `#faf9f6`, radius 10px, padding `10px 12px`):
-  - "공급 세대 / 641세대"
-  - "분양가(3.3㎡) / 7,200만원"
-  - 라벨은 11px, 값은 16px/700.
-- 타임라인 행: 단계 색 점 8×8, 라벨, 우측 날짜 "10.05 (일)"(600). 행 padding `9px 0`, 하단 border `#f1efea`, 14px.
-  - 라벨은 "특공 접수", "1순위 접수", "2순위 접수", "당첨자 발표", "계약". 무순위는 "접수"를 쓴다.
-- 버튼 2개(flex 1, padding 11px, radius 10px, 14px/600):
-  - "청약홈에서 보기": `#0b7a55` 배경, 흰 글자, `applyhomeUrl`로 새 탭.
-  - "모집공고문": 테두리 `#d9d7cf`, `noticeUrl`로 연결.
+### 3-2. 헤더
+- 배경 흰색, 하단 1px `#d6dbe3`, min-height 72px.
+- 로고:
+  - 30×30 사각형(배경 `#0a4ec2`, radius 3px)에 흰 글자 "청"(15px/800).
+  - 오른쪽에 2줄 텍스트: `[##_title_##]`(20px/800, -0.03em), `[##_desc_##]`(11px/500 `#6d7882`).
+- nav:
+  - 각 항목은 15px/600, padding `0 16px`이며 헤더 높이 전체를 차지한다.
+  - **활성 항목**은 `#0a4ec2`와 `box-shadow: inset 0 -3px 0 #0a4ec2`로 표시한다.
+  - 메뉴는 청약일정 · 분양분석 · 청약가이드 · 당첨후기 · 방명록이다. `[##_blog_menu_##]`를 쓰거나 카테고리 링크를 직접 만든다.
 
-### 5. 블로그 메인 (`id="blog"`)
-- 래퍼: `display:flex; flex-wrap:wrap; gap:40px; padding:40px 24px 64px`. 메인 영역 `flex:999 1 600px`, 사이드바 `flex:1 1 260px`.
-- **대표 글**: 공지 글이나 최신 1개를 쓴다. `<s_notice_rep>` 또는 첫 번째 `<s_index_article_rep>`.
-  - 카드: 흰 배경, border, radius 14px, padding 16px. grid `1.2fr 1fr`, gap 24px.
-  - 썸네일: 4:3, radius 10px.
-  - 텍스트: 카테고리(12px/700 `#0b7a55`), 제목(24px/800, line-height 1.3, letter-spacing −0.03em), 요약(14px `#55575a`, line-height 1.65), "날짜 · 댓글 N"(12px `#8a8c88`).
-- **"최신 글" 헤더:** 하단 `2px solid #1c1d1f`, padding-bottom 10px. "최신 글"은 18px/800, 우측 "전체 N"은 13px.
-- **글 그리드:** `repeat(auto-fill,minmax(240px,1fr))`, gap `24px 20px`. `<s_list><s_list_rep>` 또는 `<s_index_article_rep>`로 만든다.
-  - 썸네일: 16:10, radius 10px.
-  - 카테고리: 12px/700 `#0b7a55`.
-  - 제목: 16px/700, line-height 1.4, letter-spacing −0.02em.
-  - 날짜: 12px `#8a8c88`.
-  - 썸네일이 없으면 줄무늬 플레이스홀더 `repeating-linear-gradient(135deg,#eceae3 0 10px,#e4e2da 10px 20px)`를 쓴다.
-- **페이지네이션** `<s_paging>`: 34×34, radius 8px, 14px. 현재 페이지는 `#1c1d1f` 배경에 흰 글자. 마지막에 "다음 ›".
-- **사이드바**(세로 gap 28px). 각 블록 제목은 14px/800, 하단 `2px solid #1c1d1f`, padding-bottom 8px.
-  - 카테고리: `[##_category_list_##]`. 이름과 개수를 양끝 정렬한다. 14px, 개수는 `#8a8c88`.
-  - 인기 글: `<s_rctps_popular_rep>`. 순위 숫자(800 `#0b7a55`, width 14px)와 제목(14px, line-height 1.45).
-  - 태그: `<s_random_tags>`. pill, 12px, padding `4px 9px`, 흰 배경, border `#e6e4dd`, 앞에 "#".
-- 티스토리 치환자 구조가 디자인과 다르면 CSS로 맞춘다.
-  - 예: `.tt_category .link_tit`, `.c_cnt`를 오버라이드한다.
+### 3-3. 캘린더 섹션 (홈에서만 노출)
+- 노출 조건: `body#tt-body-index`에서만 표시한다. 그 외 페이지에서는 `display:none`.
+- 섹션 배경 `#f4f6f9`, 하단 1px `#d6dbe3`, padding `28px 24px 32px`, 세로 gap 16px.
+- **타이틀 줄**(양끝 정렬, 하단 정렬):
+  - 좌측: "홈 › 청약일정"(13px `#6d7882`)과 H1 "전국 청약 일정"(28px/800, -0.03em).
+  - 우측(13px `#464c53`): "기준일시 **{updatedAt}**" | "출처 청약홈(한국부동산원)". 구분자 `|`의 색은 `#c4cad4`다.
 
-### 6. Footer
-- 흰 배경, 상단 border `#e6e4dd`, padding `20px 24px`, 12px `#8a8c88`, 양끝 정렬, 줄바꿈 허용.
-- 좌측 "© 2026 [##_title_##] · Powered by Tistory".
-- 우측 "청약 일정은 참고용이며 정확한 내용은 입주자모집공고를 확인하세요."
+#### 지역 필터 (sticky top:0, z-index 5)
+- 컨테이너: 흰 배경, 테두리 1px `#c4cad4`, **상단만 2px `#0f2557`**, radius 2px.
+- **그룹 행**(수도권 / 광역시 / 지방): `display:flex`, 하단 1px `#e4e8ee`.
+  - **좌측 헤더 셀**: width 120px, 배경 `#f4f6f9`, 우측 1px `#e4e8ee`, padding `12px 14px`, 14px/700.
+    - 16×16 체크박스 다음에 그룹명이 온다. 클릭하면 그룹 전체를 토글한다.
+  - **우측 셀**: flex-wrap, gap `4px 18px`, padding `10px 16px`.
+    - 각 지역은 "체크박스 + 지역명 + (이번 달 단지수)"다. 단지수는 12px `#6d7882`이며 0이면 생략한다.
+    - 선택 시 글자 `#1e2124`/600, 해제 시 `#6d7882`/400.
+- **체크박스 공통 규칙**:
+  - 크기와 모양: 16×16, radius 2px, 테두리 1px. 서울 자치구 체크박스만 14×14다.
+  - 선택 상태: 배경과 테두리 `#0a4ec2`, 흰 글자 `✓`.
+  - 부분 선택 상태: 같은 색에 `–`.
+  - 해제 상태: 흰 배경, 테두리 `#8a949e`.
+- 지역 목록:
+  - 수도권: 서울 경기 인천
+  - 광역시: 부산 대구 광주 대전 울산 세종
+  - 지방: 강원 충북 충남 전북 전남 경북 경남 제주
 
-## Interactions & Behavior (calendar.js)
-- 초기 표시: 오늘이 속한 달을 보여주고 오늘 날짜를 선택해 둔다.
-- 지역 필터:
-  - 기본값은 전체 17개 지역이다. `localStorage['cheongyak-regions']`에 배열이 있으면 그 값으로 복원한다.
-  - 저장은 "내 지역 저장" 버튼을 누를 때만 한다(필터 토글만으로는 저장하지 않음).
-- 단계 필터: 세션 동안만 유지한다(저장 안 함).
-- 월 이동: ‹ / ›로 이동하고 연도 경계를 처리한다. "오늘"을 누르면 이번 달로 돌아가 오늘을 선택한다.
-- 주 수: 그 달 1일이 속한 주부터 말일이 속한 주까지 렌더한다(4~6주).
-- 이벤트 정렬: 같은 날짜 안에서는 단계 순서(sp→p1→p2→win→con), 그다음 단지명 순으로 정렬한다.
-- 로딩: fetch 중에는 셀 안에 칩 자리 회색 스켈레톤(`#f1efea`)을 보여준다.
-- 오류: 실패하면 aside에 "일정을 불러오지 못했어요. 잠시 후 새로고침해 주세요."를 표시한다.
-- 모달: Esc로 닫고, 모달이 열려 있는 동안 body 스크롤을 잠근다.
-- 반응형:
-  - < 960px: aside가 캘린더 아래로 내려간다(flex-wrap).
-  - < 700px: 달력은 가로 스크롤(min-width 640px)을 유지한다.
-  - 선택: < 560px에서 날짜 셀 칩을 단계 색 점으로 축약하고, 일정 목록은 aside에서 보게 한다.
+#### ★ 서울 자치구 하위 필터 (신규)
+- **펼침 버튼**: 서울 항목 바로 오른쪽(gap 6px)에 있다.
+  - 크기: 12px/600, height 24px, padding `0 8px`, radius 2px, 테두리 1px `#0a4ec2`.
+  - 라벨은 상태에 따라 바뀐다. 접힘 상태: 기본은 `자치구별 ▾`, 서울이 선택되어 있고 구가 일부만 선택된 경우 `{N}개 구 ▾`. 펼침 상태: `자치구 접기 ▴`.
+  - 색: 접힘 상태는 흰 배경에 블루 글자, 펼침 상태는 블루 배경에 흰 글자.
+- **하위 행**: 펼침 상태일 때 **수도권 그룹 행 바로 아래**에 삽입한다. 배경 `#f8faff`, 하단 1px `#e4e8ee`.
+  - **좌측 헤더 셀**(width 120px, 배경 `#eaf0fb`, 13px/700 `#0a4ec2`): 체크박스와 "└ 서울 자치구". 클릭하면 25개 구 전체를 토글한다.
+  - **우측 셀**:
+    - 레이아웃: `display:grid; grid-template-columns:repeat(auto-fill,minmax(96px,1fr)); gap:2px 12px; padding:10px 16px`.
+    - 항목은 14×14 체크박스 + 구 이름(13px) + (이번 달 단지수, 11px)이고, 가나다 순으로 정렬한다.
+- **상태 규칙**:
+  - 서울 체크박스: 서울이 선택되어 있고 구가 25개 미만이면 **부분 선택 `–`**로 표시한다. 수도권 그룹 헤더도 이때 `–`가 된다.
+  - 서울을 체크하는데 선택된 구가 0개라면 25개 전체를 선택한다.
+  - 구를 하나라도 체크하면 서울을 자동 선택한다. 구를 전부 해제하면 서울을 자동 해제한다.
+  - 수도권 그룹 헤더로 "전체 선택"하면 구도 25개 전체로 리셋한다.
+  - 하단 "전체 선택"은 전체 지역과 25개 구를 모두 선택한다. "초기화"는 지역만 전부 해제하고, 구 선택 상태는 보존한다.
+- **필터링**: 서울 항목은 `regions`에 서울이 있고 `gu`에 `district`가 있을 때만 표시한다.
+  - `district`가 null인 항목은 25개 구가 전부 선택된 경우에만 표시한다.
 
-## State
-`regions: string[]`, `phases: string[]`, `year`, `month(0-11)`, `selectedDate: 'YYYY-MM-DD'`, `modalId|null`, `saved: boolean`, `data: items[]`, `status: 'loading'|'ok'|'error'`.
+#### 필터 바닥줄
+- 배경 `#fafbfc`, padding `10px 16px`, 양끝 정렬.
+- 좌측 요약(13px `#464c53`):
+  - 전국 + 구 전체 선택: `선택 지역: 전국 · {M}월 {N}개 단지`
+  - 일부 선택: `선택 지역: 서울(강남구 외 2개 구), 경기, 부산 · {M}월 {N}개 단지`
+    - 서울 표기: 구가 3개 이하면 `서울(강남구·성동구)`처럼 나열하고, 4개 이상이면 `서울({첫 구} 외 {n}개 구)`로 줄인다.
+  - 아무것도 없음: `조회할 지역을 선택해 주세요.`
+- 우측 버튼(height 34px, radius 3px, 13px, gap 6px):
+  - "전체 선택", "초기화": 흰 배경, 테두리 `#c4cad4`, 600.
+  - "관심 지역 저장": `#0a4ec2` 배경, 흰 글자, 700. 저장하면 라벨이 "저장되었습니다"로 바뀌고, 필터를 다시 변경하면 원래 라벨로 돌아온다.
 
-## Design Tokens
-- **텍스트:**
-  - ink `#1c1d1f`
-  - sub `#6f716f`
-  - muted `#8a8c88`
-  - body `#55575a`
-- **배경과 선:**
-  - 페이지 배경 `#f6f5f1`, 카드 `#fff`
-  - 연한 면 `#faf9f6` / `#f1efea`
-  - 선 `#e6e4dd` / `#eeece6` / `#f1efea`, 버튼 테두리 `#d9d7cf`
-- **브랜드:**
-  - primary `#0b7a55`
-  - primary-tint `#e3f3ec`
-  - primary-ink `#0b5c41`
-  - primary-border `#9fd3bd`
-  - 선택된 날짜 배경 `#f2faf6`
-- **요일:** 일 `#d1443b`, 토 `#2f62d6`.
-- **단계**(색 / 배경):
-  - 특공 `sp`: `#2f62d6` / `#e8eefc`
-  - 1순위 `p1`: `#0b7a55` / `#e3f3ec`
-  - 2순위 `p2`: `#b86a00` / `#fcf0dc`
-  - 발표 `win`: `#c42f62` / `#fbe7ee`
-  - 계약 `con`: `#6a4fc4` / `#efeafb`
-- **Radius:**
-  - 4px: 일정 칩
-  - 6px: 범례
-  - 8px: 버튼
-  - 10px: 썸네일, 리스트
-  - 14px: 카드
-  - 16px: 모달
-  - 999px: 칩
-- **Shadow:**
-  - 필터 `0 6px 20px -14px rgba(0,0,0,.25)`
-  - 모달 `0 30px 60px -20px rgba(0,0,0,.4)`
-- **타이포:** Pretendard(`https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css`). fallback은 `-apple-system, sans-serif`. 숫자는 `font-feature-settings:'tnum'`, 본문은 `-webkit-font-smoothing:antialiased`.
-  - 크기: 11 / 11.5 / 12 / 13 / 14 / 15 / 16 / 18 / 20 / 22 / 24.
-  - 굵기: 500 / 600 / 700 / 800.
-- **간격:** 3, 6, 8, 10, 12, 16, 20, 24, 28, 40, 64.
-- **링크:** 기본 `#1c1d1f`, 밑줄 없음. hover `#0b7a55`.
+#### 캘린더 카드 + 우측 패널
+- 래퍼: `display:flex; flex-wrap:wrap; gap:16px`. 캘린더는 `flex:999 1 660px`, 패널은 `flex:1 1 280px`. 좁으면 패널이 아래로 내려간다.
+- 카드: 흰 배경, 테두리 1px `#c4cad4`, radius 2px.
+- **툴바**(padding `14px 16px`, 하단 1px `#d6dbe3`):
+  - ‹ / › 버튼은 34×34, radius 3px, 테두리 `#c4cad4`.
+  - 월 제목은 `2026. 10` 형식(20px/800, min-width 128px, 가운데 정렬)이다.
+  - "이번 달" 버튼이 있다.
+  - 우측에 단계 토글 5개가 있다. 각 토글은 14×14 체크박스(테두리 = 단계색, 선택 시 단계색으로 채움)와 라벨(13px/600)로 구성된다. 해제 시 글자색은 `#8a949e`다.
+- **요일 헤더**: 배경 `#f4f6f9`, 13px/700 `#464c53`, 가운데 정렬, padding 9px, 하단 1px `#d6dbe3`.
+- **그리드**: 래퍼 `overflow-x:auto`, 내부 `min-width:640px`. 셀 사이는 우측과 하단에 1px `#e4e8ee`.
+- **날짜 셀**: min-height 108px, padding 6px, 세로 gap 2px.
+  - 이번 달이 아닌 날은 opacity .4다.
+  - 선택된 날은 배경 `#f3f7fe`에 `box-shadow: inset 0 0 0 2px #0a4ec2`를 준다.
+  - 날짜 숫자는 22×22, 13px/600, radius 2px. 오늘은 배경 `#0f2557`, 흰 글자, 800이다.
+  - 일정 칩:
+    - 스타일: 12px, line-height 1.4, padding `1px 5px`, radius 2px, 배경은 단계 tint.
+    - 내용: `<b style="color:단계색">단계라벨</b> 단지명`. 글자는 `#1e2124`이고 한 줄 말줄임한다.
+    - 칩은 최대 3개까지 보이고, 넘치면 `+N건 더보기`(11px/600 `#464c53`)를 표시한다.
+  - 셀을 클릭하면 날짜를 선택하고, 칩을 클릭하면 모달을 연다(stopPropagation).
+- **우측 패널**: 흰 배경, 테두리 `#c4cad4`, radius 2px.
+  - 헤더(padding `14px 16px`, 하단 1px, min-height 63px): `10월 22일(목) 일정`(16px/700). 우측에 `총 **N**건`을 표시하고, N은 `#0a4ec2`다.
+  - 리스트 항목은 버튼이다(padding `12px 16px`, 하단 1px `#e4e8ee`, hover 시 배경 `#f4f6f9`).
+    - 윗줄: 단계 배지(12px/700, 테두리와 글자 = 단계색, 배경 없음, padding `1px 6px`)와 `서울 강남구 · APT`(`#6d7882`).
+    - 아랫줄: 단지명(15px/600, `word-break:keep-all`).
+  - 일정이 없으면 "선택한 지역의 일정이 없습니다."(14px `#6d7882`, 가운데, padding `24px 16px`)를 표시한다.
+  - 하단 고지(12px `#6d7882`, 배경 `#fafbfc`, 상단 1px): "※ 일정은 입주자모집공고 기준이며 사업주체 사정에 따라 변경될 수 있습니다."
 
-## Assets
-- 이미지 에셋은 없다. 썸네일은 글 대표 이미지를 쓰고(`[##_article_rep_thumbnail_url_##]`), 없으면 줄무늬 플레이스홀더를 쓴다.
-- 아이콘은 텍스트 글리프만 쓴다(‹ › ✓ + – ✕ ↓).
+### 3-4. 상세 모달
+- 오버레이: fixed inset 0, `rgba(15,20,30,.55)`, z-index 50, padding 20px. 오버레이 클릭, ✕, **Esc**로 닫는다. 열려 있는 동안 body 스크롤을 잠근다.
+- 패널: max-width 480px, 흰 배경, radius 3px, **상단 3px `#0f2557`**.
+- 헤더(padding `18px 20px`, 하단 1px `#d6dbe3`):
+  - `서울 강남구 · APT`(13px `#464c53`), 단지명(20px/800).
+  - ✕ 버튼: 32×32, radius 2px, 테두리 `#c4cad4`.
+- 본문(padding `16px 20px`):
+  - **2열 표** `grid-template-columns:110px 1fr`, 상단 1px `#1e2124`, 14px.
+    - th: 배경 `#f4f6f9`, 600, padding `10px 12px`, 하단 1px `#e4e8ee`.
+    - td: padding `10px 12px`, 하단 1px `#e4e8ee`.
+  - 행 순서: 공급 세대(`641세대`), 분양가(3.3㎡)(`7,200만원`), 단계 행들.
+    - 단계 행의 th 앞에는 8×8 단계색 사각형이 붙는다. 라벨은 "특별공급 접수" / "1순위 접수" / "2순위 접수" / "당첨발표" / "계약"이고, 무순위는 "접수"다.
+    - 단계 행의 날짜는 `2026.10.14 (수)` 형식이다.
+  - 버튼(flex 1, padding 12px, radius 3px, 14px, gap 6px):
+    - "청약홈 바로가기": `#0a4ec2`, 흰 글자, 700. `applyhomeUrl`을 새 탭으로 연다.
+    - "모집공고문 보기": 테두리 `#c4cad4`, 600. `noticeUrl`로 연결한다.
 
-## Files
-- `design-reference.dc.html`: 전체 디자인 + 샘플 데이터 + 동작 로직.
-  - 하단 `<script data-dc-script>` 안 `RAW` 배열이 샘플 데이터다. `schedule.json` 생성 전 목업 데이터로 재사용할 수 있다.
-  - 지역, 단계 정의와 캘린더 계산 로직(`renderVals`)을 `calendar.js`로 옮긴다.
-- `support.js`: 레퍼런스 파일을 브라우저에서 열기 위한 런타임. 스킨에는 포함하지 않는다.
+### 3-5. 블로그 메인 (`#blog`)
+- 래퍼: `display:flex; flex-wrap:wrap; gap:40px; padding:40px 24px 64px`. 메인은 `flex:999 1 600px`, 사이드바는 `flex:1 1 260px`.
+- **헤더**: "최신 게시물" H2(22px/800)와 우측 `전체 **N**건`(N은 `#0a4ec2`). 하단 2px `#1e2124`.
+- **대표 글**(최신 1개 또는 공지):
+  - 레이아웃: `grid repeat(auto-fit,minmax(min(100%,260px),1fr))`, gap 24px, 하단 1px `#d6dbe3`.
+  - 썸네일: 16:10, radius 2px.
+  - 카테고리 태그: 12px/700, 글자 `#0a4ec2`, 배경 `#eef3fc`, 테두리 `#a9c1ee`, radius 2px.
+  - 텍스트: 제목 24px/800, 요약 15px `#464c53` line-height 1.7, 날짜·댓글 13px `#6d7882`.
+- **글 그리드**:
+  - 레이아웃: `repeat(auto-fill,minmax(240px,1fr))`, gap `28px 20px`.
+  - 텍스트: 카테고리 13px/700 블루, 제목 17px/700 line-height 1.45, 날짜 13px.
+  - 썸네일은 `[##_article_rep_thumbnail_url_##]`을 쓴다. 없으면 `repeating-linear-gradient(135deg,#eef1f5 0 10px,#e4e8ee 10px 20px)`로 채운다.
+- **페이지네이션** `<s_paging>`:
+  - 기본: 36×36, radius 2px, 14px.
+  - 현재 페이지: `#0a4ec2` 배경, 흰 글자, 700.
+  - "‹ 이전" / "다음 ›": 테두리 1px `#d6dbe3`.
+- **사이드바**(gap 28px):
+  - 카테고리 / 많이 본 글 박스: 테두리 1px `#d6dbe3`, **상단 2px `#0f2557`**.
+    - 박스 제목: 15px/800, padding `12px 16px`, 하단 1px.
+    - 카테고리 행: 양끝 정렬, 14px, padding `10px 16px`, 하단 1px `#eef1f5`, 개수는 `#6d7882`. `[##_category_list_##]`의 `.tt_category` 계열을 CSS로 오버라이드한다.
+    - 많이 본 글: 순위(800 `#0a4ec2`)와 제목(14px, padding `8px 16px`). `<s_rctps_popular_rep>`를 쓴다.
+  - 태그: 13px, padding `5px 10px`, radius 2px, 배경 `#f4f6f9`, 테두리 `#e4e8ee`, `#` 접두. `<s_random_tags>`를 쓴다.
 
-## 구현 순서 제안 (Claude Code용)
-1. `skin.html`과 `style.css`로 정적 레이아웃과 치환자를 만든다. 캘린더는 샘플 JSON으로 렌더한다.
-2. `calendar.js`에 필터, 달력, 모달, localStorage를 구현한다.
-3. `crawler/fetch.mjs`와 GitHub Actions, Pages 배포를 만든다. 그다음 `index.xml` 스킨 변수 `SCHEDULE_URL`에 연결한다.
-4. 티스토리 스킨 편집기에 업로드해 홈, 글 상세, 카테고리 페이지에서 캘린더 노출 조건을 확인한다.
+### 3-6. 푸터
+- 배경 `#1e2124`, 글자 `#aeb5bf`, 13px, line-height 1.7, padding 24px, 양끝 정렬.
+- 좌측: "청약달력"(흰 글자, 14px bold)과 "데이터 출처: 공공데이터포털 · 청약홈(한국부동산원)".
+- 우측(max-width 460px): "본 정보는 참고용이며, 정확한 내용은 해당 단지의 입주자모집공고를 확인하시기 바랍니다. © 2026 Powered by Tistory".
+
+---
+
+## 4. calendar.js — 상태와 저장
+```
+regions: string[]      // 기본 17개 전체, localStorage 'cheongyak-regions'
+gu: string[]           // 기본 25개 전체, localStorage 'cheongyak-seoul-gu'
+guOpen: boolean        // 기본 false, 저장 안 함
+phases: string[]       // 기본 5개 전체, 저장 안 함
+year, month(0-11)      // 기본 오늘
+selectedDate           // 기본 오늘 'YYYY-MM-DD'
+modalId | null
+saved: boolean         // 필터 변경 시 false
+data, status: 'loading'|'ok'|'error'
+```
+- localStorage에는 "관심 지역 저장"을 눌렀을 때만 쓴다. 두 키를 함께 저장한다.
+- 로딩 중에는 셀마다 `#eef1f5` 스켈레톤 바 1–2개를 표시한다.
+- 오류가 나면 우측 패널에 "일정을 불러오지 못했습니다. 잠시 후 새로고침해 주세요."를 표시한다.
+- `SCHEDULE_URL`은 `index.xml` 스킨 변수로 노출한다. 스킨 편집기에서 GitHub Pages URL을 입력하는 방식이다.
+- 같은 날짜 안 정렬: 단계 순(sp → p1 → p2 → win → con), 그다음 단지명 가나다 순.
+- 월 이동 시 연도 경계를 처리한다. 주 수는 4–6주로 가변이다.
+
+## 5. 반응형
+- 모든 버튼·체크 항목에 `white-space:nowrap; flex:none`을 준다. 한글이 글자 단위로 줄바꿈되는 것을 막기 위함이다.
+- < 960px: 우측 패널이 캘린더 아래로 내려간다.
+- < 700px: 그룹 헤더 셀은 `width:100%`로 바꿔 위에 쌓는다(flex-wrap). 달력은 가로 스크롤을 유지한다.
+- 서울 자치구 grid는 auto-fill이라 폭에 맞춰 자동으로 줄바꿈된다.
+
+## 6. Files
+- `design-reference-v2.dc.html`: 최종 디자인과 동작 로직.
+  - 하단 `<script data-dc-script>`의 `GROUPS`, `GU`, `PH`(단계 색), `RAW`(샘플 데이터), `renderVals()`(필터·달력 계산)를 `calendar.js`로 그대로 옮기면 된다.
+- `support.js`: 레퍼런스를 여는 용도로만 쓴다. 배포하지 않는다.
+
+## 7. 작업 순서 (Claude Code)
+1. 파이프라인 `fetch.mjs`에 `district` 정규화와 `region` 축약 변환을 추가하고, Actions를 재실행해 `schedule.json`을 확인한다.
+2. `style.css`를 v2 토큰으로 전면 교체하고 `skin.html` 마크업을 3장 구조에 맞춘다.
+3. `calendar.js`에 서울 자치구 필터와 상태 규칙(4장)을 구현한다.
+4. 티스토리에 업로드한 뒤 확인한다.
+   - 노출: 홈에서만 캘린더가 보이는지, 글 상세·카테고리 페이지에서는 숨겨지는지.
+   - 서울 필터: 부분 선택 표시, 저장 후 새로고침해도 유지되는지, 모바일 폭에서 레이아웃이 깨지지 않는지.

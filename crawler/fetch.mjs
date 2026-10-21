@@ -14,6 +14,7 @@ const SOURCES = [
   { kind: '공공지원 민간임대', detail: 'getPblPvtRentLttotPblancDetail', compactDate: true },
 ];
 const REGIONS = ['서울', '경기', '인천', '부산', '대구', '광주', '대전', '울산', '세종', '강원', '충북', '충남', '전북', '전남', '경북', '경남', '제주'];
+const SEOUL_GU = new Set('강남구 강동구 강북구 강서구 관악구 광진구 구로구 금천구 노원구 도봉구 동대문구 동작구 마포구 서대문구 서초구 성동구 성북구 송파구 양천구 영등포구 용산구 은평구 종로구 중구 중랑구'.split(' '));
 const LONG = { 충청북: '충북', 충청남: '충남', 전라북: '전북', 전라남: '전남', 경상북: '경북', 경상남: '경남' };
 const PHASE_FIELDS = {
   APT: [['sp', 'SPSPLY_RCEPT_BGNDE'], ['p1', 'GNRL_RNK1_CRSPAREA_RCPTDE'], ['p2', 'GNRL_RNK2_CRSPAREA_RCPTDE'], ['win', 'PRZWNER_PRESNATN_DE'], ['con', 'CNTRCT_CNCLS_BGNDE']],
@@ -49,11 +50,14 @@ export function toItem(row, sourceKind) {
     if (!kind) return null;
   }
   const addr = String(row.HSSPLY_ADRES || '').trim().split(/\s+/);
+  const region = regionOf(row.SUBSCRPT_AREA_CODE_NM) || regionOf(addr[0]);
+  // 서울은 자치구 필터가 정확히 일치로 비교하므로 25개 구 중 하나가 아니면 null
+  const district = region === '서울' ? (SEOUL_GU.has(addr[1]) ? addr[1] : null) : addr[1] || '';
   return {
     id: `${row.HOUSE_MANAGE_NO}-${row.PBLANC_NO}`,
     name: String(row.HOUSE_NM || '').trim(),
-    region: regionOf(row.SUBSCRPT_AREA_CODE_NM) || regionOf(addr[0]),
-    district: addr[1] || '',
+    region,
+    district,
     kind,
     units: num(row.TOT_SUPLY_HSHLDCO) || null,
     pricePerPyeong: null,

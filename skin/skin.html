@@ -10,57 +10,75 @@
 <body id="[##_body_id_##]">
 <s_t3>
 <div class="wrap">
+  <div class="util">
+    <div class="inner">
+      <span>공공데이터 기반 전국 청약 일정 정보</span>
+      <div class="util-links"><a href="[##_rss_url_##]">RSS</a><a href="[##_blog_link_##]manage">관리자</a></div>
+    </div>
+  </div>
+
   <header class="site-header">
     <div class="inner">
       <a class="brand" href="[##_blog_link_##]">
-        <span class="brand-title">[##_title_##]</span>
-        <span class="brand-desc">[##_desc_##]</span>
+        <span class="brand-mark">청</span>
+        <span class="brand-text"><span class="brand-title">[##_title_##]</span><span class="brand-desc">[##_desc_##]</span></span>
       </a>
       <nav class="site-nav">[##_blog_menu_##]</nav>
     </div>
   </header>
 
   <section id="cal" class="cal">
-    <div class="filter">
-      <div class="filter-head">
-        <div class="filter-title"><span class="filter-name">지역 필터</span><span class="filter-summary" data-ref="summary"></span></div>
-        <div class="filter-btns">
-          <button type="button" class="btn" data-act="all">전체 선택</button>
-          <button type="button" class="btn" data-act="none">전체 해제</button>
-          <button type="button" class="btn btn-primary" data-act="save" data-ref="save">내 지역 저장</button>
+    <div class="cal-inner">
+      <div class="cal-title">
+        <div class="cal-heading">
+          <span class="crumb">홈 › 청약일정</span>
+          <h1>전국 청약 일정</h1>
+        </div>
+        <div class="cal-meta">
+          <span>기준일시 <b data-ref="updated">-</b></span>
+          <span class="sep">|</span>
+          <span>출처 청약홈(한국부동산원)</span>
         </div>
       </div>
-      <div data-ref="groups"></div>
-    </div>
 
-    <div class="cal-body">
-      <div class="cal-card">
-        <div class="cal-toolbar">
-          <div class="cal-nav">
-            <button type="button" class="btn btn-square" data-act="prev" aria-label="이전 달">‹</button>
-            <span class="cal-month" data-ref="month"></span>
-            <button type="button" class="btn btn-square" data-act="next" aria-label="다음 달">›</button>
-            <button type="button" class="btn btn-today" data-act="today">오늘</button>
-          </div>
-          <div class="legend" data-ref="legend"></div>
-        </div>
-        <div class="cal-scroll">
-          <div class="cal-grid">
-            <div class="cal-dow"><div class="sun">일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div class="sat">토</div></div>
-            <div data-ref="weeks"></div>
+      <div class="filter">
+        <div data-ref="groups"></div>
+        <div class="filter-foot">
+          <span class="filter-summary" data-ref="summary"></span>
+          <div class="filter-btns">
+            <button type="button" class="btn" data-act="all">전체 선택</button>
+            <button type="button" class="btn" data-act="none">초기화</button>
+            <button type="button" class="btn btn-primary" data-act="save" data-ref="save">관심 지역 저장</button>
           </div>
         </div>
       </div>
 
-      <aside class="cal-aside">
-        <div class="day-card">
+      <div class="cal-body">
+        <div class="cal-card">
+          <div class="cal-toolbar">
+            <div class="cal-nav">
+              <button type="button" class="btn btn-square" data-act="prev" aria-label="이전 달">‹</button>
+              <span class="cal-month" data-ref="month"></span>
+              <button type="button" class="btn btn-square" data-act="next" aria-label="다음 달">›</button>
+              <button type="button" class="btn btn-today" data-act="today">이번 달</button>
+            </div>
+            <div class="legend" data-ref="legend"></div>
+          </div>
+          <div class="cal-scroll">
+            <div class="cal-grid">
+              <div class="cal-dow"><div class="sun">일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div class="sat">토</div></div>
+              <div data-ref="weeks"></div>
+            </div>
+          </div>
+        </div>
+
+        <aside class="day-card">
           <div class="day-head"><span class="day-title" data-ref="dayTitle"></span><span class="day-count" data-ref="dayCount"></span></div>
           <div class="day-list" data-ref="dayList"></div>
-        </div>
-        <div class="source">출처: 청약홈(한국부동산원) 공고 · 매일 06:00 자동 수집<br><span data-ref="updated"></span></div>
-      </aside>
+          <p class="day-note">※ 일정은 입주자모집공고 기준이며 사업주체 사정에 따라 변경될 수 있습니다.</p>
+        </aside>
+      </div>
     </div>
-    <a class="to-blog" href="#blog">최신 글 보기 ↓</a>
     <div data-ref="modal"></div>
   </section>
 
@@ -69,7 +87,7 @@
       [##_revenue_list_upper_##]
 
       <s_list>
-        <div class="section-head"><span class="section-title">[##_list_conform_##]</span><span class="section-count">전체 [##_list_count_##]</span></div>
+        <div class="section-head"><h2>[##_list_conform_##]</h2><span class="section-count">전체 <b>[##_list_count_##]</b>건</span></div>
         <div class="post-grid">
           <s_list_rep>
             <a class="card" href="[##_list_rep_link_##]">
@@ -86,8 +104,8 @@
         <s_list_empty><p class="empty">글이 없습니다.</p></s_list_empty>
       </s_list>
 
+      <div class="section-head latest-head"><h2>최신 게시물</h2></div>
       <div class="post-grid">
-        <div class="section-head latest-head"><span class="section-title">최신 글</span></div>
         <s_article_rep>
           <s_index_article_rep>
             <a class="card" href="[##_article_rep_link_##]">
@@ -114,7 +132,7 @@
                   <a href="#" onclick="[##_s_ad_d_onclick_##]">삭제</a>
                 </div>
               </s_ad_div>
-              <p class="post-disclaimer">청약 일정·분양가는 참고용입니다. 정확한 내용은 입주자모집공고를 확인하세요.</p>
+              <p class="post-disclaimer">※ 청약 일정·분양가는 참고용입니다. 정확한 내용은 해당 단지의 입주자모집공고를 확인하시기 바랍니다.</p>
               <div class="post-comments">[##_comment_group_##]</div>
             </article>
           </s_permalink_article_rep>
@@ -132,12 +150,12 @@
       </s_notice_rep>
 
       <s_guest>
-        <div class="section-head"><span class="section-title">방명록</span></div>
+        <div class="section-head"><h2>방명록</h2></div>
         [##_guestbook_group_##]
       </s_guest>
 
       <s_tag>
-        <div class="section-head"><span class="section-title">태그</span></div>
+        <div class="section-head"><h2>태그</h2></div>
         <div class="tags"><s_tag_rep><a href="[##_tag_link_##]" class="[##_tag_class_##]">#[##_tag_name_##]</a></s_tag_rep></div>
       </s_tag>
 
@@ -156,15 +174,15 @@
       <s_sidebar>
         <s_sidebar_element>
           <!-- 카테고리 -->
-          <div class="side-block side-category">
-            <span class="side-title">카테고리</span>
+          <div class="side-box side-category">
+            <div class="side-title">카테고리</div>
             [##_category_list_##]
           </div>
         </s_sidebar_element>
         <s_sidebar_element>
-          <!-- 인기 글 -->
-          <div class="side-block">
-            <span class="side-title">인기 글</span>
+          <!-- 많이 본 글 -->
+          <div class="side-box">
+            <div class="side-title">많이 본 글</div>
             <ol class="popular">
               <s_rctps_popular_rep>
                 <li><a href="[##_rctps_rep_link_##]">[##_rctps_rep_title_##]</a></li>
@@ -174,8 +192,8 @@
         </s_sidebar_element>
         <s_sidebar_element>
           <!-- 태그 -->
-          <div class="side-block">
-            <span class="side-title">태그</span>
+          <div class="side-tags">
+            <div class="side-tags-title">태그</div>
             <div class="tags">
               <s_random_tags><a href="[##_tag_link_##]">#[##_tag_name_##]</a></s_random_tags>
             </div>
@@ -187,8 +205,8 @@
 
   <footer class="site-footer">
     <div class="inner">
-      <span>© 2026 [##_title_##] · Powered by Tistory</span>
-      <span>청약 일정은 참고용이며 정확한 내용은 입주자모집공고를 확인하세요.</span>
+      <div class="foot-brand"><b>[##_title_##]</b><span>데이터 출처: 공공데이터포털 · 청약홈(한국부동산원)</span></div>
+      <span class="foot-note">본 정보는 참고용이며, 정확한 내용은 해당 단지의 입주자모집공고를 확인하시기 바랍니다. © 2026 Powered by Tistory</span>
     </div>
   </footer>
 </div>

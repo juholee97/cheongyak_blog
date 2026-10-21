@@ -28,6 +28,11 @@ assert.equal(apt.units, 641);
 assert.equal(apt.homepageUrl, 'http://www.example.co.kr');
 assert.deepEqual(apt.phases.map((p) => p.k), ['sp', 'p1', 'p2', 'win', 'con']);
 
+// 서울 자치구: 25개 구 중 하나만, 아니면 null
+assert.equal(toItem({ SUBSCRPT_AREA_CODE_NM: '서울', HSSPLY_ADRES: '서울특별시 중구 신당동' }, 'APT').district, '중구');
+assert.equal(toItem({ SUBSCRPT_AREA_CODE_NM: '서울', HSSPLY_ADRES: '서울특별시' }, 'APT').district, null);
+assert.equal(toItem({ SUBSCRPT_AREA_CODE_NM: '서울', HSSPLY_ADRES: '서울시 강남 대치동' }, 'APT').district, null);
+
 const remndr = toItem({ HOUSE_MANAGE_NO: '1', PBLANC_NO: '2', HOUSE_NM: '잠실 르엘', SUBSCRPT_AREA_CODE_NM: '서울', SUBSCRPT_RCEPT_BGNDE: '2026-11-18', PRZWNER_PRESNATN_DE: '2026-11-21', CNTRCT_CNCLS_BGNDE: '2026-12-01' }, '무순위');
 assert.deepEqual(remndr.phases.map((p) => p.k), ['p1', 'win']); // 무순위는 접수·발표만
 

@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>body{margin:0;background:#fff;color:#1e2124;font-family:Pretendard,-apple-system,sans-serif;-webkit-font-smoothing:antialiased}a{color:#1e2124;text-decoration:none}a:hover{color:#0a4ec2;text-decoration:underline}*{box-sizing:border-box}</style>
+</helmet>
+<div style="min-height:100vh;font-feature-settings:'tnum';letter-spacing:-0.01em">
+  <div style="background:#0f2557;color:#c9d3e8;font-size:12px">
+    <div style="max-width:1200px;margin:0 auto;padding:7px 24px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap">
+      <span>공공데이터 기반 전국 청약 일정 정보</span>
+      <div style="display:flex;gap:14px"><a href="#" style="color:#c9d3e8">구독하기</a><a href="#" style="color:#c9d3e8">RSS</a><a href="#" style="color:#c9d3e8">관리자</a></div>
+    </div>
+  </div>
+  <header style="background:#fff;border-bottom:1px solid #d6dbe3">
+    <div style="max-width:1200px;margin:0 auto;padding:0 24px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;min-height:72px">
+      <a href="#" style="display:flex;align-items:center;gap:10px;text-decoration:none">
+        <span style="width:30px;height:30px;background:#0a4ec2;color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;border-radius:3px">청</span>
+        <span style="display:flex;flex-direction:column;gap:1px"><span style="font-size:20px;font-weight:800;letter-spacing:-0.03em;line-height:1.1">청약달력</span><span style="font-size:11px;color:#6d7882;font-weight:500">전국 아파트·오피스텔 청약 일정 안내</span></span>
+      </a>
+      <nav style="display:flex;align-self:stretch;font-size:15px;font-weight:600;flex-wrap:wrap">
+        <a href="#cal" style="display:flex;align-items:center;padding:0 16px;color:#0a4ec2;box-shadow:inset 0 -3px 0 #0a4ec2;text-decoration:none">청약일정</a>
+        <a href="#blog" style="display:flex;align-items:center;padding:0 16px;text-decoration:none">분양분석</a>
+        <a href="#blog" style="display:flex;align-items:center;padding:0 16px;text-decoration:none">청약가이드</a>
+        <a href="#blog" style="display:flex;align-items:center;padding:0 16px;text-decoration:none">당첨후기</a>
+        <a href="#blog" style="display:flex;align-items:center;padding:0 16px;text-decoration:none">방명록</a>
+      </nav>
+    </div>
+  </header>
+
+  <section id="cal" style="background:#f4f6f9;border-bottom:1px solid #d6dbe3">
+    <div style="max-width:1200px;margin:0 auto;padding:28px 24px 32px;display:flex;flex-direction:column;gap:16px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap">
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <span style="font-size:13px;color:#6d7882">홈 › 청약일정</span>
+          <h1 style="margin:0;font-size:28px;font-weight:800;letter-spacing:-0.03em">전국 청약 일정</h1>
+        </div>
+        <div style="font-size:13px;color:#464c53;display:flex;gap:12px;flex-wrap:wrap">
+          <span>기준일시 <b style="font-weight:700;color:#1e2124">2026.10.22 06:02</b></span>
+          <span style="color:#c4cad4">|</span>
+          <span>출처 청약홈(한국부동산원)</span>
+        </div>
+      </div>
+
+      <div style="position:sticky;top:0;z-index:5;background:#fff;border:1px solid #c4cad4;border-top:2px solid #0f2557;border-radius:2px">
+        <sc-for list="{{ groups }}" as="g" hint-placeholder-count="3">
+          <div style="display:flex;border-bottom:1px solid #e4e8ee;flex-wrap:wrap">
+            <button onClick="{{ g.toggle }}" style="font:inherit;white-space:nowrap;flex:none;width:120px;background:#f4f6f9;border:none;border-right:1px solid #e4e8ee;padding:12px 14px;font-size:14px;font-weight:700;color:#1e2124;cursor:pointer;display:flex;align-items:center;gap:8px;text-align:left">
+              <span style="width:16px;height:16px;flex:none;border-radius:2px;border:1px solid {{ g.boxBorder }};background:{{ g.boxBg }};color:#fff;font-size:11px;line-height:14px;text-align:center">{{ g.mark }}</span>{{ g.name }}
+            </button>
+            <div style="flex:1;min-width:0;display:flex;flex-wrap:wrap;gap:4px 18px;padding:10px 16px;align-items:center">
+              <sc-for list="{{ g.items }}" as="r" hint-placeholder-count="4">
+                <div style="display:flex;align-items:center;gap:6px">
+                <button onClick="{{ r.toggle }}" style="font:inherit;white-space:nowrap;flex:none;background:none;border:none;padding:4px 0;font-size:14px;color:{{ r.color }};font-weight:{{ r.weight }};cursor:pointer;display:flex;align-items:center;gap:7px">
+                  <span style="width:16px;height:16px;border-radius:2px;border:1px solid {{ r.boxBorder }};background:{{ r.boxBg }};color:#fff;font-size:11px;line-height:14px;text-align:center">{{ r.mark }}</span>{{ r.name }}<span style="font-size:12px;color:#6d7882;font-weight:400">{{ r.count }}</span>
+                </button>
+                <sc-if value="{{ r.hasSub }}" hint-placeholder-val="{{ false }}">
+                  <button onClick="{{ r.expand }}" style="font:inherit;white-space:nowrap;flex:none;font-size:12px;font-weight:600;height:24px;padding:0 8px;border-radius:2px;border:1px solid {{ r.subBorder }};background:{{ r.subBg }};color:{{ r.subColor }};cursor:pointer">{{ r.subLabel }}</button>
+                </sc-if>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+          <sc-if value="{{ g.showSub }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;border-bottom:1px solid #e4e8ee;flex-wrap:wrap;background:#f8faff">
+              <button onClick="{{ guAllToggle }}" style="font:inherit;white-space:nowrap;flex:none;width:120px;background:#eaf0fb;border:none;border-right:1px solid #e4e8ee;padding:12px 14px;font-size:13px;font-weight:700;color:#0a4ec2;cursor:pointer;display:flex;align-items:flex-start;gap:8px;text-align:left">
+                <span style="width:16px;height:16px;flex:none;border-radius:2px;border:1px solid {{ guAll.boxBorder }};background:{{ guAll.boxBg }};color:#fff;font-size:11px;line-height:14px;text-align:center">{{ guAll.mark }}</span>└ 서울 자치구
+              </button>
+              <div style="flex:1;min-width:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:2px 12px;padding:10px 16px;align-items:center">
+                <sc-for list="{{ guItems }}" as="u" hint-placeholder-count="25">
+                  <button onClick="{{ u.toggle }}" style="font:inherit;white-space:nowrap;background:none;border:none;padding:4px 0;font-size:13px;color:{{ u.color }};font-weight:{{ u.weight }};cursor:pointer;display:flex;align-items:center;gap:6px;text-align:left">
+                    <span style="width:14px;height:14px;flex:none;border-radius:2px;border:1px solid {{ u.boxBorder }};background:{{ u.boxBg }};color:#fff;font-size:10px;line-height:12px;text-align:center">{{ u.mark }}</span>{{ u.name }}<span style="font-size:11px;color:#6d7882;font-weight:400">{{ u.count }}</span>
+                  </button>
+                </sc-for>
+              </div>
+            </div>
+          </sc-if>
+        </sc-for>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 16px;flex-wrap:wrap;background:#fafbfc">
+          <span style="font-size:13px;color:#464c53">{{ regionSummary }}</span>
+          <div style="display:flex;gap:6px">
+            <button onClick="{{ selectAll }}" style="font:inherit;white-space:nowrap;flex:none;font-size:13px;font-weight:600;height:34px;padding:0 14px;border-radius:3px;border:1px solid #c4cad4;background:#fff;cursor:pointer">전체 선택</button>
+            <button onClick="{{ clearAll }}" style="font:inherit;white-space:nowrap;flex:none;font-size:13px;font-weight:600;height:34px;padding:0 14px;border-radius:3px;border:1px solid #c4cad4;background:#fff;cursor:pointer">초기화</button>
+            <button onClick="{{ savePrefs }}" style="font:inherit;white-space:nowrap;flex:none;font-size:13px;font-weight:700;height:34px;padding:0 16px;border-radius:3px;border:1px solid #0a4ec2;background:#0a4ec2;color:#fff;cursor:pointer">{{ saveLabel }}</button>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start">
+        <div style="background:#fff;border:1px solid #c4cad4;border-radius:2px;flex:999 1 660px;min-width:0">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;flex-wrap:wrap;border-bottom:1px solid #d6dbe3">
+            <div style="display:flex;align-items:center;gap:6px">
+              <button onClick="{{ prevMonth }}" style="font:inherit;white-space:nowrap;flex:none;width:34px;height:34px;border-radius:3px;border:1px solid #c4cad4;background:#fff;cursor:pointer;font-size:16px">‹</button>
+              <span style="font-size:20px;font-weight:800;letter-spacing:-0.02em;min-width:128px;text-align:center">{{ monthTitle }}</span>
+              <button onClick="{{ nextMonth }}" style="font:inherit;white-space:nowrap;flex:none;width:34px;height:34px;border-radius:3px;border:1px solid #c4cad4;background:#fff;cursor:pointer;font-size:16px">›</button>
+              <button onClick="{{ goToday }}" style="font:inherit;white-space:nowrap;flex:none;font-size:13px;font-weight:600;height:34px;padding:0 12px;border-radius:3px;border:1px solid #c4cad4;background:#fff;cursor:pointer;margin-left:4px">이번 달</button>
+            </div>
+            <div style="display:flex;gap:4px 14px;flex-wrap:wrap">
+              <sc-for list="{{ phaseChips }}" as="p" hint-placeholder-count="5">
+                <button onClick="{{ p.toggle }}" style="font:inherit;white-space:nowrap;flex:none;font-size:13px;font-weight:600;padding:4px 0;border:none;background:none;color:{{ p.color }};cursor:pointer;display:flex;align-items:center;gap:6px">
+                  <span style="width:14px;height:14px;border-radius:2px;border:1px solid {{ p.dot }};background:{{ p.fill }};color:#fff;font-size:10px;line-height:12px;text-align:center">{{ p.mark }}</span>{{ p.label }}
+                </button>
+              </sc-for>
+            </div>
+          </div>
+          <div style="overflow-x:auto">
+            <div style="min-width:640px">
+              <div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));font-size:13px;font-weight:700;color:#464c53;background:#f4f6f9;border-bottom:1px solid #d6dbe3;text-align:center">
+                <div style="padding:9px;color:#c4261d">일</div><div style="padding:9px">월</div><div style="padding:9px">화</div><div style="padding:9px">수</div><div style="padding:9px">목</div><div style="padding:9px">금</div><div style="padding:9px;color:#0a4ec2">토</div>
+              </div>
+              <sc-for list="{{ weeks }}" as="w" hint-placeholder-count="5">
+                <div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));border-bottom:1px solid #e4e8ee">
+                  <sc-for list="{{ w.days }}" as="d" hint-placeholder-count="7">
+                    <div onClick="{{ d.select }}" style="min-height:108px;padding:6px;border-right:1px solid #e4e8ee;background:{{ d.bg }};box-shadow:{{ d.ring }};cursor:pointer;display:flex;flex-direction:column;gap:2px;opacity:{{ d.opacity }}">
+                      <div style="display:flex;align-items:center;gap:4px;padding:0 0 3px">
+                        <span style="font-size:13px;font-weight:{{ d.weight }};color:{{ d.numColor }};background:{{ d.numBg }};border-radius:2px;min-width:22px;height:22px;line-height:22px;text-align:center">{{ d.num }}</span>
+                      </div>
+                      <sc-for list="{{ d.events }}" as="e" hint-placeholder-count="0">
+                        <div onClick="{{ e.open }}" title="{{ e.title }}" style="font-size:12px;line-height:1.4;padding:1px 5px;border-radius:2px;background:{{ e.bg }};color:#1e2124;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer"><b style="font-weight:700;color:{{ e.color }}">{{ e.label }}</b> {{ e.name }}</div>
+                      </sc-for>
+                      <sc-if value="{{ d.hasMore }}" hint-placeholder-val="{{ false }}">
+                        <span style="font-size:11px;color:#464c53;padding:0 5px;font-weight:600">{{ d.moreLabel }}</span>
+                      </sc-if>
+                    </div>
+                  </sc-for>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+
+        <aside style="flex:1 1 280px;min-width:0;background:#fff;border:1px solid #c4cad4;border-radius:2px">
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid #d6dbe3;min-height:63px">
+            <span style="font-size:16px;font-weight:700">{{ selTitle }}</span>
+            <span style="font-size:13px;color:#464c53">총 <b style="color:#0a4ec2">{{ selCount }}</b>건</span>
+          </div>
+          <div style="display:flex;flex-direction:column">
+            <sc-for list="{{ selEvents }}" as="e" hint-placeholder-count="3">
+              <button onClick="{{ e.open }}" style="font:inherit;text-align:left;background:#fff;border:none;border-bottom:1px solid #e4e8ee;padding:12px 16px;cursor:pointer;display:flex;flex-direction:column;gap:5px;word-break:keep-all" style-hover="background:#f4f6f9">
+                <span style="display:flex;gap:8px;align-items:center;font-size:12px"><span style="padding:1px 6px;border-radius:2px;border:1px solid {{ e.color }};color:{{ e.color }};font-weight:700">{{ e.label }}</span><span style="color:#6d7882">{{ e.region }} · {{ e.kind }}</span></span>
+                <span style="font-size:15px;font-weight:600">{{ e.fullName }}</span>
+              </button>
+            </sc-for>
+            <sc-if value="{{ selEmpty }}" hint-placeholder-val="{{ false }}">
+              <p style="margin:0;padding:24px 16px;font-size:14px;color:#6d7882;text-align:center">선택한 지역의 일정이 없습니다.</p>
+            </sc-if>
+          </div>
+          <p style="margin:0;padding:12px 16px;font-size:12px;color:#6d7882;line-height:1.6;background:#fafbfc;border-top:1px solid #e4e8ee">※ 일정은 입주자모집공고 기준이며 사업주체 사정에 따라 변경될 수 있습니다.</p>
+        </aside>
+      </div>
+    </div>
+  </section>
+
+  <section id="blog" style="max-width:1200px;margin:0 auto;padding:40px 24px 64px;display:flex;flex-wrap:wrap;gap:40px;align-items:flex-start">
+    <div style="display:flex;flex-direction:column;gap:24px;flex:999 1 600px;min-width:0">
+      <div style="display:flex;align-items:baseline;justify-content:space-between;border-bottom:2px solid #1e2124;padding-bottom:12px">
+        <h2 style="margin:0;font-size:22px;font-weight:800;letter-spacing:-0.02em">최신 게시물</h2>
+        <span style="font-size:13px;color:#464c53">전체 <b style="color:#0a4ec2">248</b>건</span>
+      </div>
+      <a href="#" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr));gap:24px;align-items:center;padding-bottom:24px;border-bottom:1px solid #d6dbe3;text-decoration:none">
+        <div style="aspect-ratio:16/10;border-radius:2px;background:repeating-linear-gradient(135deg,#eef1f5 0 10px,#e4e8ee 10px 20px);display:flex;align-items:center;justify-content:center;font-size:12px;color:#6d7882;font-family:ui-monospace,monospace">대표 이미지</div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <span style="align-self:flex-start;font-size:12px;font-weight:700;color:#0a4ec2;border:1px solid #a9c1ee;background:#eef3fc;padding:2px 8px;border-radius:2px">분양분석</span>
+          <span style="font-size:24px;font-weight:800;line-height:1.35;letter-spacing:-0.03em;text-wrap:pretty">11월 수도권 분양 물량 총정리 — 놓치면 안 될 단지 5곳</span>
+          <span style="font-size:15px;color:#464c53;line-height:1.7;text-wrap:pretty">분양가 상한제 적용 단지와 특별공급 비중이 높은 단지를 중심으로 일정과 예상 경쟁률을 정리했습니다.</span>
+          <span style="font-size:13px;color:#6d7882">2026.10.20 · 댓글 14</span>
+        </div>
+      </a>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:28px 20px">
+        <sc-for list="{{ posts }}" as="p" hint-placeholder-count="6">
+          <a href="#" style="display:flex;flex-direction:column;gap:8px;text-decoration:none">
+            <div style="aspect-ratio:16/10;border-radius:2px;background:repeating-linear-gradient(135deg,#eef1f5 0 10px,#e4e8ee 10px 20px);display:flex;align-items:center;justify-content:center;font-size:11px;color:#6d7882;font-family:ui-monospace,monospace">썸네일</div>
+            <span style="font-size:13px;font-weight:700;color:#0a4ec2">{{ p.cat }}</span>
+            <span style="font-size:17px;font-weight:700;line-height:1.45;letter-spacing:-0.02em;text-wrap:pretty">{{ p.title }}</span>
+            <span style="font-size:13px;color:#6d7882">{{ p.date }}</span>
+          </a>
+        </sc-for>
+      </div>
+      <div style="display:flex;justify-content:center;gap:4px;font-size:14px;padding-top:8px">
+        <a href="#" style="height:36px;padding:0 10px;display:flex;align-items:center;border:1px solid #d6dbe3;border-radius:2px;text-decoration:none">‹ 이전</a>
+        <a href="#" style="width:36px;height:36px;display:flex;align-items:center;justify-content:center;border-radius:2px;background:#0a4ec2;color:#fff;font-weight:700;text-decoration:none">1</a>
+        <a href="#" style="width:36px;height:36px;display:flex;align-items:center;justify-content:center;text-decoration:none">2</a>
+        <a href="#" style="width:36px;height:36px;display:flex;align-items:center;justify-content:center;text-decoration:none">3</a>
+        <a href="#" style="width:36px;height:36px;display:flex;align-items:center;justify-content:center;text-decoration:none">4</a>
+        <a href="#" style="height:36px;padding:0 10px;display:flex;align-items:center;border:1px solid #d6dbe3;border-radius:2px;text-decoration:none">다음 ›</a>
+      </div>
+    </div>
+    <aside style="display:flex;flex-direction:column;gap:28px;flex:1 1 260px;min-width:0">
+      <div style="border:1px solid #d6dbe3;border-top:2px solid #0f2557">
+        <div style="font-size:15px;font-weight:800;padding:12px 16px;border-bottom:1px solid #e4e8ee">카테고리</div>
+        <sc-for list="{{ cats }}" as="c" hint-placeholder-count="5">
+          <a href="#" style="display:flex;justify-content:space-between;font-size:14px;padding:10px 16px;border-bottom:1px solid #eef1f5;text-decoration:none"><span>{{ c.name }}</span><span style="color:#6d7882">{{ c.n }}</span></a>
+        </sc-for>
+      </div>
+      <div style="border:1px solid #d6dbe3;border-top:2px solid #0f2557">
+        <div style="font-size:15px;font-weight:800;padding:12px 16px;border-bottom:1px solid #e4e8ee">많이 본 글</div>
+        <div style="display:flex;flex-direction:column;padding:6px 0">
+          <sc-for list="{{ popular }}" as="p" hint-placeholder-count="4">
+            <a href="#" style="display:flex;gap:10px;font-size:14px;line-height:1.5;padding:8px 16px;text-decoration:none"><span style="font-weight:800;color:#0a4ec2;width:14px;flex:none">{{ p.rank }}</span><span style="text-wrap:pretty">{{ p.title }}</span></a>
+          </sc-for>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="font-size:15px;font-weight:800">태그</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          <sc-for list="{{ tags }}" as="t" hint-placeholder-count="8">
+            <a href="#" style="font-size:13px;padding:5px 10px;border-radius:2px;background:#f4f6f9;border:1px solid #e4e8ee;text-decoration:none">#{{ t }}</a>
+          </sc-for>
+        </div>
+      </div>
+    </aside>
+  </section>
+
+  <footer style="background:#1e2124;color:#aeb5bf">
+    <div style="max-width:1200px;margin:0 auto;padding:24px;font-size:13px;line-height:1.7;display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px">
+      <div style="display:flex;flex-direction:column"><b style="color:#fff;font-size:14px">청약달력</b><span>데이터 출처: 공공데이터포털 · 청약홈(한국부동산원)</span></div>
+      <span style="max-width:460px">본 정보는 참고용이며, 정확한 내용은 해당 단지의 입주자모집공고를 확인하시기 바랍니다. © 2026 Powered by Tistory</span>
+    </div>
+  </footer>
+
+  <sc-if value="{{ modalOpen }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ closeModal }}" style="position:fixed;inset:0;z-index:50;background:rgba(15,20,30,.55);display:flex;align-items:center;justify-content:center;padding:20px">
+      <div onClick="{{ stop }}" style="width:100%;max-width:480px;background:#fff;border-radius:3px;border-top:3px solid #0f2557;box-shadow:0 20px 50px -20px rgba(0,0,0,.45)">
+        <div style="display:flex;justify-content:space-between;gap:12px;padding:18px 20px;border-bottom:1px solid #d6dbe3">
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <span style="font-size:13px;color:#464c53">{{ m.region }} {{ m.district }} · {{ m.kind }}</span>
+            <span style="font-size:20px;font-weight:800;letter-spacing:-0.02em;line-height:1.3">{{ m.name }}</span>
+          </div>
+          <button onClick="{{ closeModal }}" style="font:inherit;white-space:nowrap;width:32px;height:32px;flex:none;border-radius:2px;border:1px solid #c4cad4;background:#fff;cursor:pointer">✕</button>
+        </div>
+        <div style="padding:16px 20px;display:flex;flex-direction:column;gap:16px">
+          <div style="display:grid;grid-template-columns:110px 1fr;border-top:1px solid #1e2124;font-size:14px">
+            <div style="background:#f4f6f9;padding:10px 12px;font-weight:600;border-bottom:1px solid #e4e8ee">공급 세대</div><div style="padding:10px 12px;border-bottom:1px solid #e4e8ee">{{ m.units }}</div>
+            <div style="background:#f4f6f9;padding:10px 12px;font-weight:600;border-bottom:1px solid #e4e8ee">분양가(3.3㎡)</div><div style="padding:10px 12px;border-bottom:1px solid #e4e8ee">{{ m.price }}</div>
+            <sc-for list="{{ m.timeline }}" as="t" hint-placeholder-count="5">
+              <div style="background:#f4f6f9;padding:10px 12px;font-weight:600;border-bottom:1px solid #e4e8ee;display:flex;align-items:center;gap:7px"><span style="width:8px;height:8px;border-radius:1px;background:{{ t.dot }}"></span>{{ t.label }}</div><div style="padding:10px 12px;border-bottom:1px solid #e4e8ee">{{ t.date }}</div>
+            </sc-for>
+          </div>
+          <div style="display:flex;gap:6px">
+            <a href="https://www.applyhome.co.kr" target="_blank" style="flex:1;text-align:center;padding:12px;border-radius:3px;background:#0a4ec2;color:#fff;font-size:14px;font-weight:700;text-decoration:none">청약홈 바로가기</a>
+            <a href="#" style="flex:1;text-align:center;padding:12px;border-radius:3px;border:1px solid #c4cad4;font-size:14px;font-weight:600;text-decoration:none">모집공고문 보기</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const GROUPS=[{name:'수도권',items:['서울','경기','인천']},{name:'광역시',items:['부산','대구','광주','대전','울산','세종']},{name:'지방',items:['강원','충북','충남','전북','전남','경북','경남','제주']}];
+const ALL=GROUPS.flatMap(g=>g.items);
+const GU=['강남구','강동구','강북구','강서구','관악구','광진구','구로구','금천구','노원구','도봉구','동대문구','동작구','마포구','서대문구','서초구','성동구','성북구','송파구','양천구','영등포구','용산구','은평구','종로구','중구','중랑구'];
+const PH=[{k:'sp',label:'특별공급',off:0,c:'#0a4ec2',bg:'#eaf0fb'},{k:'p1',label:'1순위',off:1,c:'#00745f',bg:'#e5f3ef'},{k:'p2',label:'2순위',off:2,c:'#9a5a00',bg:'#f8f0e2'},{k:'win',label:'당첨발표',off:8,c:'#b3261e',bg:'#fbebea'},{k:'con',label:'계약',off:20,c:'#4b4f9c',bg:'#eeeef8'}];
+const RAW=[['래미안 원펜타스 2차','서울','서초구',641,'APT','2026-10-05',7200],['힐스테이트 광명 센트럴','경기','광명시',1120,'APT','2026-10-06',3400],['검단 푸르지오 더 파크','인천','서구',892,'APT','2026-10-07',1750],['e편한세상 동탄 레이크','경기','화성시',748,'APT','2026-10-12',2100],['더샵 센텀 리버뷰','부산','해운대구',530,'APT','2026-10-13',2600],['자이 더 헤리티지','서울','마포구',312,'APT','2026-10-13',6100],['수성 롯데캐슬 포레','대구','수성구',688,'APT','2026-10-14',2300],['세종 한신더휴 6-3','세종','나성동',406,'APT','2026-10-19',1600],['둔산 아이파크 시티','대전','서구',955,'APT','2026-10-20',1900],['광교 SK뷰 레이크 2단지','경기','수원시',27,'무순위','2026-10-21',2900],['상무 호반써밋','광주','서구',584,'APT','2026-10-21',1800],['청주 테크노폴리스 지웰','충북','청주시',1240,'APT','2026-10-22',1350],['원주 더샵 센트럴','강원','원주시',612,'APT','2026-10-26',1250],['송도 자이 크리스탈오션','인천','연수구',1503,'APT','2026-10-27',2200],['울산 문수로 한화포레나','울산','남구',461,'APT','2026-10-27',2050],['천안 불당 디에트르','충남','천안시',822,'APT','2026-11-02',1700],['과천 지식정보타운 S5','경기','과천시',504,'APT','2026-11-03',4100],['창원 중동 유니시티 2차','경남','창원시',990,'APT','2026-11-04',1900],['포항 자이 디오션','경북','포항시',704,'APT','2026-11-09',1300],['제주 노형 오션뷰','제주','제주시',198,'오피스텔','2026-11-10',2400],['강동 헤리티지 자이','서울','강동구',1299,'APT','2026-11-10',4800],['전주 에코시티 한양수자인','전북','전주시',736,'APT','2026-11-16',1350],['여수 웅천 디아이델','전남','여수시',482,'APT','2026-11-17',1250],['잠실 르엘','서울','송파구',38,'무순위','2026-11-18',5600],['래미안 레미넨티 대치','서울','강남구',282,'APT','2026-10-14',7800],['아크로 성수 리버파크','서울','성동구',455,'APT','2026-10-20',6300],['힘스테이트 은평 연신','서울','은평구',874,'APT','2026-10-26',3300],['노원 상계 자이 포레','서울','노원구',1036,'APT','2026-10-28',2900],['영등포 푸르지오 더 센트럴','서울','영등포구',21,'무순위','2026-10-23',4400]];
+const pad=n=>String(n).padStart(2,'0');
+const key=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const add=(s,n)=>{const d=new Date(s+'T00:00');d.setDate(d.getDate()+n);return d;};
+const W='일월화수목금토';
+const fmt=d=>`${d.getFullYear()}.${pad(d.getMonth()+1)}.${pad(d.getDate())} (${W[d.getDay()]})`;
+const CX=RAW.map(([name,region,district,units,kind,start,price],i)=>{const phases=kind==='APT'?PH:kind==='오피스텔'?[PH[1],PH[3],PH[4]]:[{...PH[1],label:'접수',off:0},{...PH[3],off:3}];return{id:i,name,region,district,units,kind,price,events:phases.map(p=>({...p,date:add(start,p.off)}))};});
+const TODAY=new Date('2026-10-22T00:00');
+const box=(on,part)=>({boxBg:on?'#0a4ec2':'#fff',boxBorder:on?'#0a4ec2':'#8a949e',mark:on?(part?'–':'✓'):''});
+class Component extends DCLogic{
+  state=(()=>{let regions=ALL;try{const s=JSON.parse(localStorage.getItem('cheongyak-regions')||'null');if(Array.isArray(s))regions=s;}catch(e){}let gu=GU;try{const s=JSON.parse(localStorage.getItem('cheongyak-seoul-gu')||'null');if(Array.isArray(s))gu=s;}catch(e){}return{regions,gu,guOpen:false,phases:PH.map(p=>p.k),y:2026,m:9,sel:key(TODAY),modal:null,saved:false};})();
+  setRegions(regions){this.setState({regions,saved:false});}
+  toggle(r){const s=new Set(this.state.regions);if(s.has(r))s.delete(r);else{s.add(r);if(r==='서울'&&!this.state.gu.length)this.setState({gu:GU});}this.setRegions([...s]);}
+  setGu(gu){const s=new Set(this.state.regions);gu.length?s.add('서울'):s.delete('서울');this.setState({gu,regions:[...s],saved:false});}
+  componentDidMount(){this.onKey=e=>{if(e.key==='Escape')this.setState({modal:null});};window.addEventListener('keydown',this.onKey);}
+  componentWillUnmount(){window.removeEventListener('keydown',this.onKey);}
+  renderVals(){
+    const {regions,gu,guOpen,phases,y,m,sel,modal,saved}=this.state;
+    const rs=new Set(regions),ps=new Set(phases),gs=new Set(gu),guPart=gu.length<GU.length;
+    const byDay={};
+    CX.filter(c=>rs.has(c.region)&&(c.region!=='서울'||gs.has(c.district))).forEach(c=>c.events.forEach(e=>{if(!ps.has(e.k))return;const k=key(e.date);(byDay[k]=byDay[k]||[]).push({c,e});}));
+    const open=c=>ev=>{ev&&ev.stopPropagation();this.setState({modal:c.id});};
+    const mkEv=({c,e})=>({label:e.label,name:c.name,fullName:c.name,title:`${e.label} · ${c.name}`,color:e.c,bg:e.bg,region:`${c.region} ${c.district}`,kind:c.kind,open:open(c)});
+    const first=new Date(y,m,1),weeks=[];let cur=new Date(y,m,1-first.getDay());
+    while(true){const days=[];for(let i=0;i<7;i++){const k=key(cur),inM=cur.getMonth()===m,isT=k===key(TODAY),isS=k===sel,list=(byDay[k]||[]).map(mkEv),dow=cur.getDay();
+      days.push({num:cur.getDate(),events:list.slice(0,3),hasMore:list.length>3,moreLabel:`+${list.length-3}건 더보기`,bg:isS?'#f3f7fe':'#fff',ring:isS?'inset 0 0 0 2px #0a4ec2':'none',opacity:inM?1:.4,weight:isT?800:600,numColor:isT?'#fff':dow===0?'#c4261d':dow===6?'#0a4ec2':'#1e2124',numBg:isT?'#0f2557':'transparent',select:()=>this.setState({sel:k})});
+      cur.setDate(cur.getDate()+1);}
+      weeks.push({days});if(cur.getMonth()!==m&&cur>first)break;}
+    const counts={},guCounts={};CX.forEach(c=>{if(c.events.some(e=>e.date.getMonth()===m&&e.date.getFullYear()===y)){counts[c.region]=(counts[c.region]||0)+1;if(c.region==='서울')guCounts[c.district]=(guCounts[c.district]||0)+1;}});
+    const groups=GROUPS.map(g=>{const on=g.items.filter(r=>rs.has(r)).length,all=on===g.items.length&&!(g.items.includes('서울')&&guPart);return{name:g.name,...box(on>0,!all),showSub:g.items.includes('서울')&&guOpen,
+      toggle:()=>{const s=new Set(regions);g.items.forEach(r=>all?s.delete(r):s.add(r));if(!all&&g.items.includes('서울'))this.setState({gu:GU});this.setRegions([...s]);},
+      items:g.items.map(r=>{const o=rs.has(r),sub=r==='서울';return{name:r,...box(o,sub&&guPart),count:counts[r]?`(${counts[r]})`:'',color:o?'#1e2124':'#6d7882',weight:o?600:400,toggle:()=>this.toggle(r),
+        hasSub:sub,subLabel:guOpen?'자치구 접기 ▴':(o&&guPart?`${gu.length}개 구 ▾`:'자치구별 ▾'),subBg:guOpen?'#0a4ec2':'#fff',subColor:guOpen?'#fff':'#0a4ec2',subBorder:'#0a4ec2',expand:()=>this.setState(s=>({guOpen:!s.guOpen}))};})};});
+    const guOn=rs.has('서울')?gu.length:0;
+    const guAll=box(guOn>0,guOn<GU.length);
+    const guItems=GU.map(u=>{const o=rs.has('서울')&&gs.has(u);return{name:u,...box(o,false),count:guCounts[u]?`(${guCounts[u]})`:'',color:o?'#1e2124':'#6d7882',weight:o?600:400,toggle:()=>{const s=new Set(rs.has('서울')?gu:[]);s.has(u)?s.delete(u):s.add(u);this.setGu(GU.filter(x=>s.has(x)));}};});
+    const sd=new Date(sel+'T00:00'),selList=(byDay[sel]||[]).map(mkEv);
+    const mc=modal!=null?CX[modal]:null;
+    const monthCount=new Set(Object.entries(byDay).filter(([k])=>k.startsWith(`${y}-${pad(m+1)}`)).flatMap(([,v])=>v.map(x=>x.c.id))).size;
+    const names=ALL.filter(r=>rs.has(r)).map(r=>r==='서울'&&guPart?(gu.length<=3?`서울(${gu.join('·')})`:`서울(${gu[0]} 외 ${gu.length-1}개 구)`):r);
+    return{
+      guAll,guItems,guAllToggle:()=>this.setGu(guOn===GU.length?[]:GU),
+      regionSummary:names.length===ALL.length&&!guPart?`선택 지역: 전국 · ${m+1}월 ${monthCount}개 단지`:names.length?`선택 지역: ${names.join(', ')} · ${m+1}월 ${monthCount}개 단지`:'조회할 지역을 선택해 주세요.',
+      selectAll:()=>this.setState({regions:ALL,gu:GU,saved:false}),clearAll:()=>this.setRegions([]),
+      savePrefs:()=>{localStorage.setItem('cheongyak-regions',JSON.stringify(regions));localStorage.setItem('cheongyak-seoul-gu',JSON.stringify(gu));this.setState({saved:true});},
+      saveLabel:saved?'저장되었습니다':'관심 지역 저장',
+      groups,
+      phaseChips:PH.map(p=>{const o=ps.has(p.k);return{label:p.label,dot:p.c,fill:o?p.c:'#fff',mark:o?'✓':'',color:o?'#1e2124':'#8a949e',toggle:()=>{const s=new Set(phases);o?s.delete(p.k):s.add(p.k);this.setState({phases:[...s]});}};}),
+      monthTitle:`${y}. ${pad(m+1)}`,
+      prevMonth:()=>this.setState(s=>s.m===0?{y:s.y-1,m:11}:{m:s.m-1}),
+      nextMonth:()=>this.setState(s=>s.m===11?{y:s.y+1,m:0}:{m:s.m+1}),
+      goToday:()=>this.setState({y:2026,m:9,sel:key(TODAY)}),
+      weeks,
+      selTitle:`${sd.getMonth()+1}월 ${sd.getDate()}일(${W[sd.getDay()]}) 일정`,
+      selCount:selList.length,selEvents:selList,selEmpty:selList.length===0,
+      modalOpen:!!mc,closeModal:()=>this.setState({modal:null}),stop:e=>e.stopPropagation(),
+      m:mc?{name:mc.name,region:mc.region,district:mc.district,kind:mc.kind,units:`${mc.units.toLocaleString()}세대`,price:`${mc.price.toLocaleString()}만원`,timeline:mc.events.map(e=>({label:e.label==='당첨발표'||e.label==='계약'?e.label:e.label+(e.label==='접수'?'':' 접수'),date:fmt(e.date),dot:e.c}))}:{timeline:[]},
+      posts:[{cat:'청약가이드',title:'신생아 특별공급, 2026년 바뀐 소득 기준 한눈에 보기',date:'2026.10.18'},{cat:'분양분석',title:'래미안 원펜타스 2차 1순위 경쟁률 분석',date:'2026.10.16'},{cat:'당첨후기',title:'가점 54점으로 경기 남부 당첨된 후기',date:'2026.10.14'},{cat:'청약가이드',title:'무순위 청약, 신청 전에 꼭 확인할 3가지',date:'2026.10.11'},{cat:'분양분석',title:'세종 6-3생활권 분양가, 주변 시세와 비교',date:'2026.10.09'},{cat:'청약가이드',title:'청약통장 납입 인정액 25만원 상향, 지금 바꿔야 할까',date:'2026.10.06'}],
+      cats:[{name:'전체',n:248},{name:'청약일정',n:96},{name:'분양분석',n:71},{name:'청약가이드',n:52},{name:'당첨후기',n:29}],
+      popular:[{rank:1,title:'청약 가점 계산법 총정리 (2026 최신)'},{rank:2,title:'특별공급 중복 신청, 되는 것과 안 되는 것'},{rank:3,title:'서울 분양가 상한제 단지 리스트'},{rank:4,title:'계약금 10% vs 5%, 자금 계획 세우기'}],
+      tags:['청약가점','특별공급','무순위','분양가상한제','신혼부부','생애최초','서울분양','경기분양']
+    };
+  }
+}
+</script>
+</body>
+</html>
