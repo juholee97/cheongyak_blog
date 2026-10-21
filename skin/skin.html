@@ -34,6 +34,11 @@
           <span class="crumb">홈 › 청약일정</span>
           <h1>전국 청약 일정</h1>
         </div>
+        <button type="button" class="m-region" data-act="fopen" aria-label="지역 선택 열기">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>
+          <span data-ref="regionPill">전국</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
         <div class="cal-meta">
           <span>기준일시 <b data-ref="updated">-</b></span>
           <span class="sep">|</span>
@@ -41,11 +46,13 @@
         </div>
       </div>
 
-      <div class="filter">
+      <button type="button" class="sheet-backdrop" data-act="fclose" aria-label="닫기"></button>
+      <div class="filter" role="region" aria-label="지역 선택">
+        <div class="sheet-head"><span class="sheet-title">지역 선택</span><button type="button" class="sheet-all" data-act="all">전체 선택</button></div>
         <div data-ref="groups"></div>
         <div class="filter-foot">
           <span class="filter-summary" data-ref="summary"></span>
-          <button type="button" class="btn f-open" data-act="fopen" data-ref="fopen">지역 선택 ▾</button>
+          <button type="button" class="btn f-open" data-act="fclose" data-ref="fopen">단지 보기</button>
           <div class="filter-btns">
             <button type="button" class="btn" data-act="all">전체 선택</button>
             <button type="button" class="btn" data-act="none">초기화</button>
@@ -79,6 +86,7 @@
           <p class="day-note">※ 일정은 입주자모집공고 기준이며 사업주체 사정에 따라 변경될 수 있습니다.</p>
         </aside>
       </div>
+      <div class="week-view" data-ref="week"></div>
     </div>
     <div data-ref="modal"></div>
   </section>
@@ -210,6 +218,11 @@
     </div>
   </footer>
 </div>
+<nav class="m-tabbar" aria-label="주요 메뉴">
+  <a href="[##_blog_link_##]" data-tab="cal"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>달력</a>
+  <a href="[##_blog_link_##]#week" data-tab="week"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1"/><circle cx="4.5" cy="12" r="1"/><circle cx="4.5" cy="18" r="1"/></svg>이번 주</a>
+  <a href="[##_blog_link_##]#posts" data-tab="blog"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3.5h9l4 4v13H6z"/><path d="M14.5 3.5v4.5H19M9 12h7M9 16h7"/></svg>블로그</a>
+</nav>
 <script>window.CHEONGYAK_SCHEDULE_URL = '[##_var_schedule-url_##]';</script>
 <script src="./images/calendar.js"></script>
 </s_t3>

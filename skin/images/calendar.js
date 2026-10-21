@@ -23,8 +23,31 @@
     if (best) best.classList.add('is-active');
   })();
 
+  // 휴대폰 하단 탭 바: 홈에서는 페이지 이동 없이 달력 / 이번 주 / 블로그를 바꾼다(CSS가 700px 이하에서만 적용)
+  var isHome = document.body.id === 'tt-body-index';
+  var tabbar = document.querySelector('.m-tabbar');
+  function setTab(t) {
+    ['cal', 'week', 'blog'].forEach(function (x) { document.body.classList.toggle('m-tab-' + x, isHome && x === t); });
+    if (tabbar) tabbar.querySelectorAll('a').forEach(function (a) {
+      var on = a.dataset.tab === t;
+      a.classList.toggle('on', on);
+      if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
+    });
+  }
+  // 탭 주소(#week, #posts)는 일부러 요소 id와 겹치지 않게 해서 브라우저가 그 위치로 스크롤하지 않게 한다
+  setTab(!isHome ? 'blog' : /[?&]page=/.test(location.search) ? 'blog' : { '#week': 'week', '#posts': 'blog' }[location.hash] || 'cal');
+  if (tabbar && isHome) tabbar.addEventListener('click', function (e) {
+    var a = e.target.closest('a[data-tab]');
+    if (!a) return;
+    e.preventDefault();
+    setTab(a.dataset.tab);
+    history.replaceState(null, '', a.dataset.tab === 'cal' ? location.pathname + location.search : a.hash);
+    window.scrollTo(0, 0);
+  });
+
   var root = document.getElementById('cal');
-  if (!root || document.body.id !== 'tt-body-index') return;
+  if (!root || !isHome) return;
+  var mobile = window.matchMedia('(max-width: 700px)');
 
   var GROUPS = [
     { name: '수도권', items: ['서울', '경기', '인천'] },
@@ -139,9 +162,14 @@
     refs.summary.textContent = names.length === ALL.length && !guPart ? '선택 지역: 전국' + tail
       : names.length ? '선택 지역: ' + names.join(', ') + tail : '조회할 지역을 선택해 주세요.';
     refs.save.textContent = S.saved ? '저장되었습니다' : '관심 지역 저장';
-    refs.fopen.textContent = S.filterOpen ? '접기 ▴' : '지역 선택 ▾';
-    refs.fopen.setAttribute('aria-expanded', S.filterOpen);
-    root.querySelector('.filter').classList.toggle('collapsed', !S.filterOpen);
+    // 휴대폰: 지역 알약 버튼 + 바텀시트
+    var picked = ALL.filter(function (r) { return rs.has(r); });
+    var first0 = picked[0] === '서울' && guPart && picked.length === 1 ? '서울 ' + S.gu.length + '개 구' : picked[0];
+    refs.regionPill.textContent = picked.length === ALL.length && !guPart ? '전국' : !picked.length ? '지역 선택'
+      : picked.length === 1 ? first0 : first0 + ' 외 ' + (picked.length - 1);
+    refs.fopen.textContent = monthIds.size + '개 단지 보기';
+    root.querySelector('.filter').classList.toggle('open', S.filterOpen);
+    root.classList.toggle('sheet-open', S.filterOpen);
 
     var guOn = rs.has('서울') ? S.gu.length : 0;
     var subRow = '<div class="f-row sub"><button type="button" class="f-head" data-act="guall">' + box(guOn > 0, guOn < GU.length) + '└ 서울 자치구</button>' +
@@ -192,7 +220,7 @@
         list.forEach(function (x) { has[x.p.k] = true; });
         var dots = list.length ? '<div class="day-dots">' + PH.filter(function (p) { return has[p.k]; }).map(function (p) {
           return '<i style="' + pvars(p) + '"></i>';
-        }).join('') + '<span>' + list.length + '</span></div>' : '';
+        }).join('') + '<span>' + list.length + '건</span></div>' : '';
         html += '<div class="day' + (k === S.sel ? ' sel' : '') + (cur.getMonth() !== S.m ? ' out' : '') + '" data-act="sel" data-d="' + k + '">' +
           '<div class="day-num-row"><span class="' + numCls + '">' + cur.getDate() + '</span></div><div class="day-evs">' + evs + '</div>' + dots + '</div>';
         cur.setDate(cur.getDate() + 1);
@@ -201,17 +229,30 @@
     }
     refs.weeks.innerHTML = html;
 
+    var item = function (x) {
+      return '<button type="button" class="day-item" data-act="open" data-id="' + esc(x.it.id) + '">' +
+        '<span class="day-item-top"><span class="badge" style="' + pvars(x.p) + '">' + x.p.label + '</span>' +
+        '<span class="day-item-where">' + esc(x.it.region + ' ' + (x.it.district || '')) + ' · ' + esc(x.it.kind) + '</span></span>' +
+        '<span class="day-item-name">' + esc(x.it.name) + '</span></button>';
+    };
+
+    // 이번 주 (휴대폰 "이번 주" 탭): 오늘부터 7일
+    var wk = '', wEnd = new Date(today); wEnd.setDate(wEnd.getDate() + 6);
+    for (var j = 0; j < 7; j++) {
+      var wd = new Date(today); wd.setDate(wd.getDate() + j);
+      var wl = by[key(wd)] || [];
+      wk += '<section class="wk-day"><div class="wk-head"><span class="wk-title">' + (wd.getMonth() + 1) + '월 ' + wd.getDate() + '일 (' + W[wd.getDay()] + ')</span>' +
+        (j === 0 ? '<span class="wk-today">오늘</span>' : '') + '<span class="wk-count">' + (wl.length ? wl.length + '건' : '') + '</span></div>' +
+        (S.status === 'loading' ? '<div class="skel"></div>' : wl.length ? wl.map(item).join('') : '<p class="wk-empty">일정 없음</p>') + '</section>';
+    }
+    refs.week.innerHTML = '<div class="wk-top"><b>이번 주</b> ' + (today.getMonth() + 1) + '월 ' + today.getDate() + '일 ~ ' + (wEnd.getMonth() + 1) + '월 ' + wEnd.getDate() + '일</div>' + wk;
+
     var sd = parse(S.sel), sl = by[S.sel] || [];
     refs.dayTitle.textContent = (sd.getMonth() + 1) + '월 ' + sd.getDate() + '일(' + W[sd.getDay()] + ') 일정';
     refs.dayCount.innerHTML = S.status === 'ok' ? '총 <b>' + sl.length + '</b>건' : '';
     refs.dayList.innerHTML = S.status === 'error' ? '<p class="day-empty">일정을 불러오지 못했습니다. 잠시 후 새로고침해 주세요.</p>'
       : S.status === 'loading' ? '<div class="skel"></div><div class="skel"></div>'
-      : sl.length ? sl.map(function (x) {
-        return '<button type="button" class="day-item" data-act="open" data-id="' + esc(x.it.id) + '">' +
-          '<span class="day-item-top"><span class="badge" style="' + pvars(x.p) + '">' + x.p.label + '</span>' +
-          '<span class="day-item-where">' + esc(x.it.region + ' ' + (x.it.district || '')) + ' · ' + esc(x.it.kind) + '</span></span>' +
-          '<span class="day-item-name">' + esc(x.it.name) + '</span></button>';
-      }).join('') : '<p class="day-empty">선택한 지역의 일정이 없습니다.</p>';
+      : sl.length ? sl.map(item).join('') : '<p class="day-empty">선택한 지역의 일정이 없습니다.</p>';
 
     var u = /^(\d{4})-(\d\d)-(\d\d)T(\d\d):(\d\d)/.exec(S.updatedAt);
     refs.updated.textContent = u ? u[1] + '.' + u[2] + '.' + u[3] + ' ' + u[4] + ':' + u[5] : '-';
@@ -221,7 +262,7 @@
 
   function renderModal() {
     var it = S.modal && S.data.filter(function (x) { return x.id === S.modal; })[0];
-    document.body.style.overflow = it ? 'hidden' : '';
+    document.body.style.overflow = it || (S.filterOpen && mobile.matches) ? 'hidden' : '';
     if (!it) { refs.modal.innerHTML = ''; return; }
     var fmt = function (s) { var d = parse(s); return d.getFullYear() + '.' + pad(d.getMonth() + 1) + '.' + pad(d.getDate()) + ' (' + W[d.getDay()] + ')'; };
     var rows = '<div class="th">공급 세대</div><div>' + (it.units ? it.units.toLocaleString() + '세대' : '-') + '</div>' +
@@ -283,13 +324,14 @@
       case 'prev': return set(S.m === 0 ? { y: S.y - 1, m: 11 } : { m: S.m - 1 });
       case 'next': return set(S.m === 11 ? { y: S.y + 1, m: 0 } : { m: S.m + 1 });
       case 'today': return set({ y: today.getFullYear(), m: today.getMonth(), sel: key(today) });
-      case 'fopen': return set({ filterOpen: !S.filterOpen });
+      case 'fopen': return set({ filterOpen: true });
+      case 'fclose': return set({ filterOpen: false });
       case 'tocal': return root.querySelector('.cal-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
       case 'sel': {
         set({ sel: d.d });
         // 휴대폰: 목록이 화면 아래에 있으면 목록으로 내려 준다
         var card = root.querySelector('.day-card');
-        if (window.matchMedia('(max-width: 700px)').matches && card.getBoundingClientRect().top > window.innerHeight - 80) {
+        if (mobile.matches && card.getBoundingClientRect().top > window.innerHeight - 140) {
           card.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
         return;
@@ -299,7 +341,9 @@
     }
   });
   document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape' && S.modal) set({ modal: null });
+    if (e.key !== 'Escape') return;
+    if (S.modal) set({ modal: null });
+    else if (S.filterOpen) set({ filterOpen: false });
   });
 
   render();
