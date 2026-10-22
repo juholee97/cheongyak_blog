@@ -32,7 +32,7 @@ export function render(d) {
   return out.join('\n');
 }
 
-const textOf = (d) => [d.title, d.subtitle, ...(d.intro || []), ...d.sections.flatMap((s) => [s.h, ...(s.notes || []), s.foot || '', ...(s.table ? [...s.table.head.flat(), ...s.table.rows.flat(2)] : [])])].filter(Boolean).join('\n');
+const textOf = (d) => [d.title, d.subtitle, d.thumbTitle, ...(d.thumbStats || []).flat(), ...(d.intro || []), ...d.sections.flatMap((s) => [s.h, ...(s.notes || []), s.foot || '', ...(s.table ? [...s.table.head.flat(), ...s.table.rows.flat(2)] : [])])].filter(Boolean).join('\n');
 
 export async function checkGuide(d) {
   const issues = [];
