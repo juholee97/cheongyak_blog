@@ -38,7 +38,7 @@ export async function checkGuide(d) {
   const issues = [];
   if (render(d) !== d.html) issues.push('본문이 다시 그린 결과와 다릅니다(node posts/guide.mjs 로 다시 그리기).');
   if (!d.sources?.length || !d.checked) issues.push('출처·확인일 없음');
-  const text = textOf(d);
+  const text = textOf(d).split('기관추천').join('기관'); // 공식 명칭 '기관추천 특별공급'은 권유 표현이 아님
   BANNED.forEach((b) => { if (text.includes(b)) issues.push(`금지 표현 "${b}"`); });
   // 숫자 대조: 근거 문서에 같은 숫자가 있어야 한다(쉼표 무시, 연도·날짜 조각 포함)
   const doc = (await readFile(join(ROOT, d.factsDoc), 'utf8')).replace(/,/g, '');
