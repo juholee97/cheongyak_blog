@@ -102,10 +102,11 @@ export function render(w, summary = [], images = []) {
   const out = [];
   if (has.has('weekly')) out.push(IMG('weekly')); // 첫 이미지 = 티스토리 대표 이미지
   summary.filter(Boolean).forEach((s) => out.push(`<p>${esc(s)}</p>`));
+  // 티스토리 편집기는 <b>의 style을 지운다(2026-10-23 저장본 확인) → 꾸밀 글자는 <span>으로
   // 단계별 수: 위쪽 색 막대 + 큰 숫자(홈 첫 화면·썸네일과 같은 모양). 편집기가 지키는 표로 그린다
-  const stat = (label, n, c) => `<td style="width:33.3%;border-top:6px solid ${c};border-bottom:0;padding:10px 0 4px;vertical-align:top"><span style="font-size:14px;font-weight:700;color:${C.muted}">${label}</span><br><b style="font-size:36px;font-weight:900;line-height:1.15;color:${c}">${n}</b><span style="font-size:15px;font-weight:700;margin-left:2px">곳</span></td>`;
+  const stat = (label, n, c) => `<td style="width:33.3%;border-top:6px solid ${c};border-bottom:0;padding:10px 0 4px;vertical-align:top"><span style="font-size:14px;font-weight:700;color:${C.muted}">${label}</span><br><span style="font-size:36px;font-weight:900;line-height:1.15;color:${c}">${n}</span><span style="font-size:15px;font-weight:700;margin-left:2px">곳</span></td>`;
   out.push(`<table style="border-collapse:separate;border-spacing:12px 0;width:100%;margin:20px 0 4px;table-layout:fixed;border:0"><tbody><tr>${stat('접수', w.facts.receipt, C.receipt)}${stat('당첨자 발표', w.facts.win, C.announce)}${stat('계약', w.facts.con, C.contract)}</tr></tbody></table>
-<p style="font-size:14px;color:${C.muted};margin:0 0 20px"><b style="color:${C.ink}">기간</b> ${full(w.start)} ~ ${full(w.end)}${kindText ? ` · <b style="color:${C.ink}">접수 종류</b> ${esc(kindText)}` : ''}<br>기준: ${updatedLabel(w.updatedAt)} 수집 · 출처: 청약홈(한국부동산원) 분양정보, 공공데이터포털</p>`);
+<p style="font-size:14px;color:${C.muted};margin:0 0 20px"><span style="color:${C.ink};font-weight:700">기간</span> ${full(w.start)} ~ ${full(w.end)}${kindText ? ` · <span style="color:${C.ink};font-weight:700">접수 종류</span> ${esc(kindText)}` : ''}<br>기준: ${updatedLabel(w.updatedAt)} 수집 · 출처: 청약홈(한국부동산원) 분양정보, 공공데이터포털</p>`);
 
   out.push('<h2>이번 주 접수 단지</h2>');
   if (!w.receipt.length) out.push('<p>이번 주에 접수가 있는 단지가 없습니다.</p>');
