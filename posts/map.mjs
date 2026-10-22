@@ -10,6 +10,7 @@ import { build } from './weekly.mjs';
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const API = 'https://api.vworld.kr/req';
 const W = 1200, H = 630, TILE = 256;
+const BAND = 108, MH = H - BAND; // 위쪽 단지 정보 띠 높이, 그 아래 지도 높이(이름이 길어도 지도를 가리지 않게)
 
 // "경기도 의정부시 의정부동 253-19번지 일원" → "경기도 의정부시 의정부동 253-19"
 export function cleanAddress(a) {
@@ -101,16 +102,16 @@ export async function mapHtml(it, key, radius = 1000) {
   const all = rings.flat().map(([x, y]) => project(x, y, z));
   const cx = (Math.min(...all.map((p) => p[0])) + Math.max(...all.map((p) => p[0]))) / 2;
   const cy = (Math.min(...all.map((p) => p[1])) + Math.max(...all.map((p) => p[1]))) / 2;
-  const ox = cx - W / 2, oy = cy - H / 2; // 그림 왼쪽 위의 전역 픽셀
+  const ox = cx - W / 2, oy = cy - MH / 2; // 지도 영역 왼쪽 위의 전역 픽셀
   // 반경 원: 500m는 항상, 1km 모드면 1km도 (중심 = 필지 중심)
   const radii = radius >= 1000 ? [500, 1000] : [500];
   const circles = radii.map((r) => {
     const rp = r / metersPerPx(pt.lat, z);
-    return `<circle cx="${W / 2}" cy="${H / 2}" r="${rp.toFixed(1)}" fill="none" stroke="#0b3a96" stroke-width="3" stroke-dasharray="10 8" opacity=".75"/>
-<text x="${W / 2}" y="${(H / 2 - rp + 26).toFixed(1)}" text-anchor="middle" font-size="20" font-weight="800" fill="#0b3a96" stroke="#fff" stroke-width="5" paint-order="stroke">반경 ${r >= 1000 ? r / 1000 + 'km' : r + 'm'}</text>`;
+    return `<circle cx="${W / 2}" cy="${MH / 2}" r="${rp.toFixed(1)}" fill="none" stroke="#0b3a96" stroke-width="3" stroke-dasharray="10 8" opacity=".75"/>
+<text x="${W / 2}" y="${(MH / 2 - rp + 26).toFixed(1)}" text-anchor="middle" font-size="20" font-weight="800" fill="#0b3a96" stroke="#fff" stroke-width="5" paint-order="stroke">반경 ${r >= 1000 ? r / 1000 + 'km' : r + 'm'}</text>`;
   }).join('');
   const tiles = [];
-  for (let ty = Math.floor(oy / TILE); ty <= Math.floor((oy + H) / TILE); ty++)
+  for (let ty = Math.floor(oy / TILE); ty <= Math.floor((oy + MH) / TILE); ty++)
     for (let tx = Math.floor(ox / TILE); tx <= Math.floor((ox + W) / TILE); tx++)
       tiles.push(`<img src="${await tileUri(z, tx, ty, key)}" style="position:absolute;left:${tx * TILE - ox}px;top:${ty * TILE - oy}px;width:${TILE}px;height:${TILE}px">`);
   const paths = parcel ? rings.map((r) => r.map(([x, y]) => project(x, y, z)).map(([x, y], i) => `${i ? 'L' : 'M'}${(x - ox).toFixed(1)},${(y - oy).toFixed(1)}`).join('') + 'Z').join('') : '';
@@ -118,16 +119,15 @@ export async function mapHtml(it, key, radius = 1000) {
   const html = `<!doctype html><html lang="ko"><head><meta charset="utf-8">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap">
 <style>body{margin:0;width:${W}px;height:${H}px;overflow:hidden;font-family:'Noto Sans KR',sans-serif;-webkit-font-smoothing:antialiased}</style></head><body>
-<div style="position:relative;width:${W}px;height:${H}px;overflow:hidden;background:#eef1f5">${tiles.join('')}
-<svg width="${W}" height="${H}" style="position:absolute;left:0;top:0">
+<div style="height:${BAND}px;box-sizing:border-box;padding:18px 32px;background:#fff;border-bottom:1px solid #e3e6ec;display:flex;flex-direction:column;justify-content:center;gap:2px">
+  <div style="font-size:17px;font-weight:700;color:#4b5260;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(it.kind)} · ${esc([it.region, it.district].filter(Boolean).join(' '))} · ${parcel ? '부지 위치(대표 필지)' : '부지 위치(지점)'} · ${esc(address)}</div>
+  <div style="font-size:${it.name.length > 26 ? 30 : 36}px;font-weight:900;letter-spacing:-0.04em;color:#1c1f24;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(it.name)}</div>
+</div>
+<div style="position:relative;width:${W}px;height:${MH}px;overflow:hidden;background:#eef1f5">${tiles.join('')}
+<svg width="${W}" height="${MH}" style="position:absolute;left:0;top:0">
 ${circles}
 ${paths ? `<path d="${paths}" fill="rgba(11,79,196,.22)" stroke="#0b4fc4" stroke-width="5" stroke-linejoin="round"/>` : `<circle cx="${px - ox}" cy="${py - oy}" r="16" fill="#0b4fc4" stroke="#fff" stroke-width="5"/>`}
 </svg>
-<div style="position:absolute;left:32px;top:28px;background:#fff;border-radius:16px;padding:18px 24px;box-shadow:0 10px 30px -12px rgba(0,0,0,.35);max-width:760px">
-  <div style="font-size:20px;font-weight:700;color:#4b5260">${esc(it.kind)} · ${esc([it.region, it.district].filter(Boolean).join(' '))}</div>
-  <div style="font-size:40px;font-weight:900;letter-spacing:-0.04em;color:#1c1f24;line-height:1.2;word-break:keep-all">${esc(it.name)}</div>
-  <div style="font-size:19px;color:#4b5260;margin-top:6px">${parcel ? '부지 위치(대표 필지)' : '부지 위치(지점)'} · ${esc(address)}</div>
-</div>
 <div style="position:absolute;right:0;bottom:0;background:rgba(255,255,255,.92);padding:8px 16px;font-size:16px;color:#4b5260">지도: 브이월드(국토교통부) · 필지: 연속지적도 · aulee.tistory.com</div>
 </div></body></html>`;
   return { html, zoom: z, parcel: !!parcel };
