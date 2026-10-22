@@ -108,14 +108,14 @@ export function render(w, summary = [], images = []) {
   out.push(`<table style="border-collapse:separate;border-spacing:12px 0;width:100%;margin:20px 0 4px;table-layout:fixed;border:0"><tbody><tr>${stat('접수', w.facts.receipt, C.receipt)}${stat('당첨자 발표', w.facts.win, C.announce)}${stat('계약', w.facts.con, C.contract)}</tr></tbody></table>
 <p style="font-size:14px;color:${C.muted};margin:0 0 20px"><span style="color:${C.ink};font-weight:700">기간</span> ${full(w.start)} ~ ${full(w.end)}${kindText ? ` · <span style="color:${C.ink};font-weight:700">접수 종류</span> ${esc(kindText)}` : ''}<br>기준: ${updatedLabel(w.updatedAt)} 수집 · 출처: 청약홈(한국부동산원) 분양정보, 공공데이터포털</p>`);
 
-  out.push('<h2>이번 주 접수 단지</h2>');
+  out.push('<h2 style="font-weight:700">이번 주 접수 단지</h2>');
   if (!w.receipt.length) out.push('<p>이번 주에 접수가 있는 단지가 없습니다.</p>');
   else out.push(`<table style="border-collapse:collapse;width:100%"><thead><tr><th ${TH}>이번 주 접수</th><th ${TH}>단지명</th><th ${TH}>지역</th><th ${TH}>종류</th><th ${TH}>공급</th></tr></thead><tbody>
 ${w.receipt.map(({ it, firstP }) => `<tr><td ${TD}>${span(firstP)} ${label(it, firstP.k)}</td><td ${TD}>${esc(it.name)}</td><td ${TD}>${esc(where(it))}</td><td ${TD}>${esc(it.kind)}</td><td ${TD}>${it.units ? it.units.toLocaleString() + '세대' : '-'}</td></tr>`).join('\n')}
 </tbody></table>`);
 
   if (w.receipt.length) {
-    out.push('<h2>단지별 일정</h2>');
+    out.push('<h2 style="font-weight:700">단지별 일정</h2>');
     // 단지마다 테두리 상자 하나: 번호 + 하이라이트한 단지명 → 카드 → 지도 → 요약 → 일정표 → 공고 링크
     w.receipt.forEach(({ it }, n) => {
       const facts = [esc(where(it)), esc(it.kind), it.units ? it.units.toLocaleString() + '세대' : null, it.pricePerPyeong ? `분양가(3.3㎡) ${it.pricePerPyeong.toLocaleString()}만원*` : null].filter(Boolean).join(' · ');
@@ -130,10 +130,10 @@ ${it.phases.map((p) => `<tr><th ${TH}>${label(it, p.k)}</th><td ${TD}>${span(p, 
   }
 
   const list = (rows, fmt) => (rows.length ? `<ul>\n${rows.map(fmt).join('\n')}\n</ul>` : '<p>이번 주에는 없습니다.</p>');
-  out.push('<h2>이번 주 당첨자 발표</h2>', list(w.win, ({ it, date }) => `<li>${md(date)} ${esc(it.name)} · ${esc(where(it))}</li>`));
-  out.push('<h2>이번 주 계약</h2>', list(w.con, ({ it, p }) => `<li>${span(p)} ${esc(it.name)} · ${esc(where(it))}</li>`));
+  out.push('<h2 style="font-weight:700">이번 주 당첨자 발표</h2>', list(w.win, ({ it, date }) => `<li>${md(date)} ${esc(it.name)} · ${esc(where(it))}</li>`));
+  out.push('<h2 style="font-weight:700">이번 주 계약</h2>', list(w.con, ({ it, p }) => `<li>${span(p)} ${esc(it.name)} · ${esc(where(it))}</li>`));
 
-  out.push(`<h2>지역별로 보려면</h2>
+  out.push(`<h2 style="font-weight:700">지역별로 보려면</h2>
 <p>시·도와 서울 자치구별 일정은 청약일정 메뉴의 청약 달력에서 매일 아침 갱신됩니다. <a href="${CAL_URL}">청약 달력 바로가기</a></p>`);
   if (w.receipt.some(({ it }) => it.pricePerPyeong)) out.push('<p style="font-size:13px;color:#4b5260">* 분양가(3.3㎡): 주택형별 최고분양가를 공급면적 3.3㎡당으로 환산해 세대수로 가중 평균한 값입니다.</p>');
   out.push(`<p style="font-size:13px;color:#4b5260">※ ${DISCLAIMER}</p>`);
