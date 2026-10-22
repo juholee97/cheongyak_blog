@@ -9,7 +9,7 @@
 - `skin/` — 티스토리 스킨(스킨 편집기에 그대로 업로드). `images/calendar.js`가 스킨 옵션 `schedule-url`에서 JSON을 읽는다.
 - `preview/serve.mjs` — 티스토리 치환자를 흉내 내는 로컬 미리보기(`/` 홈, `/post` 글, `/category` 목록). `--check`는 자동 점검.
 - `posts/weekly.mjs` — schedule.json → 주간 글 초안(`drafts/{월요일}_weekly.json` + 수집본 사본 `.data.json`). `--render`로 summary 고친 뒤 본문 다시 그림. `posts/check.mjs` — 본문 재현·요약 숫자·금지 표현·필수 문구 검수. 미리보기 `/draft/{이름}`. 설계: `docs/weekly-post-design.md`.
-- `tistory/` — 임시저장 자동화(Playwright 1.63.0, `npm install`). `common.mjs` 전용 프로필 `data/tistory-session/`(커밋 금지), `login.mjs`(+`tistory_login.bat`, 로그인은 사람이), `probe.mjs` 글쓰기 화면 읽기 전용 실측 → `tistory/probe-out/`. 셀렉터는 실측 근거로만.
+- `tistory/` — 임시저장 자동화(Playwright 1.63.0, `npm install`). `common.mjs` 전용 프로필 `data/tistory-session/`(커밋 금지), `login.mjs`(+`tistory_login.bat`, 로그인은 사람이), `probe.mjs` 글쓰기 화면 읽기 전용 실측 → `tistory/probe-out/`. 셀렉터는 실측 근거로만(`tistory/selectors.json`). `draft.mjs --approved` 임시저장 + 저장본 재대조, `--verify-only` 대조만. 절차: `.claude/skills/weekly-post/SKILL.md`, 실행기 `weekly_post.bat`(초안·미리보기만).
 - `preview.bat` — 미리보기 실행기(`preview.bat check` = 자동 점검). 바로가기는 `D:\AI_산출물`.
 - 디자인 원본: `docs/design_handoff/README.md` (v2, 레퍼런스 `design-reference-v2.dc.html`). 이 문서와 다르게 정한 점은 `README.md` 데이터 메모.
 
@@ -23,6 +23,7 @@
 ## 변경 이력
 | 날짜 | 변경 | 사유 |
 |------|------|------|
+| 2026-10-22 | 3단계 3·4: 로그인 실행기(쿠키 따로 저장), 글쓰기 화면 실측, draft.mjs, 첫 임시저장(10월 26일 주 — 편집기 자동 임시저장으로 저장됨, 재대조 통과), weekly_post.bat, 초안 덮어쓰기 방지 | 티스토리 편집기 자동 임시저장 → 저장 확인은 저장본 재대조로 |
 | 2026-10-22 | 3단계 1·2: 수집기 단계 종료일(end)·모집공고일(noticeDate), 주간 초안 생성·검수·미리보기 | 주간 청약 일정 글 자동 초안 |
 | 2026-10-22 | 블로그 aulee.tistory.com 개설·스킨 적용(로고 "우"), 메뉴 밑줄을 현재 페이지 기준으로, 방명록 제목 중복 제거, 메뉴 "당첨후기" → "대출·정책" | 운영자가 당첨 당사자가 아니라 후기를 쓸 근거가 없음(사실 규칙) · 처음 범위(정부 지원 대출·개정사항)와 맞춤 |
 | 2026-10-21 | 1단계: 폴더·수집기·Actions·스킨·미리보기 | 플랫폼 검토 후 티스토리 본진 결정 |

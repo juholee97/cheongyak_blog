@@ -141,10 +141,15 @@ async function main() {
   }
   const start = arg('--week') || nextMonday();
   if (!/^\d{4}-\d{2}-\d{2}$/.test(start) || toDate(start).getUTCDay() !== 1) throw new Error(`--week는 월요일 날짜(YYYY-MM-DD): ${start}`);
+  const base = `drafts/${start}_weekly`;
+  // 이미 있는 초안(요약·승인·저장 기록이 붙은)을 실수로 덮어쓰지 않는다
+  if (!process.argv.includes('--force') && (await readFile(base + '.json').then(() => true, () => false))) {
+    console.log(`${base}.json이 이미 있습니다 — 그대로 둡니다. 새로 만들려면 --force (요약이 지워짐).`);
+    return;
+  }
   const data = await loadData(arg('--data') || SCHEDULE_URL);
   const draft = draftOf(data, start);
   await mkdir('drafts', { recursive: true });
-  const base = `drafts/${start}_weekly`;
   await writeFile(base + '.data.json', JSON.stringify(data)); // 검수·다시 그리기용 수집본 사본
   await writeFile(base + '.json', JSON.stringify(draft, null, 2));
   console.log(`${base}.json — ${draft.title}`);
