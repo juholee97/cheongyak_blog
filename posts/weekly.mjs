@@ -101,7 +101,8 @@ export function render(w, summary = [], images = []) {
   const kindText = Object.entries(w.facts.kinds).map(([k, n]) => `${k} ${n}`).join(' · ');
   const out = [];
   if (has.has('weekly')) out.push(IMG('weekly')); // 첫 이미지 = 티스토리 대표 이미지
-  summary.filter(Boolean).forEach((s) => out.push(`<p>${esc(s)}</p>`));
+  // 요약은 한 문단으로(티스토리 자동 요약이 문단 사이 띄어쓰기를 지워 문장이 붙는 것 방지)
+  if (summary.filter(Boolean).length) out.push(`<p>${summary.filter(Boolean).map(esc).join(' ')}</p>`);
   // 티스토리 편집기는 <b>의 style을 지운다(2026-10-23 저장본 확인) → 꾸밀 글자는 <span>으로
   // 단계별 수: 위쪽 색 막대 + 큰 숫자(홈 첫 화면·썸네일과 같은 모양). 편집기가 지키는 표로 그린다
   const stat = (label, n, c) => `<td style="width:33.3%;border-top:6px solid ${c};border-bottom:0;padding:10px 0 4px;vertical-align:top"><span style="font-size:14px;font-weight:700;color:${C.muted}">${label}</span><br><span style="font-size:36px;font-weight:900;line-height:1.15;color:${c}">${n}</span><span style="font-size:15px;font-weight:700;margin-left:2px">곳</span></td>`;

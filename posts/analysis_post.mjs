@@ -172,7 +172,7 @@ export function render(f, notes = {}, images = []) {
   const x = renderFacts(f), has = new Set(images.map((i) => i.key));
   const img = (k) => (has.has(k) ? IMG(k) : '');
   return [
-    img('card'), note(notes.intro), H2('한눈에'), x.glance, x.types,
+    img('card'), (notes.intro || []).filter(Boolean).length ? `<p>${notes.intro.filter(Boolean).map(esc).join(' ')}</p>` : '', H2('한눈에'), x.glance, x.types,
     H2('분양가와 주변 실거래'), x.leasehold, note(notes.price), x.trades,
     H2('입지 — 교통·학교'), img('map'), note(notes.place), x.place, x.busRoutes,
     H2('자격·규제'), note(notes.rules), x.rules,

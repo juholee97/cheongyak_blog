@@ -7,6 +7,19 @@
     e.textContent = e.textContent.replace(/[()\s]/g, '');
   });
 
+  // 글 목록 다듬기: 티스토리 요약은 문단 사이 띄어쓰기를 지워서("…입니다.전용") 문장 끝 뒤에 한 칸, 오늘 글은 시각만 나와서 "오늘"로
+  document.querySelectorAll('.card .summary').forEach(function (e) {
+    var t = e.textContent.replace(/([다요죠까])\.(?=[가-힣A-Za-z])/g, '$1. ');
+    // 본문 첫 문장들만: 160자 안의 마지막 문장 끝에서 자른다(뒤에 소제목·표 글자가 붙지 않게)
+    var cut = -1, re = /[다요죠까]\.(\s|$)/g, m;
+    while ((m = re.exec(t)) && m.index < 160) cut = m.index + 2;
+    e.textContent = cut > 0 ? t.slice(0, cut) : t;
+  });
+  document.querySelectorAll('.card .date').forEach(function (e) {
+    var t = e.firstChild;
+    if (t && t.nodeType === 3 && /^\s*\d{1,2}:\d{2}(:\d{2})?\s*$/.test(t.nodeValue)) t.nodeValue = '오늘';
+  });
+
   // 현재 페이지에 해당하는 메뉴에 밑줄 (글 화면은 그 글의 카테고리 기준, 가장 길게 맞는 링크 하나)
   (function () {
     var norm = function (u) {
