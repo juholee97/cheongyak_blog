@@ -106,8 +106,8 @@ export async function mapHtml(it, key, radius = 1000) {
   const radii = radius >= 1000 ? [500, 1000] : [500];
   const circles = radii.map((r) => {
     const rp = r / metersPerPx(pt.lat, z);
-    return `<circle cx="${W / 2}" cy="${H / 2}" r="${rp.toFixed(1)}" fill="none" stroke="#0f2557" stroke-width="3" stroke-dasharray="10 8" opacity=".75"/>
-<text x="${W / 2}" y="${(H / 2 - rp + 26).toFixed(1)}" text-anchor="middle" font-size="20" font-weight="800" fill="#0f2557" stroke="#fff" stroke-width="5" paint-order="stroke">반경 ${r >= 1000 ? r / 1000 + 'km' : r + 'm'}</text>`;
+    return `<circle cx="${W / 2}" cy="${H / 2}" r="${rp.toFixed(1)}" fill="none" stroke="#0b3a96" stroke-width="3" stroke-dasharray="10 8" opacity=".75"/>
+<text x="${W / 2}" y="${(H / 2 - rp + 26).toFixed(1)}" text-anchor="middle" font-size="20" font-weight="800" fill="#0b3a96" stroke="#fff" stroke-width="5" paint-order="stroke">반경 ${r >= 1000 ? r / 1000 + 'km' : r + 'm'}</text>`;
   }).join('');
   const tiles = [];
   for (let ty = Math.floor(oy / TILE); ty <= Math.floor((oy + H) / TILE); ty++)
@@ -116,19 +116,19 @@ export async function mapHtml(it, key, radius = 1000) {
   const paths = parcel ? rings.map((r) => r.map(([x, y]) => project(x, y, z)).map(([x, y], i) => `${i ? 'L' : 'M'}${(x - ox).toFixed(1)},${(y - oy).toFixed(1)}`).join('') + 'Z').join('') : '';
   const [px, py] = project(pt.lon, pt.lat, z);
   const html = `<!doctype html><html lang="ko"><head><meta charset="utf-8">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
-<style>body{margin:0;width:${W}px;height:${H}px;overflow:hidden;font-family:Pretendard,sans-serif;letter-spacing:-0.02em}</style></head><body>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap">
+<style>body{margin:0;width:${W}px;height:${H}px;overflow:hidden;font-family:'Noto Sans KR',sans-serif;-webkit-font-smoothing:antialiased}</style></head><body>
 <div style="position:relative;width:${W}px;height:${H}px;overflow:hidden;background:#eef1f5">${tiles.join('')}
 <svg width="${W}" height="${H}" style="position:absolute;left:0;top:0">
 ${circles}
-${paths ? `<path d="${paths}" fill="rgba(10,78,194,.22)" stroke="#0a4ec2" stroke-width="5" stroke-linejoin="round"/>` : `<circle cx="${px - ox}" cy="${py - oy}" r="16" fill="#0a4ec2" stroke="#fff" stroke-width="5"/>`}
+${paths ? `<path d="${paths}" fill="rgba(11,79,196,.22)" stroke="#0b4fc4" stroke-width="5" stroke-linejoin="round"/>` : `<circle cx="${px - ox}" cy="${py - oy}" r="16" fill="#0b4fc4" stroke="#fff" stroke-width="5"/>`}
 </svg>
-<div style="position:absolute;left:32px;top:28px;background:#fff;border-top:6px solid #0f2557;border-radius:12px;padding:18px 24px;box-shadow:0 10px 30px -12px rgba(0,0,0,.35);max-width:760px">
-  <div style="font-size:20px;font-weight:700;color:#464c53">${esc(it.kind)} · ${esc([it.region, it.district].filter(Boolean).join(' '))}</div>
-  <div style="font-size:40px;font-weight:800;color:#1e2124;line-height:1.2;word-break:keep-all">${esc(it.name)}</div>
-  <div style="font-size:19px;color:#464c53;margin-top:6px">${parcel ? '부지 위치(대표 필지)' : '부지 위치(지점)'} · ${esc(address)}</div>
+<div style="position:absolute;left:32px;top:28px;background:#fff;border-radius:16px;padding:18px 24px;box-shadow:0 10px 30px -12px rgba(0,0,0,.35);max-width:760px">
+  <div style="font-size:20px;font-weight:700;color:#4b5260">${esc(it.kind)} · ${esc([it.region, it.district].filter(Boolean).join(' '))}</div>
+  <div style="font-size:40px;font-weight:900;letter-spacing:-0.04em;color:#1c1f24;line-height:1.2;word-break:keep-all">${esc(it.name)}</div>
+  <div style="font-size:19px;color:#4b5260;margin-top:6px">${parcel ? '부지 위치(대표 필지)' : '부지 위치(지점)'} · ${esc(address)}</div>
 </div>
-<div style="position:absolute;right:0;bottom:0;background:rgba(255,255,255,.92);padding:8px 16px;font-size:16px;color:#464c53">지도: 브이월드(국토교통부) · 필지: 연속지적도 · aulee.tistory.com</div>
+<div style="position:absolute;right:0;bottom:0;background:rgba(255,255,255,.92);padding:8px 16px;font-size:16px;color:#4b5260">지도: 브이월드(국토교통부) · 필지: 연속지적도 · aulee.tistory.com</div>
 </div></body></html>`;
   return { html, zoom: z, parcel: !!parcel };
 }
