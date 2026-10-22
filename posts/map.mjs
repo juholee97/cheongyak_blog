@@ -1,5 +1,5 @@
 // 단지 위치 지도(1200×630 PNG): 브이월드(국토교통부) 배경지도 위에 공급위치 대표 필지 테두리를 하이라이트.
-// node posts/map.mjs drafts/2026-10-26_weekly.json [--only 3]  → drafts/2026-10-26_weekly.maps/*.png
+// node posts/map.mjs drafts/2026-10-26_weekly.json [--only 3] [--radius 500]  → drafts/2026-10-26_weekly.maps/*.png (기본 반경 1km: 500m·1km 원)
 // 키: 환경변수 VWORLD_KEY 또는 프로젝트 .env의 VWORLD_KEY=... (커밋 금지)
 // 브이월드 지오코더 응답은 저장하지 않고 그 자리에서 그림을 그리는 데만 쓴다(이용 조건).
 import { readFile, mkdir } from 'node:fs/promises';
@@ -86,7 +86,7 @@ async function tileUri(z, x, y, key) {
 
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 
-export async function mapHtml(it, key, radius = 500) {
+export async function mapHtml(it, key, radius = 1000) {
   const address = cleanAddress(it.address);
   if (!address) return { skip: '주소 없음' };
   // 지번(또는 도로명 건물번호)으로 끝나지 않는 주소("검단신도시 AA32블록" 등)는 좌표가 엉뚱한 곳에 찍히므로 그리지 않는다
@@ -145,11 +145,11 @@ async function main() {
   const i = process.argv.indexOf('--only');
   const items = i > 0 ? w.receipt.slice(0, +process.argv[i + 1]) : w.receipt;
   const ri = process.argv.indexOf('--radius');
-  const radius = ri > 0 ? +process.argv[ri + 1] : 500; // 500(기본) 또는 1000
+  const radius = ri > 0 ? +process.argv[ri + 1] : 1000; // 1000(기본, 500m·1km 원 2개) 또는 500
   const { chromium } = await import('playwright');
   const browser = await chromium.launch({ headless: true });
   const page = await browser.newPage({ viewport: { width: W, height: H } });
-  const out = path.replace(/\.json$/, radius === 500 ? '.maps' : `.maps${radius}`);
+  const out = path.replace(/\.json$/, radius === 1000 ? '.maps' : `.maps${radius}`);
   await mkdir(out, { recursive: true });
   for (const [n, { it }] of items.entries()) {
     try {
