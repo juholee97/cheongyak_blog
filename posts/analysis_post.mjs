@@ -35,6 +35,8 @@ const ar = (ty) => +String(ty).slice(0, 3); // "049.0000A" → 49(전용)
 const man = (n) => n.toLocaleString() + '만원';
 const eok = (n) => (n >= 10000 ? `${Math.floor(n / 10000)}억${n % 10000 ? ' ' + (n % 10000).toLocaleString() + '만' : ''}원` : man(n));
 const pyOf = (amount, area) => Math.round(amount / (area / PY));
+// 거리: 100m 이상은 100m 아래를 버려 "약 1.7km", 100m 안이면 그대로 "85m"
+export const dist = (m) => (m < 100 ? `${m}m` : `약 ${(Math.floor(m / 100) / 10).toFixed(1)}km`);
 
 export async function collect(no, dataSrc) {
   const key = await dataKey(), vkey = await keyOf();
@@ -93,9 +95,9 @@ export function renderFacts(f) {
 <p style="font-size:14px;color:${C.muted}">비교 기준: 같은 등급(${esc(t.tier)}) 단지, 반경 ${t.widened ? `${t.wide / 1000}km(1.5km 안에 2곳 미만이라 넓힘)` : `${t.range / 1000}km`}, ${t.months} 거래, 해제·직거래 제외, 직선거리. 법정동코드 ${t.lawd} 안 거래만 포함(경계 너머 단지는 빠짐).</p>
 ${t.others.length ? `<p style="font-size:14px;color:${C.muted}">참고 — 1.5km 안 다른 등급 단지: ${t.others.map((g) => `${esc(g.apt)}(${g.tier}, ${g.built}년, 3.3㎡당 ${man(Math.round(g.perPy))})`).join(', ')}</p>` : ''}`;
   out.leasehold = f.leasehold ? box(`<p style="margin:0"><span style="font-weight:700">토지임대부 분양주택</span>: 분양가에 토지값이 들어 있지 않고, 토지는 사업주체에 매달 임대료를 냅니다(금액은 입주자모집공고 확인). 그래서 토지 소유권이 있는 주변 아파트와 분양가를 그대로 비교할 수 없습니다. 관련 법령상 전매제한 10년·거주의무 5년입니다(주택법 시행령 별표3·제60조의2, 공고문으로 최종 확인).</p>`) : '';
-  const lv = (k) => (n.schools?.[k] || []).map((s) => `${esc(s.name)} ${s.d.toLocaleString()}m`).join(', ') || '1.5km 안 없음';
+  const lv = (k) => (n.schools?.[k] || []).map((s) => `${esc(s.name)} ${dist(s.d)}`).join(', ') || '1.5km 안 없음';
   out.place = n.skip ? `<p>주변 정보를 찾지 못했습니다.</p>` : table(['구분', '가까운 순(직선거리)'], [
-    ['철도역', (Array.isArray(n.stations) && n.stations.length ? n.stations.map((s) => `${esc(s.name)}(${s.kind}${s.operator ? ', ' + esc(s.operator) : ''}) ${s.d.toLocaleString()}m`).join(', ') : '3km 안 없음')],
+    ['철도역', (Array.isArray(n.stations) && n.stations.length ? n.stations.map((s) => `${esc(s.name)}(${s.kind}${s.operator ? ', ' + esc(s.operator) : ''}) ${dist(s.d)}`).join(', ') : '3km 안 없음')],
     ['초등학교', lv('초')], ['중학교', lv('중')], ['고등학교', lv('고')],
   ]) + `<p style="font-size:14px;color:${C.muted}">직선거리이며 실제 걷는 거리와 다릅니다. 배정 학교는 교육청(학구도 안내)에서 확인하세요. 학교: 브이월드 검색, 역: © OpenStreetMap contributors.</p>`;
   const flags = d.flags.length ? d.flags.join(' · ') : '해당 표시 없음';
