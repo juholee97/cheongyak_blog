@@ -6,7 +6,7 @@
 ## 구조
 - `crawler/fetch.mjs` — 공공데이터포털 「한국부동산원_청약홈 분양정보 조회 서비스」 → `site/schedule.json`. `crawler/check.mjs`가 필드 매핑 자체 점검.
 - `.github/workflows/daily.yml` — 매일 06:00 KST 수집 → GitHub Pages 배포. 키는 Secrets `DATA_GO_KR_KEY`.
-- `skin/` — 티스토리 스킨(스킨 편집기에 그대로 업로드). `images/calendar.js`가 스킨 옵션 `schedule-url`에서 JSON을 읽는다.
+- `skin/` — 티스토리 스킨(스킨 편집기에 그대로 업로드). 홈은 이번 주 요약(renderHero), 전체 달력은 /category/청약일정. `images/calendar.js`가 스킨 옵션 `schedule-url`에서 JSON을 읽는다.
 - `preview/serve.mjs` — 티스토리 치환자를 흉내 내는 로컬 미리보기(`/` 홈, `/post` 글, `/category` 목록). `--check`는 자동 점검.
 - `posts/weekly.mjs` — schedule.json → 주간 글 초안(`drafts/{월요일}_weekly.json` + 수집본 사본 `.data.json`). `--render`로 summary 고친 뒤 본문 다시 그림. `posts/check.mjs` — 본문 재현·요약 숫자·금지 표현·필수 문구 검수. 미리보기 `/draft/{이름}`. 설계: `docs/weekly-post-design.md`.
 - `tistory/` — 임시저장 자동화(Playwright 1.63.0, `npm install`). `common.mjs` 전용 프로필 `data/tistory-session/`(커밋 금지), `login.mjs`(+`tistory_login.bat`, 로그인은 사람이), `ensureLogin` 자동 재로그인(티스토리 세션 쿠키가 몇 시간이면 끊김 → 카카오 간편로그인의 저장된 계정 1개만 누름, 아무것도 입력하지 않음, 비밀번호·동의 화면이면 멈춤; 시험 `relogin.check.mjs`), `probe.mjs` 글쓰기 화면 읽기 전용 실측 → `tistory/probe-out/`. 셀렉터는 실측 근거로만(`tistory/selectors.json`). `draft.mjs --approved` 임시저장 + 저장본 재대조, `--verify-only` 대조만. 절차: `.claude/skills/weekly-post/SKILL.md`, 실행기 `weekly_post.bat`(초안·미리보기만).
@@ -25,6 +25,7 @@
 | 날짜 | 변경 | 사유 |
 |------|------|------|
 | 2026-10-22 | 홈 첫 화면에 「이번 주 청약 일정」(디자인 A 지도 히어로 — 디자인 시스템 V06 Region Map 기반): 월~일 접수·당첨자 발표·계약 수, 시·도 타일 지도(진하기 5단계), 접수 단지 8곳. 계산은 calendar.js `renderHero`(주간 글 build와 같은 규칙), 휴대폰은 요약·지도만(목록은 "이번 주" 탭) | 사용자가 시안 A 선택 |
+| 2026-10-22 | 전체 달력을 홈에서 빼서 청약일정 카테고리 페이지(`/category/청약일정`, body `cal-page`)로. 홈 = 이번 주 요약 + 글 목록, 휴대폰 탭 바 = 홈 / 달력 / 이번 주 | 사용자: 홈 아래 달력 중복, 전체 달력은 다른 페이지로 |
 | 2026-10-22 | 주간 글 매주 자동 실행(`posts/auto.mjs`·`weekly_auto.bat`·작업 스케줄러 일요일 18:00) — 요약은 집계 문장(`weekly.mjs --auto`), 검수 통과 시 채팅 승인 없이 임시저장, 발행은 사람이. 검색 등록 안내 `docs/search-registration.md`(티스토리 플러그인 「구글 서치콘솔」·「메타 태그 등록」) | 사용자: 알림 예약 대신 자동 실행 |
 | 2026-10-22 | 주간 글 그림(썸네일·단지 카드·브이월드 위치 지도 반경 1km) + 티스토리 업로드, 계약 기간 표기 수정, 자동 재로그인 | 사용자 요청. 해링턴 스퀘어 과천 계약 2026~2029가 매주 끼던 문제 |
 | 2026-10-22 | 3단계 3·4: 로그인 실행기(쿠키 따로 저장), 글쓰기 화면 실측, draft.mjs, 첫 임시저장(10월 26일 주 — 편집기 자동 임시저장으로 저장됨, 재대조 통과), weekly_post.bat, 초안 덮어쓰기 방지 | 티스토리 편집기 자동 임시저장 → 저장 확인은 저장본 재대조로 |

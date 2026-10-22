@@ -37,7 +37,7 @@ const POSTS = [
 ].map(([cat, title, date, rp], i) => ({ cat, title, date, rp, link: '/post', summary: '분양가 상한제 적용 단지와 특별공급 비중이 높은 단지를 중심으로 일정과 예상 경쟁률을 정리했습니다.', thumb: i === 2 ? 'https://picsum.photos/seed/cy/800/500' : '' }));
 const CATEGORY_HTML = `<ul class="tt_category"><li><a href="/category" class="link_tit">분류 전체보기 <span class="c_cnt">(248)</span></a>
 <ul class="category_list">${[['청약일정', 96], ['분양분석', 71], ['청약가이드', 52], ['대출·정책', 29]].map(([n, c]) => `<li><a href="/category/${n}" class="link_item">${n} <span class="c_cnt">(${c})</span></a></li>`).join('')}</ul></li></ul>`;
-const MENU_HTML = `<ul>${[['청약일정', '/'], ['분양분석', '/category/분양분석'], ['청약가이드', '/category/청약가이드'], ['대출·정책', '/category/대출·정책'], ['방명록', '/guestbook']].map(([n, h]) => `<li><a href="${h}">${n}</a></li>`).join('')}</ul>`;
+const MENU_HTML = `<ul>${[['청약일정', '/category/청약일정'], ['분양분석', '/category/분양분석'], ['청약가이드', '/category/청약가이드'], ['대출·정책', '/category/대출·정책'], ['방명록', '/guestbook']].map(([n, h]) => `<li><a href="${h}">${n}</a></li>`).join('')}</ul>`;
 const POPULAR = ['청약 가점 계산법 총정리 (2026 최신)', '특별공급 중복 신청, 되는 것과 안 되는 것', '서울 분양가 상한제 단지 리스트', '계약금 10% vs 5%, 자금 계획 세우기'];
 const TAGS = ['청약가점', '특별공급', '무순위', '분양가상한제', '신혼부부', '생애최초', '서울분양', '경기분양'];
 

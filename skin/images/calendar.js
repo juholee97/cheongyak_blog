@@ -23,30 +23,37 @@
     if (best) best.classList.add('is-active');
   })();
 
-  // 휴대폰 하단 탭 바: 홈에서는 페이지 이동 없이 달력 / 이번 주 / 블로그를 바꾼다(CSS가 700px 이하에서만 적용)
+  // 전체 달력은 "청약일정" 카테고리 페이지(/category/청약일정)에, 홈은 이번 주 요약(renderHero)과 글 목록만
   var isHome = document.body.id === 'tt-body-index';
+  var CAL_PATH = '/category/청약일정';
+  var isCal = document.body.id === 'tt-body-category' && (function () {
+    try { return decodeURIComponent(location.pathname).replace(/\/+$/, '') === CAL_PATH; } catch (e) { return false; }
+  })();
+  document.body.classList.toggle('cal-page', isCal);
+
+  // 휴대폰 하단 탭 바(홈 / 달력 / 이번 주): 달력 페이지 안에서는 이동 없이 달력 ↔ 이번 주를 바꾼다(CSS가 700px 이하에서만 적용)
   var tabbar = document.querySelector('.m-tabbar');
   function setTab(t) {
-    ['cal', 'week', 'blog'].forEach(function (x) { document.body.classList.toggle('m-tab-' + x, isHome && x === t); });
+    ['cal', 'week'].forEach(function (x) { document.body.classList.toggle('m-tab-' + x, isCal && x === t); });
     if (tabbar) tabbar.querySelectorAll('a').forEach(function (a) {
       var on = a.dataset.tab === t;
       a.classList.toggle('on', on);
       if (on) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
     });
   }
-  // 탭 주소(#week, #posts)는 일부러 요소 id와 겹치지 않게 해서 브라우저가 그 위치로 스크롤하지 않게 한다
-  setTab(!isHome ? 'blog' : /[?&]page=/.test(location.search) ? 'blog' : { '#week': 'week', '#posts': 'blog' }[location.hash] || 'cal');
-  if (tabbar && isHome) tabbar.addEventListener('click', function (e) {
-    var a = e.target.closest('a[data-tab]');
+  // 탭 주소 #week는 일부러 요소 id와 겹치지 않게 해서 브라우저가 그 위치로 스크롤하지 않게 한다
+  setTab(isCal ? (location.hash === '#week' ? 'week' : 'cal') : isHome ? 'home' : '');
+  if (tabbar && isCal) tabbar.addEventListener('click', function (e) {
+    var a = e.target.closest('a[data-tab="cal"], a[data-tab="week"]');
     if (!a) return;
     e.preventDefault();
     setTab(a.dataset.tab);
-    history.replaceState(null, '', a.dataset.tab === 'cal' ? location.pathname + location.search : a.hash);
+    history.replaceState(null, '', a.dataset.tab === 'week' ? '#week' : location.pathname + location.search);
     window.scrollTo(0, 0);
   });
 
   var root = document.getElementById('cal');
-  if (!root || !isHome) return;
+  if (!isHome && !(root && isCal)) return;
   var mobile = window.matchMedia('(max-width: 700px)');
 
   var GROUPS = [
@@ -98,6 +105,10 @@
   };
 
   var today = new Date();
+  if (isHome) {
+    loadSchedule().then(function (j) { renderHero(j.items, j.updatedAt); }, function (err) { console.warn('청약 일정 불러오기 실패:', err); renderHero([], '', true); });
+    return;
+  }
   var S = {
     regions: load(STORE, ALL), gu: load(STORE_GU, GU), guOpen: false, filterOpen: false, // filterOpen은 휴대폰에서만 의미 있음
     phases: PH.map(function (p) { return p.k; }),
@@ -347,8 +358,8 @@
   });
 
   // 홈 첫 화면 "이번 주 청약 일정"(디자인 A): 월~일 기준 접수·발표·계약 수와 시·도 타일 지도. 주간 글(posts/weekly.mjs build)과 같은 규칙.
-  var MAP = ['인천', '서울', '경기', '강원', '충남', '세종', '충북', '경북', '전북', '대전', '대구', '울산', '광주', '전남', '경남', '부산', '제주'];
   function renderHero(items, updatedAt, failed) {
+    var MAP = ['인천', '서울', '경기', '강원', '충남', '세종', '충북', '경북', '전북', '대전', '대구', '울산', '광주', '전남', '경남', '부산', '제주'];
     var h = {};
     document.querySelectorAll('[data-hero]').forEach(function (el) { h[el.dataset.hero] = el; });
     if (!h.map) return;
@@ -391,20 +402,22 @@
   }
 
   render();
+  loadSchedule().then(function (j) {
+    set({ data: j.items, updatedAt: j.updatedAt, status: 'ok' });
+  }, function (err) {
+    console.warn('청약 일정 불러오기 실패:', err);
+    set({ status: 'error' });
+  });
+
   // 스킨을 다시 올리면 스킨 옵션이 비워질 수 있어서, 비어 있으면 이 프로젝트의 배포 주소를 쓴다
-  var url = window.CHEONGYAK_SCHEDULE_URL || 'https://juholee97.github.io/cheongyak_blog/schedule.json';
-  (url ? fetch(url, { cache: 'no-cache' }).then(function (r) {
-    if (!r.ok) throw new Error(r.status);
-    return r.json();
-  }) : Promise.reject(new Error('schedule-url 스킨 옵션이 비어 있음')))
-    .then(function (j) {
+  function loadSchedule() {
+    var url = window.CHEONGYAK_SCHEDULE_URL || 'https://juholee97.github.io/cheongyak_blog/schedule.json';
+    return fetch(url, { cache: 'no-cache' }).then(function (r) {
+      if (!r.ok) throw new Error(r.status);
+      return r.json();
+    }).then(function (j) {
       var items = (j.items || []).filter(function (it) { return it && it.id && it.name && Array.isArray(it.phases); });
-      set({ data: items, updatedAt: j.updatedAt || '', status: 'ok' });
-      renderHero(items, j.updatedAt);
-    })
-    .catch(function (err) {
-      console.warn('청약 일정 불러오기 실패:', err);
-      set({ status: 'error' });
-      renderHero([], '', true);
+      return { items: items, updatedAt: j.updatedAt || '' };
     });
+  }
 })();
