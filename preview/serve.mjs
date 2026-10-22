@@ -111,6 +111,7 @@ async function check() {
   try { execFileSync(process.execPath, [join(ROOT, 'crawler', 'check.mjs')], { stdio: 'inherit' }); } catch { fail('crawler/check.mjs 실패'); }
   try { execFileSync(process.execPath, [join(ROOT, 'posts', 'map.check.mjs')], { stdio: 'inherit' }); } catch { fail('posts/map.check.mjs 실패'); }
   try { execFileSync(process.execPath, [join(ROOT, 'posts', 'nearby.check.mjs')], { stdio: 'inherit' }); } catch { fail('posts/nearby.check.mjs 실패'); }
+  try { execFileSync(process.execPath, [join(ROOT, 'posts', 'schools.check.mjs')], { stdio: 'inherit' }); } catch { fail('posts/schools.check.mjs 실패'); }
   try { execFileSync(process.execPath, [join(ROOT, 'posts', 'weekly.check.mjs')], { stdio: 'inherit' }); } catch { fail('posts/weekly.check.mjs 실패'); }
   const sch = JSON.parse(await readFile(await schedulePath(), 'utf8'));
   if (!sch.items?.length) fail('schedule.json 비어 있음'); else console.log(`  schedule.json ${sch.items.length}건${sch.sample ? ' (샘플)' : ''}`);

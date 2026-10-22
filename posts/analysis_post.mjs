@@ -6,13 +6,15 @@ import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import { loadData, esc, span, label, where, full, md, C, TH, TD, IMG, BLOG_URL, DISCLAIMER } from './weekly.mjs';
 import { BANNED } from './check.mjs';
-import { nearby } from './nearby.mjs';
-import { nearbyTrades, dataKey, tierOf, PY } from './trades.mjs';
+import { stations } from './nearby.mjs';
+import { schoolsAt, SOURCE as SCHOOL_SOURCE } from './schools.mjs';
+import { nearbyTrades, dataKey, tierOf, locate, PY } from './trades.mjs';
 import { keyOf, mapHtml } from './map.mjs';
 import { itemHtml, renderPngs } from './card.mjs';
 
 const ODCLOUD = 'https://api.odcloud.kr/api/ApplyhomeInfoDetailSvc/v1/';
-const LOANS_CHECKED = '2026-10-23'; // docs/policy/loans.md 확인일
+const LOANS_CHECKED = '2026-10-23';
+const SCHOOL_SELECT_KM = 5; // schools.mjs SELECT_RANGE와 같게 // docs/policy/loans.md 확인일
 // 대출 가격·면적 요건(docs/policy/loans.md). 바뀌면 여기와 문서를 같이 고친다
 export const LOAN = [
   { name: '디딤돌대출(일반)', max: 50000, area: 85, src: 'https://nhuf.molit.go.kr/FP/FP05/FP0503/FP05030101.jsp' },
@@ -59,7 +61,9 @@ export async function collect(no, dataSrc) {
   const main = types.reduce((a, b) => (b.units > a.units ? b : a), types[0]);
   const tier = tierOf(it.name, d.BSNS_MBY_NM, d.CNSTRCT_ENTRPS_NM);
   const leasehold = /토지임대부/.test(it.name);
-  const [near, trades] = [await nearby(it.address, vkey), await nearbyTrades(it.address, main.area, { tier })];
+  const site = await locate(it.address, vkey);
+  const near = site ? { stations: await stations(site.lon, site.lat), schools: await schoolsAt(site.lon, site.lat) } : { skip: '위치 못 찾음' };
+  const trades = await nearbyTrades(it.address, main.area, { tier });
   return {
     item: it, dataUpdatedAt: data.updatedAt,
     detail: {
@@ -95,11 +99,18 @@ export function renderFacts(f) {
 <p style="font-size:14px;color:${C.muted}">비교 기준: 같은 등급(${esc(t.tier)}) 단지, 반경 ${t.widened ? `${t.wide / 1000}km(1.5km 안에 2곳 미만이라 넓힘)` : `${t.range / 1000}km`}, ${t.months} 거래, 해제·직거래 제외, 직선거리. 법정동코드 ${t.lawd} 안 거래만 포함(경계 너머 단지는 빠짐).</p>
 ${t.others.length ? `<p style="font-size:14px;color:${C.muted}">참고 — 1.5km 안 다른 등급 단지: ${t.others.map((g) => `${esc(g.apt)}(${g.tier}, ${g.built}년, 3.3㎡당 ${man(Math.round(g.perPy))})`).join(', ')}</p>` : ''}`;
   out.leasehold = f.leasehold ? box(`<p style="margin:0"><span style="font-weight:700">토지임대부 분양주택</span>: 분양가에 토지값이 들어 있지 않고, 토지는 사업주체에 매달 임대료를 냅니다(금액은 입주자모집공고 확인). 그래서 토지 소유권이 있는 주변 아파트와 분양가를 그대로 비교할 수 없습니다. 관련 법령상 전매제한 10년·거주의무 5년입니다(주택법 시행령 별표3·제60조의2, 공고문으로 최종 확인).</p>`) : '';
-  const lv = (k) => (n.schools?.[k] || []).map((s) => `${esc(s.name)} ${dist(s.d)}`).join(', ') || '1.5km 안 없음';
-  out.place = n.skip ? `<p>주변 정보를 찾지 못했습니다.</p>` : table(['구분', '가까운 순(직선거리)'], [
-    ['철도역', (Array.isArray(n.stations) && n.stations.length ? n.stations.map((s) => `${esc(s.name)}(${s.kind}${s.operator ? ', ' + esc(s.operator) : ''}) ${dist(s.d)}`).join(', ') : '3km 안 없음')],
-    ['초등학교', lv('초')], ['중학교', lv('중')], ['고등학교', lv('고')],
-  ]) + `<p style="font-size:14px;color:${C.muted}">직선거리이며 실제 걷는 거리와 다릅니다. 배정 학교는 교육청(학구도 안내)에서 확인하세요. 학교: 브이월드 검색, 역: © OpenStreetMap contributors.</p>`;
+  // 학교: 학구도(배정) 기준. 중·고는 학교군 안 가까운 3곳, 초등은 통학구역(지정 전이면 인접 구역). 지원·선발 학교는 따로
+  const sc = n.schools || {}, list = (xs, k = 3) => xs.slice(0, k).map((s) => `${esc(s.name)} ${dist(s.d)}`).join(', ');
+  const elem = (sc.elem || []).length ? sc.elem.map((z) => (z.near != null ? `${list(z.schools, 1)} (통학구역 지정 전 · 인접 구역)` : list(z.schools))).join(', ') : '확인 못 함';
+  const group = (zs) => (zs || []).map((z) => `<span style="font-weight:700">${esc(z.name)}</span> ${z.schools.length}곳 중 가까운 곳: ${list(z.schools)}`).join('<br>') || '확인 못 함';
+  const sel = Object.entries(sc.selective || {}).filter(([, v]) => v.length).map(([k, v]) => `${k.replace('학교', '')}: ${v.map((s) => `${esc(s.name)}(${s.type}) ${dist(s.d)}`).join(', ')}`).join('<br>') || `${SCHOOL_SELECT_KM}km 안 없음`;
+  out.place = n.skip ? `<p>주변 정보를 찾지 못했습니다.</p>` : table([two('구분'), two('학교·역', '직선거리, 가까운 순')], [
+    [two('지하철·철도역'), (Array.isArray(n.stations) && n.stations.length ? n.stations.map((s) => `${esc(s.name)}(${s.kind}) ${dist(s.d)}`).join(', ') : '3km 안 없음')],
+    [two('초등학교', '배정(통학구역)'), elem],
+    [two('중학교', '배정 학교군'), group(sc.middle)],
+    [two('고등학교', sc.nonflat?.length ? '비평준화 지역' : '배정 학교군'), sc.nonflat?.length ? `비평준화 지역(${esc(sc.nonflat.join(', '))}) — 학교별 선발` : group(sc.high)],
+    [two('지원·선발 학교', `반경 ${SCHOOL_SELECT_KM}km`), sel],
+  ]) + `<p style="font-size:14px;color:${C.muted}">배정 기준: ${SCHOOL_SOURCE}. 중·고는 학교군 안에서 지망·추첨으로 배정되므로 가까운 학교가 곧 배정 학교는 아닙니다. 지원·선발 학교는 사립·국립 초등학교, 국제·예술·체육중, 특수목적고(이름 기준)이며 자율형사립고는 빠져 있습니다. 최종 배정은 교육지원청에서 확인하세요. 역: © OpenStreetMap contributors.</p>`;
   const flags = d.flags.length ? d.flags.join(' · ') : '해당 표시 없음';
   out.rules = table(['항목', '내용'], [
     ['규제·지구 (청약홈 공고 정보)', esc(flags)],
