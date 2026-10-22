@@ -8,7 +8,7 @@ import { loadData, esc, span, label, where, full, md, C, TH, TD, IMG, BLOG_URL, 
 import { BANNED } from './check.mjs';
 import { stations } from './nearby.mjs';
 import { schoolsAt, SOURCE as SCHOOL_SOURCE } from './schools.mjs';
-import { busNear } from './bus.mjs';
+import { busNear, isCore } from './bus.mjs';
 import { nearbyTrades, dataKey, tierOf, locate, PY } from './trades.mjs';
 import { keyOf, mapHtml } from './map.mjs';
 import { itemHtml, renderPngs } from './card.mjs';
@@ -112,6 +112,10 @@ ${t.others.length ? `<p style="font-size:14px;color:${C.muted}">참고 — 1.5km
     const by = new Map(); for (const r of b.routes) { if (!by.has(r.type)) by.set(r.type, []); by.get(r.type).push(esc(r.no)); }
     return `${b.stops.slice(0, 2).map((s) => `${esc(s.name)} ${dist(s.d)}`).join(', ')}${b.stops.length > 2 ? ` 외 ${b.stops.length - 2}곳` : ''}<br>${[...by].map(([t, ns]) => `<span style="font-weight:700">${esc(t)}</span> ${ns.join(' · ')}`).join(' / ') || '노선 정보 없음'}`;
   };
+  // 핵심 버스 노선: 기점 ↔ 종점(어디까지 가는지), 배차 간격
+  const core = (n.bus?.routes || []).filter(isCore).slice(0, 8);
+  out.busRoutes = core.length ? `<p style="font-weight:700;margin:20px 0 8px">버스 핵심 노선 — 어디까지 가나</p>` + table([two('노선'), two('기점 ↔ 종점', '노선 양 끝'), two('배차 간격', '노선 정보 기준')],
+    core.map((r) => [two(`${esc(r.no)}번`, esc(r.type)), r.from && r.to ? `${esc(r.from)} ↔ ${esc(r.to)}` : '정보 없음', r.term ? `${r.term}분` : '-'])) : '';
   out.place = n.skip ? `<p>주변 정보를 찾지 못했습니다.</p>` : table([two('구분'), two('교통·학교', '직선거리, 가까운 순')], [
     [two('지하철·철도역'), (Array.isArray(n.stations) && n.stations.length ? n.stations.map((s) => `${esc(s.name)}(${s.kind}) ${dist(s.d)}`).join(', ') : '3km 안 없음')],
     [two('버스', `정류장 반경 ${n.bus?.radius ?? 500}m`), busCell(n.bus)],
@@ -139,7 +143,7 @@ export function render(f, notes = {}, images = []) {
   return [
     img('card'), note(notes.intro), H2('한눈에'), x.glance, x.types,
     H2('분양가와 주변 실거래'), x.leasehold, note(notes.price), x.trades,
-    H2('입지 — 교통·학교'), img('map'), note(notes.place), x.place,
+    H2('입지 — 교통·학교'), img('map'), note(notes.place), x.place, x.busRoutes,
     H2('자격·규제'), note(notes.rules), x.rules,
     H2('대출·자금'), note(notes.loans), x.loans,
     H2('공고문·문의'), x.links,

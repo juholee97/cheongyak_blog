@@ -6,6 +6,8 @@ import { dataKey } from './trades.mjs';
 import { meters } from './nearby.mjs';
 
 export const RADIUS = 500; // m, 이 안의 정류장
+// 출퇴근에 쓰는 핵심 노선: 마을버스 말고 전부(지선은 지하철역 연결이 많아 포함)
+export const isCore = (r) => !/마을/.test(r.type);
 const MAX_STOPS = 4;
 // 노선 종류 순서(앞일수록 주요 노선으로 먼저 보여 줌)
 const SEOUL_TYPE = { 1: '공항', 2: '마을', 3: '간선', 4: '지선', 5: '순환', 6: '광역', 7: '인천', 8: '경기', 0: '공용' };
@@ -25,7 +27,7 @@ async function seoul(lon, lat, key) {
   const stops = arr(j.msgBody?.itemList).filter((s) => s.arsId && s.arsId !== '0' && !/미정차/.test(s.stationNm)).map((s) => ({ name: s.stationNm, d: +s.dist, id: s.arsId })).sort((a, b) => a.d - b.d).slice(0, MAX_STOPS);
   for (const s of stops) {
     const r = await json(`http://ws.bus.go.kr/api/rest/stationinfo/getRouteByStation?serviceKey=${K}&arsId=${s.id}&resultType=json`, '서울 경유노선');
-    s.routes = arr(r.msgBody?.itemList).map((x) => ({ no: x.busRouteNm, type: SEOUL_TYPE[x.busRouteType] || '기타' }));
+    s.routes = arr(r.msgBody?.itemList).map((x) => ({ no: x.busRouteNm, type: SEOUL_TYPE[x.busRouteType] || '기타', from: x.stBegin, to: x.stEnd, term: +x.term || null, km: +x.length || null }));
   }
   return stops;
 }
@@ -38,7 +40,7 @@ async function tago(lon, lat, key) {
   const byName = new Map();
   for (const s of near) {
     const r = await json(`${base}getSttnThrghRouteList?serviceKey=${K}&cityCode=${s.city}&nodeid=${s.id}&numOfRows=100&_type=json`, 'TAGO 경유노선');
-    const routes = arr(r.response?.body?.items?.item).map((x) => ({ no: String(x.routeno), type: x.routetp || '기타' }));
+    const routes = arr(r.response?.body?.items?.item).map((x) => ({ no: String(x.routeno), type: x.routetp || '기타', from: x.startnodenm || null, to: x.endnodenm || null, term: null, km: null }));
     if (!byName.has(s.name)) byName.set(s.name, { name: s.name, d: s.d, routes: [] });
     byName.get(s.name).routes.push(...routes);
     if (byName.size >= MAX_STOPS && ![...byName.keys()].includes(s.name)) break;
