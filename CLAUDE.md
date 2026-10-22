@@ -9,6 +9,7 @@
 - `skin/` — 티스토리 스킨(스킨 편집기에 그대로 업로드). `images/calendar.js`가 스킨 옵션 `schedule-url`에서 JSON을 읽는다.
 - `preview/serve.mjs` — 티스토리 치환자를 흉내 내는 로컬 미리보기(`/` 홈, `/post` 글, `/category` 목록). `--check`는 자동 점검.
 - `posts/weekly.mjs` — schedule.json → 주간 글 초안(`drafts/{월요일}_weekly.json` + 수집본 사본 `.data.json`). `--render`로 summary 고친 뒤 본문 다시 그림. `posts/check.mjs` — 본문 재현·요약 숫자·금지 표현·필수 문구 검수. 미리보기 `/draft/{이름}`. 설계: `docs/weekly-post-design.md`.
+- `tistory/` — 임시저장 자동화(Playwright 1.63.0, `npm install`). `common.mjs` 전용 프로필 `data/tistory-session/`(커밋 금지), `login.mjs`(+`tistory_login.bat`, 로그인은 사람이), `probe.mjs` 글쓰기 화면 읽기 전용 실측 → `tistory/probe-out/`. 셀렉터는 실측 근거로만.
 - `preview.bat` — 미리보기 실행기(`preview.bat check` = 자동 점검). 바로가기는 `D:\AI_산출물`.
 - 디자인 원본: `docs/design_handoff/README.md` (v2, 레퍼런스 `design-reference-v2.dc.html`). 이 문서와 다르게 정한 점은 `README.md` 데이터 메모.
 

@@ -41,7 +41,7 @@ export function build(data, start) {
   for (const it of data.items) {
     const ph = it.phases.filter(hit);
     const r = ph.filter((p) => RECEIPT.includes(p.k));
-    if (r.length) receipt.push({ it, first: r[0].date, firstK: r[0].k }); // 이번 주에 걸친 첫 접수 단계
+    if (r.length) receipt.push({ it, first: r[0].date, firstP: r[0] }); // 이번 주에 걸친 첫 접수 단계(앞 주에 시작해 이어지는 것 포함)
     ph.filter((p) => p.k === 'win').forEach((p) => win.push({ it, date: p.date }));
     ph.filter((p) => p.k === 'con').forEach((p) => con.push({ it, p, date: p.date < start ? start : p.date }));
   }
@@ -83,7 +83,7 @@ export function render(w, summary = []) {
   out.push('<h2>이번 주 접수 단지</h2>');
   if (!w.receipt.length) out.push('<p>이번 주에 접수가 있는 단지가 없습니다.</p>');
   else out.push(`<table style="border-collapse:collapse;width:100%"><thead><tr><th ${TH}>이번 주 접수</th><th ${TH}>단지명</th><th ${TH}>지역</th><th ${TH}>종류</th><th ${TH}>공급</th></tr></thead><tbody>
-${w.receipt.map(({ it, first, firstK }) => `<tr><td ${TD}>${md(first)} ${label(it, firstK)}</td><td ${TD}>${esc(it.name)}</td><td ${TD}>${esc(where(it))}</td><td ${TD}>${esc(it.kind)}</td><td ${TD}>${it.units ? it.units.toLocaleString() + '세대' : '-'}</td></tr>`).join('\n')}
+${w.receipt.map(({ it, firstP }) => `<tr><td ${TD}>${span(firstP)} ${label(it, firstP.k)}</td><td ${TD}>${esc(it.name)}</td><td ${TD}>${esc(where(it))}</td><td ${TD}>${esc(it.kind)}</td><td ${TD}>${it.units ? it.units.toLocaleString() + '세대' : '-'}</td></tr>`).join('\n')}
 </tbody></table>`);
 
   if (w.receipt.length) {

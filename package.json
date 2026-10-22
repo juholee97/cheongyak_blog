@@ -1,0 +1,8 @@
+{
+  "name": "cheongyak-blog",
+  "private": true,
+  "description": "청약달력: 청약홈 일정 수집 + 티스토리 스킨 + 주간 글 임시저장",
+  "devDependencies": {
+    "playwright": "1.63.0"
+  }
+}
