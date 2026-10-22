@@ -15,7 +15,11 @@ let STATIONS = null;
 const stationsList = async () => (STATIONS ??= JSON.parse(await readFile(new URL('./stations.json', import.meta.url), 'utf8')).stations);
 const bare = (n) => n.replace(/역$/, '').replace(/\(.*\)$/, '').trim();
 // 역의 노선(급행은 같은 노선으로)
-const lineSet = (s) => [...new Set((s.lines || []).map((l) => l.replace(/\s*급행\s*/, ' ').trim()))];
+const LC = JSON.parse(await readFile(new URL('./line_colors.json', import.meta.url), 'utf8'));
+const ALIAS = Object.entries(LC.aliases).sort((a, b) => b[0].length - a[0].length);
+// 노선 이름 정리: "1호선 급행"·"1호선 경인·경원 계통" → "1호선", "인천국제공항철도 직통열차" → "공항철도". 모르는 이름(KTX 등)은 그대로
+export const canonLine = (l) => (ALIAS.find(([k]) => l.startsWith(k)) || [null, l.replace(/\s*급행\s*/, ' ').trim()])[1];
+const lineSet = (s) => [...new Set((s.lines || []).map(canonLine))];
 export function hubOf(name) {
   const b = bare(name);
   for (const [hub, names] of Object.entries(HUBS)) if (names.includes(b)) return hub;

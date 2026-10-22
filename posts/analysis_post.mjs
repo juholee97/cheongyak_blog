@@ -9,7 +9,7 @@ import { BANNED } from './check.mjs';
 import { stations } from './nearby.mjs';
 import { schoolsAt, SOURCE as SCHOOL_SOURCE } from './schools.mjs';
 import { busNear, isCore } from './bus.mjs';
-import { routeReach, ASSUMED_KMH, LIMIT_MIN } from './routes.mjs';
+import { routeReach, canonLine, ASSUMED_KMH, LIMIT_MIN } from './routes.mjs';
 import { nearbyTrades, dataKey, tierOf, locate, PY } from './trades.mjs';
 import { keyOf, mapHtml } from './map.mjs';
 import { itemHtml, renderPngs } from './card.mjs';
@@ -87,6 +87,23 @@ const table = (head, rows) => `<div style="overflow-x:auto"><table style="border
 ${rows.map((r) => `<tr>${r.map((c) => `<td ${TD}>${c}</td>`).join('')}</tr>`).join('\n')}
 </tbody></table></div>`;
 
+// 색: 지하철 노선색(posts/line_colors.json), 버스 종류색(빨강 광역·직행좌석, 파랑 간선·좌석, 초록 지선·일반·마을, 노랑 순환)
+const LINE_COLORS = JSON.parse(await readFile(new URL('./line_colors.json', import.meta.url), 'utf8')).colors;
+const BUS_COLORS = { 광역: '#E60012', 직행좌석버스: '#E60012', 광역급행버스: '#E60012', 간선: '#0068B7', 좌석버스: '#0068B7', 공항: '#0068B7', 지선: '#3D9B35', 일반버스: '#3D9B35', 마을: '#3D9B35', 마을버스: '#3D9B35', 순환: '#F2A900' };
+const lum = (hex) => { const c = hex.slice(1).match(/../g).map((x) => parseInt(x, 16) / 255).map((v) => (v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; };
+const onWhite = (hex) => 1.05 / (lum(hex) + 0.05);
+// 흰 바탕 글씨로 쓸 색: 대비 4.5:1이 될 때까지 검정 쪽으로 조금씩 진하게
+export function ink(hex) {
+  let c = hex.slice(1).match(/../g).map((x) => parseInt(x, 16));
+  const h = () => '#' + c.map((v) => Math.round(v).toString(16).padStart(2, '0')).join('');
+  while (onWhite(h()) < 4.5) c = c.map((v) => v * 0.92);
+  return h();
+}
+// 색 알약: 노선·버스 종류 표시(밝은 색은 검은 글씨)
+const pill = (text, bg) => `<span style="display:inline-block;padding:0 7px;border-radius:999px;background:${bg};color:${onWhite(bg) >= 3 ? '#ffffff' : '#1c1f24'};font-size:12px;font-weight:700;line-height:1.6;vertical-align:1px">${text}</span>`;
+const lineShort = (l) => l.replace(/^(\d+)호선$/, '$1');
+const busColor = (t) => BUS_COLORS[t] || '#6b7280';
+
 // 두 줄 칸: 위는 굵은 값, 아래는 작은 설명(줄 중간에서 끊기지 않게 nowrap)
 const two = (top, sub) => `<span style="font-weight:700;white-space:nowrap">${top}</span>${sub ? `<br><span style="font-size:13px;font-weight:400;color:${C.muted};white-space:nowrap">${sub}</span>` : ''}`;
 
@@ -112,24 +129,26 @@ ${t.others.length ? `<p style="font-size:14px;color:${C.muted}">참고 — 1.5km
   const busCell = (b) => {
     if (!b || b.skip) return '확인 못 함';
     if (!b.stops.length) return '반경 안 정류장 없음';
-    const by = new Map(); for (const r of b.routes) { if (!by.has(r.type)) by.set(r.type, []); by.get(r.type).push(esc(r.no)); }
-    return `${b.stops.slice(0, 2).map((s) => `${esc(s.name)} ${dist(s.d)}`).join(', ')}${b.stops.length > 2 ? ` 외 ${b.stops.length - 2}곳` : ''}<br>${[...by].map(([t, ns]) => `<span style="font-weight:700">${esc(t)}</span> ${ns.join(' · ')}`).join(' / ') || '노선 정보 없음'}`;
+    const by = new Map(); for (const r of b.routes) { if (!by.has(r.type)) by.set(r.type, []); by.get(r.type).push(`<span style="font-weight:700;color:${ink(busColor(r.type))}">${esc(r.no)}</span>`); }
+    return `${b.stops.slice(0, 2).map((s) => `${esc(s.name)} ${dist(s.d)}`).join(', ')}${b.stops.length > 2 ? ` 외 ${b.stops.length - 2}곳` : ''}<br>${[...by].map(([t, ns]) => `${pill(esc(t), busColor(t))} ${ns.join(' · ')}`).join('&nbsp;&nbsp;') || '노선 정보 없음'}`;
   };
   // 핵심 버스 노선: 기점 ↔ 종점(어디까지 가는지), 배차 간격
   const core = (n.bus?.routes || []).filter(isCore).slice(0, 8);
-  // ["5호선","8호선"] → "5·8호선", 이름 노선은 그대로 "9호선·신분당선"
-  const lineLabel = (ls) => { const n = ls.filter((l) => /^\d+호선$/.test(l)).map((l) => l.replace('호선', '')); const o = ls.filter((l) => !/^\d+호선$/.test(l)); return [n.length ? n.join('·') + '호선' : null, ...o].filter(Boolean).join('·'); };
   const reachCell = (x) => {
     if (!x || x.skip || !x.stations.length) return `<span style="color:${C.muted}">약 ${LIMIT_MIN}분 안에 지나는 역 없음</span>`;
     const hubs = [...new Set(x.stations.map((s) => s.hub).filter(Boolean))];
     // 30분 안 역은 모두(최대 8곳), 역마다 한 덩어리로 줄바꿈되게
-    return x.stations.slice(0, 8).map((s) => `<span style="white-space:nowrap${s.hub ? `;font-weight:700;color:${C.brand}` : ''}">${esc(s.name)}${s.lines?.length ? `(${esc(lineLabel(s.lines))})` : ''} ${s.n}정거장·약 ${s.min}분</span>`).join(' · ') + (hubs.length ? `<br><span style="font-size:13px;color:${C.muted}">업무 중심지: ${hubs.map(esc).join(', ')}</span>` : '');
+    return x.stations.slice(0, 8).map((s) => {
+      const c = LINE_COLORS[s.lines?.[0]] || '#6b7280';
+      const pills = (s.lines || []).map((l) => pill(esc(lineShort(l)), LINE_COLORS[l] || '#6b7280')).join(' ');
+      return `<span style="white-space:nowrap"><span style="font-weight:700;color:${ink(c)}">${esc(s.name)}</span> ${pills} ${s.n}정거장·약 ${s.min}분</span>`;
+    }).join(' · ') + (hubs.length ? `<br><span style="font-size:13px;color:${C.muted}">업무 중심지: ${hubs.map(esc).join(', ')}</span>` : '');
   };
   out.busRoutes = core.length ? `<p style="font-weight:700;margin:20px 0 8px">버스 핵심 노선 — 갈아타지 않고 닿는 곳</p>` + table([two('노선', '배차 간격'), two('기점 ↔ 종점', '노선 양 끝'), two(`약 ${LIMIT_MIN}분 안에 닿는 역`, '노선마다 가장 가까운 역 · 정거장 수 · 추정 시간')],
-    core.map((r) => [two(`${esc(r.no)}번 <span style="font-weight:400">${esc(r.type)}</span>`, r.term ? `${r.term}분 간격` : ''), r.from && r.to ? `${esc(r.from)} ↔ ${esc(r.to)}` : '정보 없음', reachCell(r.reach)]))
+    core.map((r) => [two(`<span style="color:${ink(busColor(r.type))}">${esc(r.no)}번</span> ${pill(esc(r.type), busColor(r.type))}`, r.term ? `${r.term}분 간격` : ''), r.from && r.to ? `${esc(r.from)} ↔ ${esc(r.to)}` : '정보 없음', reachCell(r.reach)]))
     + `<p style="font-size:14px;color:${C.muted}">단지에서 가까운 정류장(${esc(core.find((r) => r.reach?.board)?.reach.board || '-')} 등)에서 타서 단지에서 멀어지는 방향 기준입니다. 정류장 250m 안 철도역을 셌습니다. 시간은 노선 거리를 평균 시속 ${ASSUMED_KMH}km로 나눈 추정치라 실제와 다를 수 있고, 약 ${LIMIT_MIN}분을 넘는 역은 뺐습니다. 업무 중심지 목록: 강남·잠실·여의도·도심·판교·성수 등.</p>` : '';
   out.place = n.skip ? `<p>주변 정보를 찾지 못했습니다.</p>` : table([two('구분'), two('교통·학교', '직선거리, 가까운 순')], [
-    [two('지하철·철도역'), (Array.isArray(n.stations) && n.stations.length ? n.stations.map((s) => `${esc(s.name)}(${s.kind}) ${dist(s.d)}`).join(', ') : '3km 안 없음')],
+    [two('지하철·철도역'), (Array.isArray(n.stations) && n.stations.length ? n.stations.map((s) => { const ls = [...new Set((s.lines || []).map(canonLine))]; return `<span style="white-space:nowrap"><span style="font-weight:700;color:${ink(LINE_COLORS[ls[0]] || '#6b7280')}">${esc(s.name)}</span> ${ls.length ? ls.map((l) => pill(esc(lineShort(l)), LINE_COLORS[l] || '#6b7280')).join(' ') : `(${esc(s.kind)})`} ${dist(s.d)}</span>`; }).join(' · ') : '3km 안 없음')],
     [two('버스', `정류장 반경 ${n.bus?.radius ?? 500}m`), busCell(n.bus)],
     [two('초등학교', '배정(통학구역)'), elem],
     [two('중학교', '배정 학교군'), group(sc.middle)],

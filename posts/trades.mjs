@@ -25,12 +25,20 @@ export async function dataKey() {
   return k || null;
 }
 
+// 브이월드가 연속 호출 중 연결을 끊을 때가 있어(UND_ERR_SOCKET) 잠깐 쉬고 3번까지 다시
+async function getJson(u) {
+  for (let i = 0; i < 3; i++) {
+    try { return await (await fetch(u)).json(); } catch { await new Promise((r) => setTimeout(r, 1500 * (i + 1))); }
+  }
+  return null;
+}
+
 // 주소 → 좌표 + 법정동코드 앞 5자리(실거래 API의 LAWD_CD)
 export async function locate(address, vkey) {
   for (const a of addressVariants(cleanAddress(address))) {
     for (const type of ['PARCEL', 'ROAD']) {
       const u = `https://api.vworld.kr/req/address?service=address&request=getCoord&version=2.0&crs=EPSG:4326&format=json&type=${type}&refine=true&simple=false&key=${vkey}&address=${encodeURIComponent(a)}`;
-      const j = await (await fetch(u)).json().catch(() => null);
+      const j = await getJson(u);
       const p = j?.response?.result?.point, code = j?.response?.refined?.structure?.level4LC;
       if (j?.response?.status === 'OK' && p) return { lon: +p.x, lat: +p.y, lawd: code ? code.slice(0, 5) : null };
     }

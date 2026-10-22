@@ -54,7 +54,7 @@ export async function stations(lon, lat) {
     const d = meters(lon, lat, s.lon, s.lat);
     if (d > STATION_RANGE) continue;
     const name = s.name.endsWith('역') ? s.name : s.name + '역';
-    if (!best.has(name) || best.get(name).d > d) best.set(name, { name, kind: s.kind, operator: s.operator, d });
+    if (!best.has(name) || best.get(name).d > d) best.set(name, { name, kind: s.kind, operator: s.operator, lines: s.lines || [], d });
   }
   return [...best.values()].sort((a, b) => a.d - b.d).slice(0, 3);
 }
