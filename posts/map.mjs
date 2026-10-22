@@ -14,7 +14,7 @@ const W = 1200, H = 630, TILE = 256;
 // "경기도 의정부시 의정부동 253-19번지 일원" → "경기도 의정부시 의정부동 253-19"
 export function cleanAddress(a) {
   let s = String(a || '').replace(/\s+/g, ' ').trim();
-  s = s.replace(/\([^)]*\)/g, ' ');
+  s = s.replace(/[([][^)\]]*[)\]]/g, ' ').replace(/\s+/g, ' ').trim(); // 괄호 설명을 지운 뒤 끝 공백까지 정리해야 아래 $ 규칙이 맞는다
   s = s.replace(/(\d+(?:-\d+)?)\s*번지.*$/, '$1');
   s = s.replace(/\s+\S*(블록|BL)\S*.*$/i, ''); // "AA32블록", "A-1BL" 같은 택지 블록 표기는 지번이 아니다
   s = s.replace(/\s*(일원|일대|외\s*\d*\s*필지|외)$/, '');
@@ -36,7 +36,7 @@ export function zoomForRadius(lat, radius, fitPx = H / 2 - 30, zMin = 12, zMax =
   return zMin;
 }
 
-async function keyOf() {
+export async function keyOf() {
   if (process.env.VWORLD_KEY) return process.env.VWORLD_KEY;
   const env = await readFile(join(ROOT, '.env'), 'utf8').catch(() => '');
   const m = env.match(/^VWORLD_KEY=(.+)$/m);

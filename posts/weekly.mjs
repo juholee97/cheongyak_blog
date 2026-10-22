@@ -70,9 +70,17 @@ export function tagsOf(w) {
 const TH = 'style="background:#f4f6f9;text-align:left;padding:8px 10px;border-bottom:1px solid #e4e8ee;white-space:nowrap"';
 const TD = 'style="padding:8px 10px;border-bottom:1px solid #e4e8ee"';
 
-export function render(w, summary = []) {
+// 이미지 자리표시: 본문에는 <p>[[IMG:키]]</p>로 두고, 미리보기는 파일로, draft.mjs는 티스토리 업로드 결과로 바꾼다
+export const IMG = (key) => `<p>[[IMG:${key}]]</p>`;
+export const IMG_RE = /<p>\[\[IMG:([\w:-]+)\]\]<\/p>/g;
+
+// images: [{key:'weekly'|'card:{id}'|'map:{id}', file, alt}] — 있는 것만 자리를 만든다
+export function render(w, summary = [], images = []) {
+  const has = new Set(images.map((i) => i.key));
+  const img = (k) => (has.has(k) ? IMG(k) + '\n' : '');
   const kindText = Object.entries(w.facts.kinds).map(([k, n]) => `${k} ${n}`).join(' · ');
   const out = [];
+  if (has.has('weekly')) out.push(IMG('weekly')); // 첫 이미지 = 티스토리 대표 이미지
   summary.filter(Boolean).forEach((s) => out.push(`<p>${esc(s)}</p>`));
   out.push(`<div style="border:1px solid #d6dbe3;border-top:2px solid #0f2557;padding:12px 16px;margin:16px 0">
 <p><b>기간</b> ${full(w.start)} ~ ${full(w.end)}</p>
@@ -91,7 +99,7 @@ ${w.receipt.map(({ it, firstP }) => `<tr><td ${TD}>${span(firstP)} ${label(it, f
     for (const { it } of w.receipt) {
       const facts = [esc(where(it)), esc(it.kind), it.units ? it.units.toLocaleString() + '세대' : null, it.pricePerPyeong ? `분양가(3.3㎡) ${it.pricePerPyeong.toLocaleString()}만원*` : null].filter(Boolean).join(' · ');
       out.push(`<h3>${esc(it.name)}</h3>
-<p>${facts}</p>
+${img('card:' + it.id)}${img('map:' + it.id)}<p>${facts}</p>
 <table style="border-collapse:collapse;width:100%"><tbody>
 ${it.phases.map((p) => `<tr><th ${TH}>${label(it, p.k)}</th><td ${TD}>${span(p, full)}</td></tr>`).join('\n')}
 </tbody></table>${it.applyhomeUrl ? `\n<p><a href="${esc(it.applyhomeUrl)}" target="_blank" rel="noopener">청약홈 공고 보기</a></p>` : ''}`);
@@ -118,12 +126,12 @@ export async function loadData(src = SCHEDULE_URL) {
   return JSON.parse(await readFile(src, 'utf8'));
 }
 
-export function draftOf(data, start, summary = []) {
+export function draftOf(data, start, summary = [], images = []) {
   const w = build(data, start);
   return {
     week: { start: w.start, end: w.end }, dataUpdatedAt: data.updatedAt, dataSource: SCHEDULE_URL,
-    title: titleOf(w), category: '청약일정', tags: tagsOf(w), summary, facts: w.facts,
-    html: render(w, summary),
+    title: titleOf(w), category: '청약일정', tags: tagsOf(w), summary, facts: w.facts, images,
+    html: render(w, summary, images),
   };
 }
 
@@ -134,7 +142,7 @@ async function main() {
     // 같은 수집본으로 다시 그려야 사실 대조가 맞는다: 초안에 기록된 데이터를 다시 받지 않고 저장된 사본을 쓴다
     const d = JSON.parse(await readFile(renderPath, 'utf8'));
     const data = JSON.parse(await readFile(renderPath.replace(/\.json$/, '.data.json'), 'utf8'));
-    const next = draftOf(data, d.week.start, d.summary);
+    const next = draftOf(data, d.week.start, d.summary, d.images || []);
     await writeFile(renderPath, JSON.stringify(next, null, 2));
     console.log(`다시 그림: ${renderPath} (${next.title})`);
     return;

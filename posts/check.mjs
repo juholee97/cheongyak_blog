@@ -9,7 +9,7 @@ export const BANNED = ['추천', '강추', '로또', '무조건', '대박', '반
 
 export function checkDraft(draft, data) {
   const issues = [];
-  const again = draftOf(data, draft.week.start, draft.summary);
+  const again = draftOf(data, draft.week.start, draft.summary, draft.images || []);
   if (again.html !== draft.html) issues.push('본문이 수집본에서 다시 그린 결과와 다릅니다(본문을 직접 고치지 말고 summary만 고친 뒤 --render).');
   if (again.title !== draft.title) issues.push('제목이 집계와 다릅니다.');
 

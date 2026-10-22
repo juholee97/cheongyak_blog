@@ -6,7 +6,7 @@ import { readFile, access } from 'node:fs/promises';
 import { execFileSync, exec } from 'node:child_process';
 import { join, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { draftOf } from '../posts/weekly.mjs';
+import { draftOf, IMG_RE } from '../posts/weekly.mjs';
 import { checkDraft } from '../posts/check.mjs';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
@@ -93,7 +93,7 @@ async function schedulePath() {
   return access(real).then(() => real, () => join(ROOT, 'preview', 'sample-schedule.json'));
 }
 
-const TYPES = { '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.json': 'application/json; charset=utf-8', '.html': 'text/html; charset=utf-8' };
+const TYPES = { '.png': 'image/png', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.json': 'application/json; charset=utf-8', '.html': 'text/html; charset=utf-8' };
 
 async function check() {
   let ok = true;
@@ -134,7 +134,9 @@ if (process.argv.includes('--check')) {
       const dm = /^\/draft\/([\w-]+)$/.exec(path);
       if (dm) {
         const d = JSON.parse(await readFile(join(ROOT, 'drafts', dm[1] + '.json'), 'utf8'));
-        const { html } = await render('post', { cat: d.category, title: d.title, date: '[발행일]', rp: 0, link: '#', summary: '', thumb: '', desc: d.html });
+        const files = Object.fromEntries((d.images || []).map((i) => [i.key, i]));
+        const desc = d.html.replace(IMG_RE, (m, k) => (files[k] ? `<p><img src="/${files[k].file}" alt="${files[k].alt}" style="max-width:100%;height:auto"></p>` : m));
+        const { html } = await render('post', { cat: d.category, title: d.title, date: '[발행일]', rp: 0, link: '#', summary: '', thumb: '', desc });
         res.writeHead(200, { 'content-type': TYPES['.html'] });
         return res.end(html);
       }
@@ -144,8 +146,9 @@ if (process.argv.includes('--check')) {
         res.writeHead(200, { 'content-type': TYPES['.html'] });
         return res.end(html);
       }
-      const file = path === '/schedule.json' ? await schedulePath() : join(SKIN, path);
-      if (!file.startsWith(SKIN) && path !== '/schedule.json') throw new Error('forbidden');
+      const DRAFTS = join(ROOT, 'drafts');
+      const file = path === '/schedule.json' ? await schedulePath() : path.startsWith('/drafts/') ? join(ROOT, path) : join(SKIN, path);
+      if (!file.startsWith(SKIN) && !file.startsWith(DRAFTS) && path !== '/schedule.json') throw new Error('forbidden');
       const body = await readFile(file);
       res.writeHead(200, { 'content-type': TYPES[extname(file)] || 'application/octet-stream' });
       res.end(body);
