@@ -3,7 +3,7 @@
 // 버튼·입력칸·iframe·편집 영역과, 모드 전환·임시저장·완료·발행·카테고리·태그 후보를 기록해 draft.mjs 셀렉터의 근거로 쓴다.
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { launch, isLoggedIn, NEWPOST, ROOT } from './common.mjs';
+import { launch, ensureLogin, NEWPOST, ROOT } from './common.mjs';
 
 const KEYWORDS = /기본모드|마크다운|HTML|임시저장|저장|완료|발행|공개|카테고리|태그|제목/;
 
@@ -44,7 +44,7 @@ function collect(re) {
 
 const { context, page } = await launch({ headless: true });
 try {
-  if (!(await isLoggedIn(page))) {
+  if (!(await ensureLogin(page, context)).ok) {
     console.log('로그인 필요 — tistory_login.bat을 실행해 직접 로그인한 뒤 다시 실행하세요.');
     process.exitCode = 3;
   } else {

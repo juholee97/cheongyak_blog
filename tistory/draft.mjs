@@ -6,7 +6,7 @@
 // 주의(2026-10-22 실측): 편집기가 입력 도중 자동 임시저장을 하므로 "개수 +1"로 저장을 판정하지 않는다 → 저장본을 다시 열어 확인한다.
 import { readFile, writeFile } from 'node:fs/promises';
 import { join, basename } from 'node:path';
-import { launch, isLoggedIn, NEWPOST, ROOT } from './common.mjs';
+import { launch, ensureLogin, NEWPOST, ROOT } from './common.mjs';
 import { checkDraft } from '../posts/check.mjs';
 import { IMG_RE } from '../posts/weekly.mjs';
 
@@ -83,7 +83,9 @@ async function main() {
   };
   const editorHtml = () => page.evaluate((id) => window.tinymce.get(id).getContent(), SEL.editor.tinymceId);
   try {
-    if (!(await isLoggedIn(page))) { log('로그인 필요 — tistory_login.bat을 실행해 직접 로그인하세요.'); return 3; }
+    const login = await ensureLogin(page, context); // 세션이 끊겼으면 카카오 로그인으로 다시(비밀번호가 필요하면 멈춤)
+    if (!login.ok) { log('로그인 필요 — ' + login.reason); return 3; }
+    report.login = login.how;
     page.on('dialog', async (d) => { dialogs.push(d.message()); await (acceptDialogs ? d.accept() : d.dismiss()).catch(() => {}); });
     if (dryRun) {
       // 시험 실행: 그림 업로드만 통과시키고 다른 POST(자동 임시저장 등)는 막는다

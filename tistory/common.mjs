@@ -30,6 +30,43 @@ export async function launch({ headless = true } = {}) {
   return { context, page };
 }
 
+// 티스토리 세션이 끊겼으면 살아 있는 카카오 로그인으로 다시 들어간다. 버튼만 누르고 아무것도 입력하지 않는다.
+// 비밀번호 입력·추가 인증·동의 화면이 나오면 그 자리에서 멈추고 { ok:false, reason }을 돌려준다(사람이 tistory_login.bat으로).
+export async function ensureLogin(page, context) {
+  if (await isLoggedIn(page)) return { ok: true, how: '세션 유지' };
+  await page.goto(`https://www.tistory.com/auth/login?redirectUrl=${encodeURIComponent(BLOG + '/manage')}`, { waitUntil: 'domcontentloaded', timeout: 30000 });
+  const btn = page.locator('a.link_kakao_id');
+  if (!(await btn.count())) return { ok: false, reason: '티스토리 로그인 화면에서 "카카오계정으로 로그인" 버튼을 찾지 못했습니다.' };
+  await btn.first().click();
+  // 카카오를 거쳐 관리 화면으로 돌아오기를 기다린다
+  await page.waitForURL((u) => u.href.startsWith(BLOG + '/manage') || /accounts\.kakao\.com|kauth\.kakao\.com/.test(u.href), { timeout: 30000 }).catch(() => {});
+  await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {});
+  // 카카오 간편로그인(저장된 계정 고르기): 저장된 계정이 정확히 하나일 때만 그것을 누른다.
+  // "새로운 계정으로 로그인", "간편로그인 계정 삭제"는 절대 누르지 않는다.
+  if (/accounts\.kakao\.com\/login\/simple/.test(page.url())) {
+    const saved = page.locator('.wrap_profile').filter({ hasNotText: '새로운 계정' });
+    const n = await saved.count();
+    if (n !== 1) return { ok: false, reason: `카카오 간편로그인에 저장된 계정이 ${n}개라 고르지 않았습니다. tistory_login.bat으로 직접 로그인해 주세요.` };
+    await saved.first().click();
+    await page.waitForURL((x) => x.href.startsWith(BLOG + '/manage') || !/login\/simple/.test(x.href), { timeout: 30000 }).catch(() => {});
+    await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {});
+    if (!page.url().startsWith(BLOG + '/manage')) await page.waitForURL((x) => x.href.startsWith(BLOG + '/manage'), { timeout: 10000 }).catch(() => {});
+  }
+  const u = page.url();
+  if (u.startsWith(BLOG + '/manage')) {
+    await saveTistoryCookies(context).catch(() => {});
+    return { ok: true, how: '카카오 로그인으로 재로그인' };
+  }
+  const hasPassword = await page.locator('input[type="password"]').count().catch(() => 0);
+  const host = new URL(u).host;
+  return {
+    ok: false,
+    reason: hasPassword
+      ? `카카오 비밀번호 입력이 필요합니다(${host}). tistory_login.bat으로 직접 로그인해 주세요.`
+      : `자동으로 돌아오지 못했습니다(${host}${new URL(u).pathname} — 추가 인증이나 동의 화면일 수 있음). tistory_login.bat으로 직접 로그인해 주세요.`,
+  };
+}
+
 // 관리 화면이 로그인 페이지로 튕기지 않으면 로그인된 것
 export async function isLoggedIn(page) {
   await page.goto(BLOG + '/manage', { waitUntil: 'domcontentloaded', timeout: 30000 });

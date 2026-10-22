@@ -3,13 +3,13 @@
 // node tistory/probe_upload.mjs <png>
 import { writeFile, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
-import { launch, isLoggedIn, NEWPOST, ROOT } from './common.mjs';
+import { launch, ensureLogin, NEWPOST, ROOT } from './common.mjs';
 
 const img = process.argv[2];
 const { context, page } = await launch({ headless: true });
 const log = { posts: [], blocked: [], dialogs: [] };
 try {
-  if (!(await isLoggedIn(page))) { console.log('로그인 필요'); process.exitCode = 3; }
+  if (!(await ensureLogin(page, context)).ok) { console.log('로그인 필요'); process.exitCode = 3; }
   else {
     await page.route('**/*', async (route) => {
       const r = route.request();
