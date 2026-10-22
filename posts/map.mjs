@@ -27,13 +27,12 @@ export function project(lon, lat, z) {
   return [((lon + 180) / 360) * n, ((1 - Math.log(Math.tan(rad) + 1 / Math.cos(rad)) / Math.PI) / 2) * n];
 }
 
-// 필지 외곽이 그림 안에서 폭·높이의 maxFrac 이하로 들어오는 가장 큰 줌
-export function fitZoom(rings, maxFrac = 0.45, zMin = 13, zMax = 17) { // 17 넘게 당기면 주변 맥락이 안 보인다
-  for (let z = zMax; z >= zMin; z--) {
-    const pts = rings.flat().map(([x, y]) => project(x, y, z));
-    const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
-    if (Math.max(...xs) - Math.min(...xs) <= W * maxFrac && Math.max(...ys) - Math.min(...ys) <= H * maxFrac) return z;
-  }
+// 위도 lat, 줌 z에서 1픽셀이 몇 m인지(웹 메르카토르)
+export const metersPerPx = (lat, z) => (156543.03392 * Math.cos((lat * Math.PI) / 180)) / 2 ** z;
+
+// 반경 radius(m) 원이 그림 높이 안(위아래 여백 fitPx)에 들어오는 가장 큰 정수 줌 — 반경 안 학교·역·상가가 다 보이게
+export function zoomForRadius(lat, radius, fitPx = H / 2 - 30, zMin = 12, zMax = 17) {
+  for (let z = zMax; z >= zMin; z--) if (radius / metersPerPx(lat, z) <= fitPx) return z;
   return zMin;
 }
 
@@ -71,7 +70,7 @@ const lotOf = (jibun) => String(jibun || '').replace(/^산\s*/, '').replace(/[^\
 
 // 좌표 주변(buffer m) 필지 중 지번이 lot과 같은 것, lot이 없으면 좌표가 든 필지
 async function parcelAt(lon, lat, key, lot) {
-  const u = `${API}/data?service=data&request=GetFeature&version=2.0&data=LP_PA_CBND_BUBUN&format=json&crs=EPSG:4326&size=${lot ? 50 : 1}&buffer=${lot ? 80 : 0}&geomFilter=POINT(${lon} ${lat})&key=${key}`;
+  const u = `${API}/data?service=data&request=GetFeature&version=2.0&data=LP_PA_CBND_BUBUN&format=json&crs=EPSG:4326&size=${lot ? 300 : 1}&buffer=${lot ? 80 : 0}&geomFilter=POINT(${lon} ${lat})&key=${key}`;
   const j = await getJson(u);
   const fs = j.response?.result?.featureCollection?.features || [];
   const f = lot ? fs.find((x) => lotOf(x.properties?.jibun) === lot) : fs[0];
@@ -87,7 +86,7 @@ async function tileUri(z, x, y, key) {
 
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 
-export async function mapHtml(it, key) {
+export async function mapHtml(it, key, radius = 500) {
   const address = cleanAddress(it.address);
   if (!address) return { skip: '주소 없음' };
   // 지번(또는 도로명 건물번호)으로 끝나지 않는 주소("검단신도시 AA32블록" 등)는 좌표가 엉뚱한 곳에 찍히므로 그리지 않는다
@@ -98,11 +97,18 @@ export async function mapHtml(it, key) {
   // 지번 주소면 주변에서 지번이 정확히 같은 필지를 찾고(없으면 지점만), 도로명 주소면 좌표가 든 필지
   const parcel = await parcelAt(pt.lon, pt.lat, key, pt.type === 'PARCEL' ? lot : null);
   const rings = parcel?.rings?.length ? parcel.rings : [[[pt.lon, pt.lat]]];
-  const z = parcel ? fitZoom(rings) : 17;
+  const z = zoomForRadius(pt.lat, radius);
   const all = rings.flat().map(([x, y]) => project(x, y, z));
   const cx = (Math.min(...all.map((p) => p[0])) + Math.max(...all.map((p) => p[0]))) / 2;
   const cy = (Math.min(...all.map((p) => p[1])) + Math.max(...all.map((p) => p[1]))) / 2;
   const ox = cx - W / 2, oy = cy - H / 2; // 그림 왼쪽 위의 전역 픽셀
+  // 반경 원: 500m는 항상, 1km 모드면 1km도 (중심 = 필지 중심)
+  const radii = radius >= 1000 ? [500, 1000] : [500];
+  const circles = radii.map((r) => {
+    const rp = r / metersPerPx(pt.lat, z);
+    return `<circle cx="${W / 2}" cy="${H / 2}" r="${rp.toFixed(1)}" fill="none" stroke="#0f2557" stroke-width="3" stroke-dasharray="10 8" opacity=".75"/>
+<text x="${W / 2}" y="${(H / 2 - rp + 26).toFixed(1)}" text-anchor="middle" font-size="20" font-weight="800" fill="#0f2557" stroke="#fff" stroke-width="5" paint-order="stroke">반경 ${r >= 1000 ? r / 1000 + 'km' : r + 'm'}</text>`;
+  }).join('');
   const tiles = [];
   for (let ty = Math.floor(oy / TILE); ty <= Math.floor((oy + H) / TILE); ty++)
     for (let tx = Math.floor(ox / TILE); tx <= Math.floor((ox + W) / TILE); tx++)
@@ -114,6 +120,7 @@ export async function mapHtml(it, key) {
 <style>body{margin:0;width:${W}px;height:${H}px;overflow:hidden;font-family:Pretendard,sans-serif;letter-spacing:-0.02em}</style></head><body>
 <div style="position:relative;width:${W}px;height:${H}px;overflow:hidden;background:#eef1f5">${tiles.join('')}
 <svg width="${W}" height="${H}" style="position:absolute;left:0;top:0">
+${circles}
 ${paths ? `<path d="${paths}" fill="rgba(10,78,194,.22)" stroke="#0a4ec2" stroke-width="5" stroke-linejoin="round"/>` : `<circle cx="${px - ox}" cy="${py - oy}" r="16" fill="#0a4ec2" stroke="#fff" stroke-width="5"/>`}
 </svg>
 <div style="position:absolute;left:32px;top:28px;background:#fff;border-top:6px solid #0f2557;border-radius:12px;padding:18px 24px;box-shadow:0 10px 30px -12px rgba(0,0,0,.35);max-width:760px">
@@ -137,14 +144,16 @@ async function main() {
   const w = build(data, draft.week.start);
   const i = process.argv.indexOf('--only');
   const items = i > 0 ? w.receipt.slice(0, +process.argv[i + 1]) : w.receipt;
+  const ri = process.argv.indexOf('--radius');
+  const radius = ri > 0 ? +process.argv[ri + 1] : 500; // 500(기본) 또는 1000
   const { chromium } = await import('playwright');
   const browser = await chromium.launch({ headless: true });
   const page = await browser.newPage({ viewport: { width: W, height: H } });
-  const out = path.replace(/\.json$/, '.maps');
+  const out = path.replace(/\.json$/, radius === 500 ? '.maps' : `.maps${radius}`);
   await mkdir(out, { recursive: true });
   for (const [n, { it }] of items.entries()) {
     try {
-      const r = await mapHtml(it, key);
+      const r = await mapHtml(it, key, radius);
       if (r.skip) { console.log(`- ${it.name}: 건너뜀 (${r.skip})`); continue; }
       await page.setContent(r.html, { waitUntil: 'networkidle' });
       await page.evaluate(() => document.fonts.ready);
