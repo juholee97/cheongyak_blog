@@ -67,6 +67,7 @@ export function toItem(row, sourceKind) {
     kind,
     units: num(row.TOT_SUPLY_HSHLDCO) || null,
     pricePerPyeong: null,
+    address: String(row.HSSPLY_ADRES || '').trim() || null, // 공급위치(위치 지도용)
     noticeDate: ymd(row.RCRIT_PBLANC_DE),
     applyhomeUrl: url(row.PBLANC_URL),
     homepageUrl: url(row.HMPG_ADRES),

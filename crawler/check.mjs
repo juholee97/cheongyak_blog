@@ -24,6 +24,7 @@ const apt = toItem({
 assert.equal(apt.name, '래미안 원펜타스 2차');
 assert.equal(apt.region, '서울');
 assert.equal(apt.district, '서초구');
+assert.equal(apt.address, '서울특별시 서초구 반포동 1-1');
 assert.equal(apt.units, 641);
 assert.equal(apt.homepageUrl, 'http://www.example.co.kr');
 assert.deepEqual(apt.phases.map((p) => p.k), ['sp', 'p1', 'p2', 'win', 'con']);
