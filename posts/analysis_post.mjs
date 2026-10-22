@@ -146,7 +146,7 @@ ${t.others.length ? `<p style="font-size:14px;color:${C.muted}">참고 — 1.5km
   };
   out.busRoutes = core.length ? `<p style="font-weight:700;margin:20px 0 8px">버스 핵심 노선 — 갈아타지 않고 닿는 곳</p>` + table([two('노선', '배차 간격'), two('기점 ↔ 종점', '노선 양 끝'), two(`약 ${LIMIT_MIN}분 안에 닿는 역`, '노선마다 가장 가까운 역 · 정거장 수 · 추정 시간')],
     core.map((r) => [two(`<span style="color:${ink(busColor(r.type))}">${esc(r.no)}번</span> ${pill(esc(r.type), busColor(r.type))}`, r.term ? `${r.term}분 간격` : ''), r.from && r.to ? `${esc(r.from)} ↔ ${esc(r.to)}` : '정보 없음', reachCell(r.reach)]))
-    + `<p style="font-size:14px;color:${C.muted}">단지에서 가까운 정류장(${esc(core.find((r) => r.reach?.board)?.reach.board || '-')} 등)에서 타서 단지에서 멀어지는 방향 기준입니다. 정류장 250m 안 철도역을 셌습니다. 시간은 노선 거리를 평균 시속 ${ASSUMED_KMH}km로 나눈 추정치라 실제와 다를 수 있고, 약 ${LIMIT_MIN}분을 넘는 역은 뺐습니다. 업무 중심지 목록: 강남·잠실·여의도·도심·판교·성수 등.</p>` : '';
+    + `<p style="font-size:13px;color:${C.muted}">시간은 평균 시속 ${ASSUMED_KMH}km 기준 추정 · ${esc(n.bus?.source || '')}</p>` : '';
   out.place = n.skip ? `<p>주변 정보를 찾지 못했습니다.</p>` : table([two('구분'), two('교통·학교', '직선거리, 가까운 순')], [
     [two('지하철·철도역'), (Array.isArray(n.stations) && n.stations.length ? n.stations.map((s) => { const ls = [...new Set((s.lines || []).map(canonLine))]; return `<span style="white-space:nowrap"><span style="font-weight:700;color:${ink(LINE_COLORS[ls[0]] || '#6b7280')}">${esc(s.name)}</span> ${ls.length ? ls.map((l) => pill(esc(lineShort(l)), LINE_COLORS[l] || '#6b7280')).join(' ') : `(${esc(s.kind)})`} ${dist(s.d)}</span>`; }).join('<br>') : '3km 안 없음')],
     [two('버스', `정류장 반경 ${n.bus?.radius ?? 500}m`), busCell(n.bus)],
@@ -154,7 +154,7 @@ ${t.others.length ? `<p style="font-size:14px;color:${C.muted}">참고 — 1.5km
     [two('중학교', '배정 학교군'), group(sc.middle)],
     [two('고등학교', sc.nonflat?.length ? '비평준화 지역' : '배정 학교군'), sc.nonflat?.length ? `비평준화 지역(${esc(sc.nonflat.join(', '))}) — 학교별 선발` : group(sc.high)],
     [two('지원·선발 학교', `반경 ${SCHOOL_SELECT_KM}km`), sel],
-  ]) + `<p style="font-size:14px;color:${C.muted}">배정 기준: ${SCHOOL_SOURCE}. 중·고는 학교군 안에서 지망·추첨으로 배정되므로 가까운 학교가 곧 배정 학교는 아닙니다. 지원·선발 학교는 사립·국립 초등학교, 국제·예술·체육중, 특수목적고(이름 기준)이며 자율형사립고는 빠져 있습니다. 최종 배정은 교육지원청에서 확인하세요. 역: © OpenStreetMap contributors. 버스: ${esc(n.bus?.source || '')}.</p>`;
+  ]) + `<p style="font-size:13px;color:${C.muted}">학구도 2026.09 기준, 중·고는 학교군 안 추첨 · 배정은 교육지원청 확인 · 역 © OpenStreetMap</p>`;
   const flags = d.flags.length ? d.flags.join(' · ') : '해당 표시 없음';
   out.rules = table(['항목', '내용'], [
     ['규제·지구 (청약홈 공고 정보)', esc(flags)],
