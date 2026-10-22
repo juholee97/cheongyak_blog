@@ -8,6 +8,7 @@ import { loadData, esc, span, label, where, full, md, C, TH, TD, IMG, BLOG_URL, 
 import { BANNED } from './check.mjs';
 import { stations } from './nearby.mjs';
 import { schoolsAt, SOURCE as SCHOOL_SOURCE } from './schools.mjs';
+import { busNear } from './bus.mjs';
 import { nearbyTrades, dataKey, tierOf, locate, PY } from './trades.mjs';
 import { keyOf, mapHtml } from './map.mjs';
 import { itemHtml, renderPngs } from './card.mjs';
@@ -62,7 +63,7 @@ export async function collect(no, dataSrc) {
   const tier = tierOf(it.name, d.BSNS_MBY_NM, d.CNSTRCT_ENTRPS_NM);
   const leasehold = /토지임대부/.test(it.name);
   const site = await locate(it.address, vkey);
-  const near = site ? { stations: await stations(site.lon, site.lat), schools: await schoolsAt(site.lon, site.lat) } : { skip: '위치 못 찾음' };
+  const near = site ? { stations: await stations(site.lon, site.lat), bus: await busNear(site.lon, site.lat, it.region), schools: await schoolsAt(site.lon, site.lat) } : { skip: '위치 못 찾음' };
   const trades = await nearbyTrades(it.address, main.area, { tier });
   return {
     item: it, dataUpdatedAt: data.updatedAt,
@@ -104,13 +105,21 @@ ${t.others.length ? `<p style="font-size:14px;color:${C.muted}">참고 — 1.5km
   const elem = (sc.elem || []).length ? sc.elem.map((z) => (z.near != null ? `${list(z.schools, 1)} (통학구역 지정 전 · 인접 구역)` : list(z.schools))).join(', ') : '확인 못 함';
   const group = (zs) => (zs || []).map((z) => `<span style="font-weight:700">${esc(z.name)}</span> ${z.schools.length}곳 중 가까운 곳: ${list(z.schools)}`).join('<br>') || '확인 못 함';
   const sel = Object.entries(sc.selective || {}).filter(([, v]) => v.length).map(([k, v]) => `${k.replace('학교', '')}: ${v.map((s) => `${esc(s.name)}(${s.type}) ${dist(s.d)}`).join(', ')}`).join('<br>') || `${SCHOOL_SELECT_KM}km 안 없음`;
-  out.place = n.skip ? `<p>주변 정보를 찾지 못했습니다.</p>` : table([two('구분'), two('학교·역', '직선거리, 가까운 순')], [
+  // 버스: 가까운 정류장 2곳 + 지나는 노선을 종류별로
+  const busCell = (b) => {
+    if (!b || b.skip) return '확인 못 함';
+    if (!b.stops.length) return '반경 안 정류장 없음';
+    const by = new Map(); for (const r of b.routes) { if (!by.has(r.type)) by.set(r.type, []); by.get(r.type).push(esc(r.no)); }
+    return `${b.stops.slice(0, 2).map((s) => `${esc(s.name)} ${dist(s.d)}`).join(', ')}${b.stops.length > 2 ? ` 외 ${b.stops.length - 2}곳` : ''}<br>${[...by].map(([t, ns]) => `<span style="font-weight:700">${esc(t)}</span> ${ns.join(' · ')}`).join(' / ') || '노선 정보 없음'}`;
+  };
+  out.place = n.skip ? `<p>주변 정보를 찾지 못했습니다.</p>` : table([two('구분'), two('교통·학교', '직선거리, 가까운 순')], [
     [two('지하철·철도역'), (Array.isArray(n.stations) && n.stations.length ? n.stations.map((s) => `${esc(s.name)}(${s.kind}) ${dist(s.d)}`).join(', ') : '3km 안 없음')],
+    [two('버스', `정류장 반경 ${n.bus?.radius ?? 500}m`), busCell(n.bus)],
     [two('초등학교', '배정(통학구역)'), elem],
     [two('중학교', '배정 학교군'), group(sc.middle)],
     [two('고등학교', sc.nonflat?.length ? '비평준화 지역' : '배정 학교군'), sc.nonflat?.length ? `비평준화 지역(${esc(sc.nonflat.join(', '))}) — 학교별 선발` : group(sc.high)],
     [two('지원·선발 학교', `반경 ${SCHOOL_SELECT_KM}km`), sel],
-  ]) + `<p style="font-size:14px;color:${C.muted}">배정 기준: ${SCHOOL_SOURCE}. 중·고는 학교군 안에서 지망·추첨으로 배정되므로 가까운 학교가 곧 배정 학교는 아닙니다. 지원·선발 학교는 사립·국립 초등학교, 국제·예술·체육중, 특수목적고(이름 기준)이며 자율형사립고는 빠져 있습니다. 최종 배정은 교육지원청에서 확인하세요. 역: © OpenStreetMap contributors.</p>`;
+  ]) + `<p style="font-size:14px;color:${C.muted}">배정 기준: ${SCHOOL_SOURCE}. 중·고는 학교군 안에서 지망·추첨으로 배정되므로 가까운 학교가 곧 배정 학교는 아닙니다. 지원·선발 학교는 사립·국립 초등학교, 국제·예술·체육중, 특수목적고(이름 기준)이며 자율형사립고는 빠져 있습니다. 최종 배정은 교육지원청에서 확인하세요. 역: © OpenStreetMap contributors. 버스: ${esc(n.bus?.source || '')}.</p>`;
   const flags = d.flags.length ? d.flags.join(' · ') : '해당 표시 없음';
   out.rules = table(['항목', '내용'], [
     ['규제·지구 (청약홈 공고 정보)', esc(flags)],
@@ -130,7 +139,7 @@ export function render(f, notes = {}, images = []) {
   return [
     img('card'), note(notes.intro), H2('한눈에'), x.glance, x.types,
     H2('분양가와 주변 실거래'), x.leasehold, note(notes.price), x.trades,
-    H2('입지 — 역·학교'), img('map'), note(notes.place), x.place,
+    H2('입지 — 교통·학교'), img('map'), note(notes.place), x.place,
     H2('자격·규제'), note(notes.rules), x.rules,
     H2('대출·자금'), note(notes.loans), x.loans,
     H2('공고문·문의'), x.links,
@@ -141,7 +150,7 @@ export function render(f, notes = {}, images = []) {
 
 export function titleOf(f) {
   const short = f.item.name.replace(/\(.*?\)/g, '').trim();
-  return `[분양분석] ${short} — 분양가·주변 실거래·역·학교·대출 정리`;
+  return `[분양분석] ${short} — 분양가·주변 실거래·교통·학군·대출 정리`;
 }
 
 export function draftOf(f, notes = {}, images = []) {
