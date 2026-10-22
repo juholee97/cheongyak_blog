@@ -54,7 +54,7 @@ async function getJson(url) {
 export const addressVariants = (a) => [...new Set([a, a.replace(/(\S+)특례시\s+\S+구\s/, '$1시 '), a.replace(/특례시/, '시')])];
 
 // 주소 → 좌표(지번, 실패하면 도로명)
-async function geocode(address, key) {
+export async function geocode(address, key) {
   for (const a of addressVariants(address)) {
     for (const type of ['PARCEL', 'ROAD']) {
       const u = `${API}/address?service=address&request=getCoord&version=2.0&crs=EPSG:4326&format=json&type=${type}&key=${key}&address=${encodeURIComponent(a)}`;

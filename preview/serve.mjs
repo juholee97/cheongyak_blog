@@ -110,6 +110,7 @@ async function check() {
   try { execFileSync(process.execPath, ['--check', join(SKIN, 'images', 'calendar.js')]); console.log('  calendar.js 문법 확인'); } catch (e) { fail('calendar.js 문법 오류\n' + e.stderr); }
   try { execFileSync(process.execPath, [join(ROOT, 'crawler', 'check.mjs')], { stdio: 'inherit' }); } catch { fail('crawler/check.mjs 실패'); }
   try { execFileSync(process.execPath, [join(ROOT, 'posts', 'map.check.mjs')], { stdio: 'inherit' }); } catch { fail('posts/map.check.mjs 실패'); }
+  try { execFileSync(process.execPath, [join(ROOT, 'posts', 'nearby.check.mjs')], { stdio: 'inherit' }); } catch { fail('posts/nearby.check.mjs 실패'); }
   try { execFileSync(process.execPath, [join(ROOT, 'posts', 'weekly.check.mjs')], { stdio: 'inherit' }); } catch { fail('posts/weekly.check.mjs 실패'); }
   const sch = JSON.parse(await readFile(await schedulePath(), 'utf8'));
   if (!sch.items?.length) fail('schedule.json 비어 있음'); else console.log(`  schedule.json ${sch.items.length}건${sch.sample ? ' (샘플)' : ''}`);
