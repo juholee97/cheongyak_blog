@@ -9,10 +9,11 @@ description: "이번 주 청약 일정" 주간 글을 schedule.json으로 만들
 
 ## 절차
 1. **생성** `node posts/weekly.mjs [--week YYYY-MM-DD(월요일)]` — 기본은 다음 주 월~일. Pages의 schedule.json을 받아 `drafts/{월요일}_weekly.json`과 수집본 사본 `.data.json`을 만든다.
+1-1. **그림** `node posts/images.mjs drafts/…json` — 맨 앞 주간 썸네일(대표 이미지), 단지마다 단지 카드 → 위치 지도(브이월드, 반경 1km). 위치를 확실히 못 찾는 단지는 지도 없이. 본문에는 `<p>[[IMG:키]]</p>` 자리표시로 들어간다.
 2. **요약 2~3줄** — `drafts/…json`의 `facts`와 단지 목록만 보고 쓴다. 숫자는 집계값(접수·발표·계약 수, 종류별·지역별 수)과 데이터 값만. 평가·전망·권유 금지. `summary` 배열에 넣고 `node posts/weekly.mjs --render drafts/…json`.
 3. **검수** `node posts/check.mjs drafts/…json` — 실패하면 고친다(본문은 직접 고치지 않는다: summary만 고치고 --render).
 4. **승인** — 미리보기 `node preview/serve.mjs` → `http://localhost:5178/draft/{이름}`(PC·휴대폰 폭). 제목·요약·접수/발표/계약 수를 채팅에 보이고 **사용자 승인을 받는다. 승인 없이는 저장하지 않는다.**
-5. **임시저장** `node tistory/draft.mjs drafts/…json --approved` — 발행 가드(완료·"발행" 버튼 차단) → 제목·카테고리·본문(TinyMCE)·태그 → 임시저장 → 저장본을 다시 불러와 전문 대조. 종료 코드 3이면 `tistory_login.bat`(로그인은 사람이).
+5. **임시저장** `node tistory/draft.mjs drafts/…json --approved` — 발행 가드(완료·"발행" 버튼 차단) → 제목·카테고리 → 그림 한 장씩 첨부(첨부→사진, 치환자 `[##_Image|…_##]`를 파일명으로 짝지음) → 자리표시를 치환자로 바꿔 본문 조립 → 태그 → 임시저장 → 저장본을 다시 불러와 글자·그림 파일명까지 대조. 처음이거나 바꾼 뒤엔 `--dry-run`(업로드 외 저장 요청 차단, 저장 없음)으로 먼저 시험. 종료 코드 3이면 `tistory_login.bat`(로그인은 사람이).
 6. **보고** — `drafts/…save.json`과 `…loaded.png`로 결과를 확인해 알리고, 같은 제목 저장본이 여러 건이면 오래된 것은 사람이 지우도록 안내한다(자동 삭제 금지). 발행은 사람이 한다.
 
 ## 알아 둘 것

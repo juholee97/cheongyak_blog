@@ -20,7 +20,8 @@ const dow = (s) => W[toDate(s).getUTCDay()];
 export const md = (s) => `${+s.slice(5, 7)}.${s.slice(8, 10)}(${dow(s)})`; // 10.26(월)
 export const mdKo = (s) => `${+s.slice(5, 7)}월 ${+s.slice(8, 10)}일`; // 10월 26일
 export const full = (s) => `${s.slice(0, 4)}.${s.slice(5, 7)}.${s.slice(8, 10)} (${dow(s)})`; // 2026.10.26 (월)
-const span = (p, f = md) => (p.end ? `${f(p.date)} ~ ${f(p.end)}` : f(p.date));
+// 기간 표기. 시작·끝 연도가 다르면 연도까지 쓴다("9.12 ~ 9.12"처럼 보이지 않게)
+const span = (p, f = md) => (!p.end ? f(p.date) : p.end.slice(0, 4) !== p.date.slice(0, 4) ? `${full(p.date)} ~ ${full(p.end)}` : `${f(p.date)} ~ ${f(p.end)}`);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 const label = (it, k) => (k === 'p1' && it.kind !== 'APT' ? '접수' : PH[k]);
 const where = (it) => [it.region, it.district].filter(Boolean).join(' ');
@@ -43,7 +44,9 @@ export function build(data, start) {
     const r = ph.filter((p) => RECEIPT.includes(p.k));
     if (r.length) receipt.push({ it, first: r[0].date, firstP: r[0] }); // 이번 주에 걸친 첫 접수 단계(앞 주에 시작해 이어지는 것 포함)
     ph.filter((p) => p.k === 'win').forEach((p) => win.push({ it, date: p.date }));
-    ph.filter((p) => p.k === 'con').forEach((p) => con.push({ it, p, date: p.date < start ? start : p.date }));
+    // 계약은 시작일이나 종료일이 이번 주일 때만(2026.09.12~2029.09.12처럼 몇 년짜리 기간이 매주 끼지 않게)
+    const inWeek = (s) => s >= start && s <= end;
+    ph.filter((p) => p.k === 'con' && (inWeek(p.date) || (p.end && inWeek(p.end)))).forEach((p) => con.push({ it, p, date: p.date < start ? start : p.date }));
   }
   const byDate = (a, b) => a.date.localeCompare(b.date) || a.it.name.localeCompare(b.it.name, 'ko');
   receipt.sort((a, b) => a.first.localeCompare(b.first) || a.it.name.localeCompare(b.it.name, 'ko'));

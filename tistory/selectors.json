@@ -18,6 +18,13 @@
     "markdown": "#editor-mode-markdown",
     "html": "#editor-mode-html"
   },
+  "attach": {
+    "open": "#mceu_0-open",
+    "image": "#attach-image",
+    "upload": "/manage/post/attach.json",
+    "token": "\\[##_Image\\|.*?_##\\]",
+    "_note": "2026-10-22 probe_upload.mjs 실측: 첨부 → 사진(#attach-image)을 누르면 파일 선택 창(여러 장 가능)이 뜬다. 올리면 POST /manage/post/attach.json → 본문에 <p>[##_Image|kage@키/img.png?…|CDM|1.3|{\"originWidth\":1200,\"originHeight\":630,\"style\":\"alignCenter\",\"filename\":\"원래파일명\"}_##]</p>가 들어간다. 파일명으로 그림과 치환자를 짝짓는다. 근거: tistory/probe-out/upload.json"
+  },
   "tags": "input#tagText",
   "tagItems": ".editor_tag .txt_tag",
   "_tagsNote": "2026-10-22 실측: 입력한 태그는 span.txt_tag(\"#태그 … 태그 삭제\")로 표시, 10개를 채우면 입력칸이 사라진다",

@@ -32,13 +32,12 @@ try {
     await page.waitForTimeout(800);
     log.attachMenu = await page.$$eval('.mce-menu-item, [role=menuitem]', (els) => els.filter((e) => e.offsetWidth).map((e) => ({ text: e.innerText.trim(), id: e.id, cls: e.className.slice(0, 80) })));
     log.fileInputsAfterMenu = await page.$$eval('input[type=file]', (els) => els.map((e) => ({ id: e.id, name: e.name, accept: e.accept, multiple: e.multiple })));
-    await page.keyboard.press('Escape');
     const before = await page.evaluate(() => window.tinymce.get('editor-tistory').getContent());
-    const input = await page.$('input[type=file][accept*="image"]') || await page.$('input[type=file]');
-    if (input) {
-      await input.setInputFiles(img);
-      await page.waitForTimeout(8000);
-    }
+    // 첨부 → 사진을 누르면 파일 선택 창이 뜬다 → 가로채서 파일을 넣는다
+    const [chooser] = await Promise.all([page.waitForEvent('filechooser', { timeout: 10000 }), page.click('#attach-image')]);
+    log.chooser = { multiple: chooser.isMultiple() };
+    await chooser.setFiles(img);
+    await page.waitForTimeout(8000);
     log.contentBefore = before;
     log.contentAfter = await page.evaluate(() => window.tinymce.get('editor-tistory').getContent());
     await page.screenshot({ path: join(ROOT, 'tistory', 'probe-out', 'upload-check.png'), fullPage: true });
