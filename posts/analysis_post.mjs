@@ -77,16 +77,19 @@ const table = (head, rows) => `<div style="overflow-x:auto"><table style="border
 ${rows.map((r) => `<tr>${r.map((c) => `<td ${TD}>${c}</td>`).join('')}</tr>`).join('\n')}
 </tbody></table></div>`;
 
+// 두 줄 칸: 위는 굵은 값, 아래는 작은 설명(줄 중간에서 끊기지 않게 nowrap)
+const two = (top, sub) => `<span style="font-weight:700;white-space:nowrap">${top}</span>${sub ? `<br><span style="font-size:13px;font-weight:400;color:${C.muted};white-space:nowrap">${sub}</span>` : ''}`;
+
 export function renderFacts(f) {
   const { item: it, detail: d, types, trades: t, nearby: n } = f;
   const out = {};
   out.glance = box(`<p style="margin:0 0 6px"><span style="font-weight:700">${esc(where(it))}</span> · ${esc(d.kind)} · ${d.units.toLocaleString()}세대 · 시행 ${esc(d.developer)}</p>
 <p style="margin:0 0 6px">시공 ${esc(d.builder)}${d.moveIn ? ` · 입주 예정 ${d.moveIn}` : ''} · 모집공고 ${full(d.notice)}</p>
 <p style="margin:0">${it.phases.map((p) => `<span style="font-weight:700">${label(it, p.k)}</span> ${span(p, md)}`).join(' · ')}</p>`);
-  out.types = table(['전용면적', '공급면적(평균)', '세대(일반+특별)', '분양가(최고가)', '전용 3.3㎡당'],
-    types.map((g) => [`${g.area}㎡${g.types > 1 ? ` (${g.types}개 타입)` : ''}`, `${g.supply}㎡`, `${g.units.toLocaleString()}세대`, g.min === g.max ? eok(g.max) : `${eok(g.min)} ~ ${eok(g.max)}`, man(g.perPy)]));
-  const row = (g) => [`${esc(g.apt)}${g.leasehold ? ' (토지임대부)' : ''}`, `${(g.d / 1000).toFixed(1)}km`, g.built ? `${g.built}년` : '-', g.near ? `전용 ${g.near.ar}㎡ ${eok(g.near.amount)} (${g.near.count}건, 최근 ${g.near.last.replace('-', '.')})` : '비교 면적 거래 없음', `${man(Math.round(g.perPy))} (${g.count}건)`];
-  out.trades = t.skip ? `<p>실거래를 불러오지 못했습니다(${esc(t.skip)}).</p>` : `${table(['단지', '거리', '준공', `비슷한 면적(전용 ${t.area}±15㎡) 중앙값`, '전용 3.3㎡당 중앙값'], t.same.map(row))}
+  out.types = table([two('주택형', '공급면적(평균)'), '세대(일반+특별)', two('분양가', '최고가 기준'), two('3.3㎡당', '전용면적 기준')],
+    types.map((g) => [two(`전용 ${g.area}㎡`, `${g.types > 1 ? `${g.types}개 타입 · ` : ''}공급 ${g.supply}㎡`), `${g.units.toLocaleString()}세대`, g.min === g.max ? two(eok(g.max)) : two(eok(g.max), `가장 낮은 타입 ${eok(g.min)}`), man(g.perPy)]));
+  const row = (g) => [two(`${esc(g.apt)}${g.leasehold ? ' (토지임대부)' : ''}`, `${(g.d / 1000).toFixed(1)}km · ${g.built ? `${g.built}년 준공` : '준공 연도 없음'}`), g.near ? two(eok(g.near.amount), `전용 ${g.near.ar}㎡ · ${g.near.count}건 · 최근 ${g.near.last.replace('-', '.')}`) : `<span style="color:${C.muted}">비교 면적 거래 없음</span>`, two(man(Math.round(g.perPy)), `${g.count}건`)];
+  out.trades = t.skip ? `<p>실거래를 불러오지 못했습니다(${esc(t.skip)}).</p>` : `${table([two('단지', '거리 · 준공'), two('비슷한 면적 거래가', `전용 ${t.area}±15㎡ 중앙값`), two('3.3㎡당', '전용 기준 중앙값')], t.same.map(row))}
 <p style="font-size:14px;color:${C.muted}">비교 기준: 같은 등급(${esc(t.tier)}) 단지, 반경 ${t.widened ? `${t.wide / 1000}km(1.5km 안에 2곳 미만이라 넓힘)` : `${t.range / 1000}km`}, ${t.months} 거래, 해제·직거래 제외, 직선거리. 법정동코드 ${t.lawd} 안 거래만 포함(경계 너머 단지는 빠짐).</p>
 ${t.others.length ? `<p style="font-size:14px;color:${C.muted}">참고 — 1.5km 안 다른 등급 단지: ${t.others.map((g) => `${esc(g.apt)}(${g.tier}, ${g.built}년, 3.3㎡당 ${man(Math.round(g.perPy))})`).join(', ')}</p>` : ''}`;
   out.leasehold = f.leasehold ? box(`<p style="margin:0"><span style="font-weight:700">토지임대부 분양주택</span>: 분양가에 토지값이 들어 있지 않고, 토지는 사업주체에 매달 임대료를 냅니다(금액은 입주자모집공고 확인). 그래서 토지 소유권이 있는 주변 아파트와 분양가를 그대로 비교할 수 없습니다. 관련 법령상 전매제한 10년·거주의무 5년입니다(주택법 시행령 별표3·제60조의2, 공고문으로 최종 확인).</p>`) : '';
@@ -101,8 +104,9 @@ ${t.others.length ? `<p style="font-size:14px;color:${C.muted}">참고 — 1.5km
     ['청약 지역 구분', esc(d.area || '-')],
     ['공급 유형', `${esc(d.kind)} · ${esc(d.rent)}`],
   ]) + `<p style="font-size:14px;color:${C.muted}">전매제한·실거주 의무 기간은 공고문에 적힌 내용이 기준입니다. 분양가상한제 수도권 주택은 법령상 실거주 의무가 있습니다.</p>`;
-  const loanRows = types.map((g) => [`${g.area}㎡ (${eok(g.max)})`, ...LOAN.map((l) => (g.max <= l.max && (!l.area || g.area <= l.area) ? '가격·면적 요건 안' : '요건 밖'))]);
-  out.loans = table(['주택형(최고가)', ...LOAN.map((l) => `${l.name} (${eok(l.max)} 이하${l.area ? `·전용 ${l.area}㎡ 이하` : ''})`)], loanRows) + `<p style="font-size:14px;color:${C.muted}">주택가격·전용면적 요건만 따진 표입니다. 실제 대상·한도는 소득·자산·무주택 여부와 심사로 정해집니다${f.leasehold ? '. 토지임대부 주택의 정책대출 취급 여부는 각 기관에 확인하세요' : ''}. 기준: ${LOAN.map((l) => `<a href="${l.src}" target="_blank" rel="noopener">${l.name}</a>`).join(', ')} (확인일 ${LOANS_CHECKED}).${d.flags.includes('투기과열지구') || d.flags.includes('조정대상지역') ? ' 규제지역이라 일반 주택담보대출 LTV는 무주택 40%(생애최초 70%)이고, 수도권 주담대 한도는 시가 15억원 이하 6억원입니다(금융위원회, 확인일 ' + LOANS_CHECKED + ').' : ''}</p>`;
+  const ok = '<span style="font-weight:700;color:#0a7a5c;white-space:nowrap">요건 안</span>', no = `<span style="color:${C.muted};white-space:nowrap">요건 밖</span>`;
+  const loanRows = types.map((g) => [two(`전용 ${g.area}㎡`, `최고 ${eok(g.max)}`), ...LOAN.map((l) => (g.max <= l.max && (!l.area || g.area <= l.area) ? ok : no))]);
+  out.loans = table([two('주택형', '최고 분양가'), ...LOAN.map((l) => two(l.name, `${eok(l.max)} 이하${l.area ? `·전용 ${l.area}㎡ 이하` : ''}`))], loanRows) + `<p style="font-size:14px;color:${C.muted}">주택가격·전용면적 요건만 따진 표입니다(요건 안 = 그 기준 안에 든다는 뜻). 실제 대상·한도는 소득·자산·무주택 여부와 심사로 정해집니다${f.leasehold ? '. 토지임대부 주택의 정책대출 취급 여부는 각 기관에 확인하세요' : ''}. 기준: ${LOAN.map((l) => `<a href="${l.src}" target="_blank" rel="noopener">${l.name}</a>`).join(', ')} (확인일 ${LOANS_CHECKED}).${d.flags.includes('투기과열지구') || d.flags.includes('조정대상지역') ? ' 규제지역이라 일반 주택담보대출 LTV는 무주택 40%(생애최초 70%)이고, 수도권 주담대 한도는 시가 15억원 이하 6억원입니다(금융위원회, 확인일 ' + LOANS_CHECKED + ').' : ''}</p>`;
   out.links = `<p><a href="${esc(d.url)}" target="_blank" rel="noopener">청약홈 입주자모집공고 보기</a>${d.homepage ? ` · <a href="${esc(d.homepage)}" target="_blank" rel="noopener">사업주체 홈페이지</a>` : ''}</p>`;
   return out;
 }
@@ -112,7 +116,7 @@ export function render(f, notes = {}, images = []) {
   const img = (k) => (has.has(k) ? IMG(k) : '');
   return [
     img('card'), note(notes.intro), H2('한눈에'), x.glance, x.types,
-    H2('분양가와 주변 같은 급 실거래'), x.leasehold, note(notes.price), x.trades,
+    H2('분양가와 주변 실거래'), x.leasehold, note(notes.price), x.trades,
     H2('입지 — 역·학교'), img('map'), note(notes.place), x.place,
     H2('자격·규제'), note(notes.rules), x.rules,
     H2('대출·자금'), note(notes.loans), x.loans,
