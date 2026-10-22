@@ -2,9 +2,19 @@
 import { chromium } from 'playwright';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
+import { readFile, writeFile } from 'node:fs/promises';
 
 export const ROOT = fileURLToPath(new URL('..', import.meta.url));
 export const SESSION = join(ROOT, 'data', 'tistory-session'); // 절대 커밋·공유하지 않는다(.gitignore)
+// 티스토리 로그인 쿠키는 세션 쿠키라 브라우저를 닫으면 프로필에서 사라진다 → 로그인 직후 따로 저장해 두고 실행 때 다시 넣는다
+const COOKIES = join(ROOT, 'data', 'tistory-cookies.json');
+const isTistory = (c) => /(^|\.)tistory\.com$/.test(c.domain.replace(/^\./, ''));
+
+export async function saveTistoryCookies(context) {
+  const cookies = (await context.cookies()).filter(isTistory);
+  await writeFile(COOKIES, JSON.stringify(cookies));
+  return cookies.length;
+}
 export const BLOG = 'https://aulee.tistory.com';
 export const NEWPOST = BLOG + '/manage/newpost/';
 
@@ -15,6 +25,7 @@ export async function launch({ headless = true } = {}) {
     locale: 'ko-KR',
     args: ['--disable-blink-features=AutomationControlled'],
   });
+  try { await context.addCookies(JSON.parse(await readFile(COOKIES, 'utf8'))); } catch { /* 저장본 없음: 로그인 필요 */ }
   const page = context.pages()[0] || (await context.newPage());
   return { context, page };
 }
