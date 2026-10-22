@@ -346,6 +346,50 @@
     else if (S.filterOpen) set({ filterOpen: false });
   });
 
+  // 홈 첫 화면 "이번 주 청약 일정"(디자인 A): 월~일 기준 접수·발표·계약 수와 시·도 타일 지도. 주간 글(posts/weekly.mjs build)과 같은 규칙.
+  var MAP = ['인천', '서울', '경기', '강원', '충남', '세종', '충북', '경북', '전북', '대전', '대구', '울산', '광주', '전남', '경남', '부산', '제주'];
+  function renderHero(items, updatedAt, failed) {
+    var h = {};
+    document.querySelectorAll('[data-hero]').forEach(function (el) { h[el.dataset.hero] = el; });
+    if (!h.map) return;
+    var mon = new Date(today.getFullYear(), today.getMonth(), today.getDate() - (today.getDay() + 6) % 7);
+    var sun = new Date(mon); sun.setDate(mon.getDate() + 6);
+    var a = key(mon), b = key(sun);
+    var inWeek = function (s) { return s >= a && s <= b; };
+    var hit = function (p) { return p.date <= b && (p.end || p.date) >= a; };
+    h.date.textContent = (mon.getMonth() + 1) + '월 ' + mon.getDate() + '일 ~ ' + (sun.getMonth() + 1) + '월 ' + sun.getDate() + '일';
+    if (failed) { h.list.innerHTML = '<p class="hero-empty">일정을 불러오지 못했습니다. 잠시 후 다시 열어 주세요.</p>'; return; }
+    var rec = [], win = 0, con = 0, reg = {};
+    items.forEach(function (it) {
+      var ph = it.phases.filter(hit);
+      var r = ph.filter(function (p) { return p.k === 'sp' || p.k === 'p1' || p.k === 'p2'; });
+      if (r.length) { rec.push({ it: it, p: r[0] }); reg[it.region] = (reg[it.region] || 0) + 1; }
+      win += ph.filter(function (p) { return p.k === 'win'; }).length;
+      con += ph.filter(function (p) { return p.k === 'con' && (inWeek(p.date) || (p.end && inWeek(p.end))); }).length;
+    });
+    rec.sort(function (x, y) { return x.p.date.localeCompare(y.p.date) || x.it.name.localeCompare(y.it.name, 'ko'); });
+    var n = function (v) { return v + '<small>곳</small>'; };
+    h.receipt.innerHTML = n(rec.length); h.win.innerHTML = n(win); h.con.innerHTML = n(con);
+    h.updated.textContent = (updatedAt || '').replace('T', ' ').slice(0, 16).replace(/-/g, '.');
+    var lv = function (v) { return v >= 5 ? 4 : v >= 3 ? 3 : v; };
+    h.map.innerHTML = MAP.map(function (r) {
+      var v = reg[r] || 0;
+      return '<div class="tile l' + lv(v) + '"><span>' + r + '</span><b>' + (v || '') + '</b></div>';
+    }).join('');
+    var md = function (s) { var d = parse(s); return (d.getMonth() + 1) + '.' + pad(d.getDate()) + '(' + W[d.getDay()] + ')'; };
+    var LIMIT = 8;
+    h.list.innerHTML = !rec.length ? '<p class="hero-empty">이번 주에는 접수가 있는 단지가 없습니다.</p>' : rec.slice(0, LIMIT).map(function (x) {
+      var u = safeUrl(x.it.applyhomeUrl), tag = u ? 'a' : 'div';
+      return '<' + tag + ' class="hero-row"' + (u ? ' href="' + esc(u) + '" target="_blank" rel="noopener"' : '') + '>' +
+        '<span class="when">' + (x.p.date < a ? md(x.p.date) + '부터' : md(x.p.date)) + ' ' + phaseOf(x.it, x.p.k).label + '</span>' +
+        '<span class="name">' + esc(x.it.name) + '</span>' +
+        '<span class="where">' + esc(x.it.region + ' ' + (x.it.district || '')) + '</span>' +
+        '<span class="kind">' + esc(x.it.kind) + '</span>' +
+        '<span class="units">' + (x.it.units ? x.it.units.toLocaleString() + '세대' : '') + '</span></' + tag + '>';
+    }).join('');
+    h.more.textContent = rec.length > LIMIT ? (rec.length - LIMIT) + '곳 더 — 달력에서 보기' : '달력에서 전체 보기';
+  }
+
   render();
   // 스킨을 다시 올리면 스킨 옵션이 비워질 수 있어서, 비어 있으면 이 프로젝트의 배포 주소를 쓴다
   var url = window.CHEONGYAK_SCHEDULE_URL || 'https://juholee97.github.io/cheongyak_blog/schedule.json';
@@ -356,9 +400,11 @@
     .then(function (j) {
       var items = (j.items || []).filter(function (it) { return it && it.id && it.name && Array.isArray(it.phases); });
       set({ data: items, updatedAt: j.updatedAt || '', status: 'ok' });
+      renderHero(items, j.updatedAt);
     })
     .catch(function (err) {
       console.warn('청약 일정 불러오기 실패:', err);
       set({ status: 'error' });
+      renderHero([], '', true);
     });
 })();
