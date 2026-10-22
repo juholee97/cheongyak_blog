@@ -370,15 +370,18 @@
     var hit = function (p) { return p.date <= b && (p.end || p.date) >= a; };
     h.date.textContent = (mon.getMonth() + 1) + '월 ' + mon.getDate() + '일 ~ ' + (sun.getMonth() + 1) + '월 ' + sun.getDate() + '일';
     if (failed) { h.list.innerHTML = '<p class="hero-empty">일정을 불러오지 못했습니다. 잠시 후 다시 열어 주세요.</p>'; return; }
-    var rec = [], win = 0, con = 0, reg = {};
+    var t = key(today), rec = [], left = [], win = 0, con = 0, reg = {};
     items.forEach(function (it) {
       var ph = it.phases.filter(hit);
       var r = ph.filter(function (p) { return p.k === 'sp' || p.k === 'p1' || p.k === 'p2'; });
       if (r.length) { rec.push({ it: it, p: r[0] }); reg[it.region] = (reg[it.region] || 0) + 1; }
+      // 목록은 아직 끝나지 않은 접수만(오늘 이후로 남은 첫 접수 단계). 숫자·지도는 이번 주 전체
+      var up = r.filter(function (p) { return (p.end || p.date) >= t; });
+      if (up.length) left.push({ it: it, p: up[0] });
       win += ph.filter(function (p) { return p.k === 'win'; }).length;
       con += ph.filter(function (p) { return p.k === 'con' && (inWeek(p.date) || (p.end && inWeek(p.end))); }).length;
     });
-    rec.sort(function (x, y) { return x.p.date.localeCompare(y.p.date) || x.it.name.localeCompare(y.it.name, 'ko'); });
+    left.sort(function (x, y) { return x.p.date.localeCompare(y.p.date) || x.it.name.localeCompare(y.it.name, 'ko'); });
     var n = function (v) { return v + '<small>곳</small>'; };
     h.receipt.innerHTML = n(rec.length); h.win.innerHTML = n(win); h.con.innerHTML = n(con);
     h.updated.textContent = (updatedAt || '').replace('T', ' ').slice(0, 16).replace(/-/g, '.');
@@ -389,16 +392,16 @@
     }).join('');
     var md = function (s) { var d = parse(s); return (d.getMonth() + 1) + '.' + pad(d.getDate()) + '(' + W[d.getDay()] + ')'; };
     var LIMIT = 8;
-    h.list.innerHTML = !rec.length ? '<p class="hero-empty">이번 주에는 접수가 있는 단지가 없습니다.</p>' : rec.slice(0, LIMIT).map(function (x) {
+    h.list.innerHTML = !left.length ? '<p class="hero-empty">' + (rec.length ? '이번 주 접수는 모두 끝났습니다. 다음 주 일정은 달력에서 볼 수 있어요.' : '이번 주에는 접수가 있는 단지가 없습니다.') + '</p>' : left.slice(0, LIMIT).map(function (x) {
       var u = safeUrl(x.it.applyhomeUrl), tag = u ? 'a' : 'div';
       return '<' + tag + ' class="hero-row"' + (u ? ' href="' + esc(u) + '" target="_blank" rel="noopener"' : '') + '>' +
-        '<span class="when">' + (x.p.date < a ? md(x.p.date) + '부터' : md(x.p.date)) + ' ' + phaseOf(x.it, x.p.k).label + '</span>' +
+        '<span class="when">' + (x.p.date < t ? '~' + md(x.p.end) + '까지' : md(x.p.date)) + ' ' + phaseOf(x.it, x.p.k).label + '</span>' +
         '<span class="name">' + esc(x.it.name) + '</span>' +
         '<span class="where">' + esc(x.it.region + ' ' + (x.it.district || '')) + '</span>' +
         '<span class="kind">' + esc(x.it.kind) + '</span>' +
         '<span class="units">' + (x.it.units ? x.it.units.toLocaleString() + '세대' : '') + '</span></' + tag + '>';
     }).join('');
-    h.more.textContent = rec.length > LIMIT ? (rec.length - LIMIT) + '곳 더 — 달력에서 보기' : '달력에서 전체 보기';
+    h.more.textContent = left.length > LIMIT ? (left.length - LIMIT) + '곳 더 — 달력에서 보기' : '달력에서 전체 보기';
   }
 
   render();
