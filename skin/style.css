@@ -235,7 +235,7 @@ a.hero-row:hover { background: var(--tint3); text-decoration: none; color: var(-
 .post-body h2 { font-size: 24px; font-weight: 900; letter-spacing: -0.03em; line-height: 1.35; margin: 48px 0 14px; }
 .post-body h2::before { content: ''; display: block; width: 32px; height: 5px; border-radius: 3px; background: var(--brand); margin-bottom: 12px; }
 .post-body h3 { font-size: 20px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.4; margin: 36px 0 12px; }
-.post-body img { max-width: 100%; height: auto; border-radius: 16px; }
+.post-body img { max-width: 100%; height: auto; border-radius: 12px; border: 1px solid var(--line-strong); box-sizing: border-box; } /* 흰 바탕 그림(썸네일·카드)도 경계가 보이게 */
 .post-body table { border-collapse: collapse; width: 100%; border-top: 0; }
 .post-body th, .post-body td { border-bottom: 1px solid var(--line-soft); padding: 10px 12px; text-align: left; }
 .post-body th { background: var(--surface); font-weight: 700; }

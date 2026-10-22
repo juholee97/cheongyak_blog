@@ -115,14 +115,17 @@ ${w.receipt.map(({ it, firstP }) => `<tr><td ${TD}>${span(firstP)} ${label(it, f
 
   if (w.receipt.length) {
     out.push('<h2>단지별 일정</h2>');
-    for (const { it } of w.receipt) {
+    // 단지마다 테두리 상자 하나: 번호 + 하이라이트한 단지명 → 카드 → 지도 → 요약 → 일정표 → 공고 링크
+    w.receipt.forEach(({ it }, n) => {
       const facts = [esc(where(it)), esc(it.kind), it.units ? it.units.toLocaleString() + '세대' : null, it.pricePerPyeong ? `분양가(3.3㎡) ${it.pricePerPyeong.toLocaleString()}만원*` : null].filter(Boolean).join(' · ');
-      out.push(`<h3>${esc(it.name)}</h3>
-${img('card:' + it.id)}${img('map:' + it.id)}<p>${facts}</p>
-<table style="border-collapse:collapse;width:100%"><tbody>
+      out.push(`<div style="border:1px solid ${C.line};border-radius:16px;padding:20px;margin:28px 0">
+<h3 style="margin:0 0 16px;padding:12px 16px;border-radius:12px;background:#eaf1fd;color:${C.ink};font-size:21px;font-weight:900;line-height:1.4"><span style="display:inline-block;margin-right:10px;padding:2px 10px;border-radius:999px;background:${C.brand};color:#fff;font-size:14px;font-weight:700;vertical-align:3px">${String(n + 1).padStart(2, '0')}</span>${esc(it.name)}</h3>
+${img('card:' + it.id)}${img('map:' + it.id)}<p style="font-weight:700">${facts}</p>
+<table style="border-collapse:collapse;width:100%;table-layout:fixed"><tbody>
 ${it.phases.map((p) => `<tr><th ${TH}>${label(it, p.k)}</th><td ${TD}>${span(p, full)}</td></tr>`).join('\n')}
-</tbody></table>${it.applyhomeUrl ? `\n<p><a href="${esc(it.applyhomeUrl)}" target="_blank" rel="noopener">청약홈 공고 보기</a></p>` : ''}`);
-    }
+</tbody></table>${it.applyhomeUrl ? `\n<p style="margin:14px 0 0"><a href="${esc(it.applyhomeUrl)}" target="_blank" rel="noopener">청약홈 공고 보기 →</a></p>` : ''}
+</div>`);
+    });
   }
 
   const list = (rows, fmt) => (rows.length ? `<ul>\n${rows.map(fmt).join('\n')}\n</ul>` : '<p>이번 주에는 없습니다.</p>');
