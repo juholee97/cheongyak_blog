@@ -22,10 +22,10 @@ export const md = (s) => `${+s.slice(5, 7)}.${s.slice(8, 10)}(${dow(s)})`; // 10
 export const mdKo = (s) => `${+s.slice(5, 7)}월 ${+s.slice(8, 10)}일`; // 10월 26일
 export const full = (s) => `${s.slice(0, 4)}.${s.slice(5, 7)}.${s.slice(8, 10)} (${dow(s)})`; // 2026.10.26 (월)
 // 기간 표기. 시작·끝 연도가 다르면 연도까지 쓴다("9.12 ~ 9.12"처럼 보이지 않게)
-const span = (p, f = md) => (!p.end ? f(p.date) : p.end.slice(0, 4) !== p.date.slice(0, 4) ? `${full(p.date)} ~ ${full(p.end)}` : `${f(p.date)} ~ ${f(p.end)}`);
-const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
-const label = (it, k) => (k === 'p1' && it.kind !== 'APT' ? '접수' : PH[k]);
-const where = (it) => [it.region, it.district].filter(Boolean).join(' ');
+export const span = (p, f = md) => (!p.end ? f(p.date) : p.end.slice(0, 4) !== p.date.slice(0, 4) ? `${full(p.date)} ~ ${full(p.end)}` : `${f(p.date)} ~ ${f(p.end)}`);
+export const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+export const label = (it, k) => (k === 'p1' && it.kind !== 'APT' ? '접수' : PH[k]);
+export const where = (it) => [it.region, it.district].filter(Boolean).join(' ');
 export const updatedLabel = (u) => (/^(\d{4})-(\d\d)-(\d\d)T(\d\d):(\d\d)/.exec(u) || []).slice(1).reduce((s, v, i) => s + ['', '.', '.', ' ', ':'][i] + v, '');
 
 // 오늘(KST) 다음 월요일
@@ -85,9 +85,9 @@ export function autoSummary(w) {
 }
 
 // 색은 디자인 시스템 「우리의 청약달력」 토큰(단계 색 = 접수 / 당첨자 발표 / 계약)
-const C = { brand: '#0b4fc4', ink: '#1c1f24', muted: '#4b5260', panel: '#f3f4f7', line: '#e3e6ec', receipt: '#0a7a5c', announce: '#b3261e', contract: '#4a4fa0' };
-const TH = `style="background:${C.panel};text-align:left;padding:8px 10px;border-bottom:1px solid ${C.line};white-space:nowrap"`;
-const TD = `style="padding:8px 10px;border-bottom:1px solid ${C.line}"`;
+export const C = { brand: '#0b4fc4', ink: '#1c1f24', muted: '#4b5260', panel: '#f3f4f7', line: '#e3e6ec', receipt: '#0a7a5c', announce: '#b3261e', contract: '#4a4fa0' };
+export const TH = `style="background:${C.panel};text-align:left;padding:8px 10px;border-bottom:1px solid ${C.line};white-space:nowrap"`;
+export const TD = `style="padding:8px 10px;border-bottom:1px solid ${C.line}"`;
 export const CAL_URL = BLOG_URL + 'category/' + encodeURIComponent('청약일정');
 
 // 이미지 자리표시: 본문에는 <p>[[IMG:키]]</p>로 두고, 미리보기는 파일로, draft.mjs는 티스토리 업로드 결과로 바꾼다
