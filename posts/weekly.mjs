@@ -1,6 +1,7 @@
 // schedule.json → "이번 주 청약 일정" 초안 (drafts/{월요일}_weekly.json + 본문 HTML)
 // node posts/weekly.mjs [--week 2026-10-26] [--data <파일|URL>]   새 초안 (summary는 비워 둠)
 // node posts/weekly.mjs --render drafts/2026-10-26_weekly.json      summary를 고친 뒤 본문만 다시 그림
+// --auto: 요약 2~3줄을 집계로 채운다(매주 자동 실행용 — 숫자·단지명만, 평가 없음)
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 
@@ -68,6 +69,19 @@ export function tagsOf(w) {
   Object.keys(w.facts.kinds).forEach((k) => KIND_TAG[k] && t.push(KIND_TAG[k]));
   w.receipt.forEach(({ it }) => t.push(it.region + '청약'));
   return [...new Set(t)].slice(0, 10);
+}
+
+// 자동 요약: 집계값과 단지명·지역만으로 2~3줄. 검수(check.mjs)가 허용하는 숫자만 쓴다.
+export function autoSummary(w) {
+  const day = (s) => `${mdKo(s)}(${dow(s)})`;
+  const n = w.facts.receipt;
+  const out = [`${day(w.start)}부터 ${day(w.end)}까지 접수가 있는 단지는 ${n ? n + '곳입니다' : '없습니다'}.`];
+  const cnt = (o) => Object.entries(o).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${v}곳`).join('·');
+  if (n && n <= 4) out.push(`접수 단지는 ${w.receipt.map(({ it }) => `${where(it)} ${it.name}`).join(', ')}입니다.`);
+  else if (n) out.push(`종류별로는 ${cnt(w.facts.kinds)}, 지역별로는 ${cnt(w.facts.regions)}입니다.`);
+  const parts = [['당첨자 발표', w.facts.win], ['계약', w.facts.con]].filter(([, v]) => v).map(([k, v]) => `${k} ${v}곳`);
+  out.push(parts.length ? `같은 기간 ${parts.join(', ')}이 예정돼 있습니다.` : '같은 기간 당첨자 발표와 계약은 없습니다.');
+  return out;
 }
 
 const TH = 'style="background:#f4f6f9;text-align:left;padding:8px 10px;border-bottom:1px solid #e4e8ee;white-space:nowrap"';
@@ -159,7 +173,7 @@ async function main() {
     return;
   }
   const data = await loadData(arg('--data') || SCHEDULE_URL);
-  const draft = draftOf(data, start);
+  const draft = draftOf(data, start, process.argv.includes('--auto') ? autoSummary(build(data, start)) : []);
   await mkdir('drafts', { recursive: true });
   await writeFile(base + '.data.json', JSON.stringify(data)); // 검수·다시 그리기용 수집본 사본
   await writeFile(base + '.json', JSON.stringify(draft, null, 2));

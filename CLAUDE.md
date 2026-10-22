@@ -10,6 +10,7 @@
 - `preview/serve.mjs` — 티스토리 치환자를 흉내 내는 로컬 미리보기(`/` 홈, `/post` 글, `/category` 목록). `--check`는 자동 점검.
 - `posts/weekly.mjs` — schedule.json → 주간 글 초안(`drafts/{월요일}_weekly.json` + 수집본 사본 `.data.json`). `--render`로 summary 고친 뒤 본문 다시 그림. `posts/check.mjs` — 본문 재현·요약 숫자·금지 표현·필수 문구 검수. 미리보기 `/draft/{이름}`. 설계: `docs/weekly-post-design.md`.
 - `tistory/` — 임시저장 자동화(Playwright 1.63.0, `npm install`). `common.mjs` 전용 프로필 `data/tistory-session/`(커밋 금지), `login.mjs`(+`tistory_login.bat`, 로그인은 사람이), `ensureLogin` 자동 재로그인(티스토리 세션 쿠키가 몇 시간이면 끊김 → 카카오 간편로그인의 저장된 계정 1개만 누름, 아무것도 입력하지 않음, 비밀번호·동의 화면이면 멈춤; 시험 `relogin.check.mjs`), `probe.mjs` 글쓰기 화면 읽기 전용 실측 → `tistory/probe-out/`. 셀렉터는 실측 근거로만(`tistory/selectors.json`). `draft.mjs --approved` 임시저장 + 저장본 재대조, `--verify-only` 대조만. 절차: `.claude/skills/weekly-post/SKILL.md`, 실행기 `weekly_post.bat`(초안·미리보기만).
+- `posts/auto.mjs` + `weekly_auto.bat` — 매주 자동 실행(작업 스케줄러 `cheongyak_weekly_auto`, 일요일 18:00, 놓치면 켜질 때): 다음 주 초안(`--auto` 집계 요약) → 그림 → 검수 → 티스토리 임시저장 → 저장본 대조 → 알림 창. 저장 확인된 주는 건너뜀. `weekly_auto.bat check` = 저장 없는 시험. 기록 `data/logs/weekly_auto.log`.
 - `preview.bat` — 미리보기 실행기(`preview.bat check` = 자동 점검). 바로가기는 `D:\AI_산출물`.
 - 디자인 원본: `docs/design_handoff/README.md` (v2, 레퍼런스 `design-reference-v2.dc.html`). 이 문서와 다르게 정한 점은 `README.md` 데이터 메모.
 
@@ -23,6 +24,7 @@
 ## 변경 이력
 | 날짜 | 변경 | 사유 |
 |------|------|------|
+| 2026-10-22 | 주간 글 매주 자동 실행(`posts/auto.mjs`·`weekly_auto.bat`·작업 스케줄러 일요일 18:00) — 요약은 집계 문장(`weekly.mjs --auto`), 검수 통과 시 채팅 승인 없이 임시저장, 발행은 사람이. 검색 등록 안내 `docs/search-registration.md`(티스토리 플러그인 「구글 서치콘솔」·「메타 태그 등록」) | 사용자: 알림 예약 대신 자동 실행 |
 | 2026-10-22 | 주간 글 그림(썸네일·단지 카드·브이월드 위치 지도 반경 1km) + 티스토리 업로드, 계약 기간 표기 수정, 자동 재로그인 | 사용자 요청. 해링턴 스퀘어 과천 계약 2026~2029가 매주 끼던 문제 |
 | 2026-10-22 | 3단계 3·4: 로그인 실행기(쿠키 따로 저장), 글쓰기 화면 실측, draft.mjs, 첫 임시저장(10월 26일 주 — 편집기 자동 임시저장으로 저장됨, 재대조 통과), weekly_post.bat, 초안 덮어쓰기 방지 | 티스토리 편집기 자동 임시저장 → 저장 확인은 저장본 재대조로 |
 | 2026-10-22 | 3단계 1·2: 수집기 단계 종료일(end)·모집공고일(noticeDate), 주간 초안 생성·검수·미리보기 | 주간 청약 일정 글 자동 초안 |
