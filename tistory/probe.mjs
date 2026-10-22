@@ -55,6 +55,32 @@ try {
   await page.waitForLoadState('networkidle', { timeout: 20000 }).catch(() => {});
   await page.waitForTimeout(3000);
 
+  // --menus: 발행 가드를 건 뒤 카테고리·편집 모드 드롭다운만 열어 항목을 읽고 Esc로 닫는다(입력·저장 없음)
+  let menus = null;
+  if (process.argv.includes('--menus')) {
+    await page.evaluate(() => document.addEventListener('click', (e) => {
+      const t = e.target.closest && e.target.closest('#publish-layer-btn, button, a');
+      if (t && (t.id === 'publish-layer-btn' || /발행/.test(t.innerText || ''))) { e.preventDefault(); e.stopImmediatePropagation(); console.warn('[PUBLISH GUARD] 차단'); }
+    }, true));
+    const readOpen = () => page.evaluate(() => [...document.querySelectorAll('[role="option"], [role="menuitem"], .mce-menu-item, li')]
+      .filter((el) => { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0; })
+      .map((el) => ({ text: (el.innerText || '').trim().replace(/\s+/g, ' ').slice(0, 40), id: el.id, cls: el.className.toString().slice(0, 80), role: el.getAttribute('role') }))
+      .filter((o) => o.text));
+    menus = { tinymce: await page.evaluate(() => typeof window.tinymce === 'object' ? { editors: (window.tinymce.editors || []).map((e) => e.id), active: window.tinymce.activeEditor && window.tinymce.activeEditor.id } : null) };
+    const before = new Set((await readOpen()).map((o) => o.text + o.id));
+    await page.click('#category-btn');
+    await page.waitForTimeout(800);
+    menus.category = (await readOpen()).filter((o) => !before.has(o.text + o.id));
+    await page.keyboard.press('Escape');
+    await page.mouse.click(5, 500);
+    await page.waitForTimeout(400);
+    await page.click('#editor-mode-layer-btn-open');
+    await page.waitForTimeout(800);
+    menus.mode = (await readOpen()).filter((o) => !before.has(o.text + o.id));
+    await page.keyboard.press('Escape');
+    await page.waitForTimeout(400);
+  }
+
   const frames = [];
   for (const f of page.frames()) {
     try { frames.push({ frameUrl: f.url(), ...(await f.evaluate(collect, KEYWORDS.source)) }); } catch (e) { frames.push({ frameUrl: f.url(), error: e.message }); }
@@ -63,7 +89,8 @@ try {
   await mkdir(out, { recursive: true });
   const stamp = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 16).replace(/[-:T]/g, '');
   const base = join(out, `newpost-${stamp}`);
-  await writeFile(base + '.json', JSON.stringify({ at: stamp, url: page.url(), dialogs, frames }, null, 2));
+  await writeFile(base + '.json', JSON.stringify({ at: stamp, url: page.url(), dialogs, menus, frames }, null, 2));
+  if (menus) console.log('메뉴 실측: ' + JSON.stringify(menus));
   await page.screenshot({ path: base + '.png', fullPage: true });
   const main = frames[0];
   console.log(`실측 저장: ${base}.json / .png`);

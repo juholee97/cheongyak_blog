@@ -1,0 +1,32 @@
+{
+  "_measured": "2026-10-22 15:01·15:02 probe.mjs (--menus) on https://aulee.tistory.com/manage/newpost/ — 근거: tistory/probe-out/newpost-202610221501.json, newpost-202610221502.json",
+  "title": "textarea#post-title-inp",
+  "category": {
+    "open": "#category-btn",
+    "item": "[role=\"option\"].mce-menu-item",
+    "ids": { "카테고리 없음": "category-item-0", "청약일정": "category-item-1374801", "분양분석": "category-item-1374802", "청약가이드": "category-item-1374803", "대출·정책": "category-item-1374804" }
+  },
+  "editor": {
+    "iframe": "#editor-tistory_ifr",
+    "body": "body#tinymce",
+    "tinymceId": "editor-tistory",
+    "_note": "window.tinymce가 있고 활성 편집기 id가 editor-tistory → 본문은 tinymce.get('editor-tistory').setContent(html)로 넣는다(모드 전환 불필요)"
+  },
+  "mode": {
+    "open": "#editor-mode-layer-btn-open",
+    "basic": "#editor-mode-kakao",
+    "markdown": "#editor-mode-markdown",
+    "html": "#editor-mode-html"
+  },
+  "tags": "input#tagText",
+  "draft": {
+    "save": ".btn-draft a.action",
+    "count": ".btn-draft a.count",
+    "_note": "count의 aria-label = \"임시저장 개수 N개\" → 저장 전후 N 비교로 저장 확인"
+  },
+  "publishGuard": {
+    "block": ["#publish-layer-btn"],
+    "blockText": "발행",
+    "_note": "임시저장 흐름은 '완료'(#publish-layer-btn)를 누를 일이 없다 → 완료 버튼과 '발행' 글자가 든 버튼 클릭을 캡처 단계에서 막는다. 발행 레이어는 실측하지 않음(열지 않음)."
+  }
+}
