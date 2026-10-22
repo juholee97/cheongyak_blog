@@ -28,7 +28,7 @@ export function project(lon, lat, z) {
 }
 
 // 필지 외곽이 그림 안에서 폭·높이의 maxFrac 이하로 들어오는 가장 큰 줌
-export function fitZoom(rings, maxFrac = 0.45, zMin = 13, zMax = 19) {
+export function fitZoom(rings, maxFrac = 0.45, zMin = 13, zMax = 17) { // 17 넘게 당기면 주변 맥락이 안 보인다
   for (let z = zMax; z >= zMin; z--) {
     const pts = rings.flat().map(([x, y]) => project(x, y, z));
     const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]);
@@ -50,26 +50,32 @@ async function getJson(url) {
   return r.json();
 }
 
+// 행정구역 개편(예: 2026 화성특례시 동탄구)을 지오코더가 아직 모를 때 옛 이름으로 다시 시도
+export const addressVariants = (a) => [...new Set([a, a.replace(/(\S+)특례시\s+\S+구\s/, '$1시 '), a.replace(/특례시/, '시')])];
+
 // 주소 → 좌표(지번, 실패하면 도로명)
 async function geocode(address, key) {
-  for (const type of ['PARCEL', 'ROAD']) {
-    const u = `${API}/address?service=address&request=getCoord&version=2.0&crs=EPSG:4326&format=json&type=${type}&key=${key}&address=${encodeURIComponent(address)}`;
-    const j = await getJson(u);
-    const p = j.response?.result?.point;
-    if (j.response?.status === 'OK' && p) return { lon: +p.x, lat: +p.y, type };
+  for (const a of addressVariants(address)) {
+    for (const type of ['PARCEL', 'ROAD']) {
+      const u = `${API}/address?service=address&request=getCoord&version=2.0&crs=EPSG:4326&format=json&type=${type}&key=${key}&address=${encodeURIComponent(a)}`;
+      const j = await getJson(u);
+      const p = j.response?.result?.point;
+      if (j.response?.status === 'OK' && p) return { lon: +p.x, lat: +p.y, type };
+    }
   }
   return null;
 }
 
-// 좌표가 들어 있는 필지의 외곽선(경위도 링 배열)
-async function parcelAt(lon, lat, key) {
-  const u = `${API}/data?service=data&request=GetFeature&version=2.0&data=LP_PA_CBND_BUBUN&format=json&crs=EPSG:4326&size=1&geomFilter=POINT(${lon} ${lat})&key=${key}`;
+const ringsOf = (g) => (g.type === 'MultiPolygon' ? g.coordinates : g.type === 'Polygon' ? [g.coordinates] : []).map((p) => p[0]);
+const lotOf = (jibun) => String(jibun || '').replace(/^산\s*/, '').replace(/[^\d-]/g, ''); // "584-1대" → "584-1"
+
+// 좌표 주변(buffer m) 필지 중 지번이 lot과 같은 것, lot이 없으면 좌표가 든 필지
+async function parcelAt(lon, lat, key, lot) {
+  const u = `${API}/data?service=data&request=GetFeature&version=2.0&data=LP_PA_CBND_BUBUN&format=json&crs=EPSG:4326&size=${lot ? 50 : 1}&buffer=${lot ? 80 : 0}&geomFilter=POINT(${lon} ${lat})&key=${key}`;
   const j = await getJson(u);
-  const f = j.response?.result?.featureCollection?.features?.[0];
-  if (!f) return null;
-  const g = f.geometry;
-  const polys = g.type === 'MultiPolygon' ? g.coordinates : g.type === 'Polygon' ? [g.coordinates] : [];
-  return { rings: polys.map((p) => p[0]), jibun: f.properties?.addr || f.properties?.jibun || '' };
+  const fs = j.response?.result?.featureCollection?.features || [];
+  const f = lot ? fs.find((x) => lotOf(x.properties?.jibun) === lot) : fs[0];
+  return f ? { rings: ringsOf(f.geometry), jibun: f.properties?.jibun || '' } : null;
 }
 
 // 배경지도 타일을 서버에서 받아 data URI로 넣는다(브라우저 도메인 제한과 무관하게)
@@ -84,9 +90,13 @@ const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<
 export async function mapHtml(it, key) {
   const address = cleanAddress(it.address);
   if (!address) return { skip: '주소 없음' };
+  // 지번(또는 도로명 건물번호)으로 끝나지 않는 주소("검단신도시 AA32블록" 등)는 좌표가 엉뚱한 곳에 찍히므로 그리지 않는다
+  const lot = (address.match(/(?:산\s*)?(\d+(?:-\d+)?)$/) || [])[1];
+  if (!lot) return { skip: `지번 없음: ${address}` };
   const pt = await geocode(address, key);
   if (!pt) return { skip: `좌표 못 찾음: ${address}` };
-  const parcel = await parcelAt(pt.lon, pt.lat, key);
+  // 지번 주소면 주변에서 지번이 정확히 같은 필지를 찾고(없으면 지점만), 도로명 주소면 좌표가 든 필지
+  const parcel = await parcelAt(pt.lon, pt.lat, key, pt.type === 'PARCEL' ? lot : null);
   const rings = parcel?.rings?.length ? parcel.rings : [[[pt.lon, pt.lat]]];
   const z = parcel ? fitZoom(rings) : 17;
   const all = rings.flat().map(([x, y]) => project(x, y, z));
@@ -122,7 +132,8 @@ async function main() {
   const key = await keyOf();
   if (!key) { console.log('VWORLD_KEY가 없습니다 — .env에 VWORLD_KEY=키 를 넣어 주세요(커밋 금지).'); process.exitCode = 3; return; }
   const draft = JSON.parse(await readFile(path, 'utf8'));
-  const data = JSON.parse(await readFile(path.replace(/\.json$/, '.data.json'), 'utf8'));
+  const di = process.argv.indexOf('--data'); // 초안의 수집본 사본 대신 다른 수집본(예: 주소가 들어간 최신 site/schedule.json)
+  const data = JSON.parse(await readFile(di > 0 ? process.argv[di + 1] : path.replace(/\.json$/, '.data.json'), 'utf8'));
   const w = build(data, draft.week.start);
   const i = process.argv.indexOf('--only');
   const items = i > 0 ? w.receipt.slice(0, +process.argv[i + 1]) : w.receipt;
