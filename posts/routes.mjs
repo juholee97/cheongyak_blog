@@ -14,6 +14,8 @@ const HUBS = JSON.parse(await readFile(new URL('./hubs.json', import.meta.url), 
 let STATIONS = null;
 const stationsList = async () => (STATIONS ??= JSON.parse(await readFile(new URL('./stations.json', import.meta.url), 'utf8')).stations);
 const bare = (n) => n.replace(/역$/, '').replace(/\(.*\)$/, '').trim();
+// 역의 노선(급행은 같은 노선으로)
+const lineSet = (s) => [...new Set((s.lines || []).map((l) => l.replace(/\s*급행\s*/, ' ').trim()))];
 export function hubOf(name) {
   const b = bare(name);
   for (const [hub, names] of Object.entries(HUBS)) if (names.includes(b)) return hub;
@@ -52,11 +54,21 @@ export async function reachFrom(stops, lon, lat) {
       if (minutesOf(run) > LIMIT_MIN) break;
       // 정류장 이름에 역 이름이 있으면(예: "상일동역4번출구") 그 역, 아니면 250m 안 가장 가까운 역
       const hit = [...stops[j].name.matchAll(/([가-힣A-Za-z0-9]+)역/g)].map((x) => x[1]).find((x) => names.has(x));
-      let best = hit ? { name: hit + '역', x: 0 } : null;
-      if (!best) for (const s of st) { const x = meters(stops[j].lon, stops[j].lat, s.lon, s.lat); if (x <= STATION_NEAR && (!best || x < best.x)) best = { name: bare(s.name) + '역', x }; }
-      if (best && !seen.has(best.name)) seen.set(best.name, { name: best.name, n: j - b, min: minutesOf(run), hub: hubOf(best.name) });
+      let best = null;
+      for (const s of st) {
+        if (hit && bare(s.name) !== hit) continue;
+        const x = meters(stops[j].lon, stops[j].lat, s.lon, s.lat);
+        if ((hit || x <= STATION_NEAR) && (!best || x < best.x)) best = { name: bare(s.name) + '역', x, lines: lineSet(s) };
+      }
+      if (best && !seen.has(best.name)) seen.set(best.name, { name: best.name, lines: best.lines, n: j - b, min: minutesOf(run), hub: hubOf(best.name) });
     }
-    return { board: stops[b].name, boardD: d[b], end: stops[m].name, stops: m - b, stations: [...seen.values()] };
+    // 같은 노선은 가장 먼저(가깝게) 닿는 역 하나만: 새 노선이 하나라도 있는 역만 남긴다(환승역은 노선을 함께 표시)
+    const covered = new Set(), kept = [];
+    for (const s of seen.values()) {
+      const ls = s.lines.length ? s.lines : [s.name];
+      if (ls.some((l) => !covered.has(l))) { kept.push(s); ls.forEach((l) => covered.add(l)); }
+    }
+    return { board: stops[b].name, boardD: d[b], end: stops[m].name, stops: m - b, stations: kept };
   }
   return null;
 }
