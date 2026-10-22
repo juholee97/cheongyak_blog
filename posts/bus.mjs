@@ -27,7 +27,7 @@ async function seoul(lon, lat, key) {
   const stops = arr(j.msgBody?.itemList).filter((s) => s.arsId && s.arsId !== '0' && !/미정차/.test(s.stationNm)).map((s) => ({ name: s.stationNm, d: +s.dist, id: s.arsId })).sort((a, b) => a.d - b.d).slice(0, MAX_STOPS);
   for (const s of stops) {
     const r = await json(`http://ws.bus.go.kr/api/rest/stationinfo/getRouteByStation?serviceKey=${K}&arsId=${s.id}&resultType=json`, '서울 경유노선');
-    s.routes = arr(r.msgBody?.itemList).map((x) => ({ no: x.busRouteNm, type: SEOUL_TYPE[x.busRouteType] || '기타', from: x.stBegin, to: x.stEnd, term: +x.term || null, km: +x.length || null }));
+    s.routes = arr(r.msgBody?.itemList).map((x) => ({ id: x.busRouteId, city: null, no: x.busRouteNm, type: SEOUL_TYPE[x.busRouteType] || '기타', from: x.stBegin, to: x.stEnd, term: +x.term || null, km: +x.length || null }));
   }
   return stops;
 }
@@ -40,7 +40,7 @@ async function tago(lon, lat, key) {
   const byName = new Map();
   for (const s of near) {
     const r = await json(`${base}getSttnThrghRouteList?serviceKey=${K}&cityCode=${s.city}&nodeid=${s.id}&numOfRows=100&_type=json`, 'TAGO 경유노선');
-    const routes = arr(r.response?.body?.items?.item).map((x) => ({ no: String(x.routeno), type: x.routetp || '기타', from: x.startnodenm || null, to: x.endnodenm || null, term: null, km: null }));
+    const routes = arr(r.response?.body?.items?.item).map((x) => ({ id: x.routeid, city: s.city, no: String(x.routeno), type: x.routetp || '기타', from: x.startnodenm || null, to: x.endnodenm || null, term: null, km: null }));
     if (!byName.has(s.name)) byName.set(s.name, { name: s.name, d: s.d, routes: [] });
     byName.get(s.name).routes.push(...routes);
     if (byName.size >= MAX_STOPS && ![...byName.keys()].includes(s.name)) break;

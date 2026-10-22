@@ -9,6 +9,7 @@ import { BANNED } from './check.mjs';
 import { stations } from './nearby.mjs';
 import { schoolsAt, SOURCE as SCHOOL_SOURCE } from './schools.mjs';
 import { busNear, isCore } from './bus.mjs';
+import { routeReach } from './routes.mjs';
 import { nearbyTrades, dataKey, tierOf, locate, PY } from './trades.mjs';
 import { keyOf, mapHtml } from './map.mjs';
 import { itemHtml, renderPngs } from './card.mjs';
@@ -64,6 +65,8 @@ export async function collect(no, dataSrc) {
   const leasehold = /토지임대부/.test(it.name);
   const site = await locate(it.address, vkey);
   const near = site ? { stations: await stations(site.lon, site.lat), bus: await busNear(site.lon, site.lat, it.region), schools: await schoolsAt(site.lon, site.lat) } : { skip: '위치 못 찾음' };
+  // 핵심 버스 노선마다 갈아타지 않고 닿는 역(정거장 수)
+  if (site && near.bus?.routes) for (const r of near.bus.routes.filter(isCore).slice(0, 8)) r.reach = await routeReach(r, site.lon, site.lat, key);
   const trades = await nearbyTrades(it.address, main.area, { tier });
   return {
     item: it, dataUpdatedAt: data.updatedAt,
@@ -114,8 +117,16 @@ ${t.others.length ? `<p style="font-size:14px;color:${C.muted}">참고 — 1.5km
   };
   // 핵심 버스 노선: 기점 ↔ 종점(어디까지 가는지), 배차 간격
   const core = (n.bus?.routes || []).filter(isCore).slice(0, 8);
-  out.busRoutes = core.length ? `<p style="font-weight:700;margin:20px 0 8px">버스 핵심 노선 — 어디까지 가나</p>` + table([two('노선'), two('기점 ↔ 종점', '노선 양 끝'), two('배차 간격', '노선 정보 기준')],
-    core.map((r) => [two(`${esc(r.no)}번`, esc(r.type)), r.from && r.to ? `${esc(r.from)} ↔ ${esc(r.to)}` : '정보 없음', r.term ? `${r.term}분` : '-'])) : '';
+  const reachCell = (x) => {
+    if (!x || x.skip || !x.stations.length) return `<span style="color:${C.muted}">지나는 철도역 없음</span>`;
+    const hubs = [...new Set(x.stations.map((s) => s.hub).filter(Boolean))];
+    // 처음 3개 + 업무 중심지 + 마지막 역만(길면 줄여서)
+    const pick = x.stations.filter((s, i, a) => i < 3 || s.hub || i === a.length - 1);
+    return pick.map((s) => (s.hub ? `<span style="font-weight:700;color:${C.brand}">${esc(s.name)} ${s.n}</span>` : `${esc(s.name)} ${s.n}`)).join(' · ') + (hubs.length ? `<br><span style="font-size:13px;color:${C.muted}">업무 중심지: ${hubs.map(esc).join(', ')}</span>` : '');
+  };
+  out.busRoutes = core.length ? `<p style="font-weight:700;margin:20px 0 8px">버스 핵심 노선 — 갈아타지 않고 닿는 곳</p>` + table([two('노선', '배차 간격'), two('기점 ↔ 종점', '노선 양 끝'), two('지나는 철도역', '탄 정류장부터 정거장 수')],
+    core.map((r) => [two(`${esc(r.no)}번 <span style="font-weight:400">${esc(r.type)}</span>`, r.term ? `${r.term}분 간격` : ''), r.from && r.to ? `${esc(r.from)} ↔ ${esc(r.to)}` : '정보 없음', reachCell(r.reach)]))
+    + `<p style="font-size:14px;color:${C.muted}">단지에서 가까운 정류장(${esc(core.find((r) => r.reach?.board)?.reach.board || '-')} 등)에서 타서 단지에서 멀어지는 방향 기준입니다. 정류장 250m 안 철도역을 셌고, 걸리는 시간은 도로 사정에 따라 달라 적지 않았습니다. 업무 중심지 목록: 강남·잠실·여의도·도심·판교·성수 등.</p>` : '';
   out.place = n.skip ? `<p>주변 정보를 찾지 못했습니다.</p>` : table([two('구분'), two('교통·학교', '직선거리, 가까운 순')], [
     [two('지하철·철도역'), (Array.isArray(n.stations) && n.stations.length ? n.stations.map((s) => `${esc(s.name)}(${s.kind}) ${dist(s.d)}`).join(', ') : '3km 안 없음')],
     [two('버스', `정류장 반경 ${n.bus?.radius ?? 500}m`), busCell(n.bus)],
