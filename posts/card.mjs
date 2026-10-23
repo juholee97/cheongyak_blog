@@ -17,6 +17,8 @@ const PH = [
 const MAP = ['인천', '서울', '경기', '강원', '충남', '세종', '충북', '경북', '전북', '대전', '대구', '울산', '광주', '전남', '경남', '부산', '제주'];
 const TILE = [['#eef1f5', '#5f687a'], ['#d3e2fb', '#0b2557'], ['#93b8f4', '#0b2557'], ['#2f67d8', '#ffffff'], ['#0b3a96', '#ffffff']];
 const level = (n) => (n >= 5 ? 4 : n >= 3 ? 3 : n);
+// 로고(L4 「격자 속 집」, 2026-10-23 사용자 선택): 달력 아홉 칸 중 가운데가 집. 원본 skin/images/logo.svg
+export const LOGO = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" rx="22" fill="#0b4fc4"/><rect x="17" y="17" width="19" height="19" rx="4" fill="#fff" fill-opacity=".32"/><rect x="40" y="17" width="19" height="19" rx="4" fill="#fff" fill-opacity=".32"/><rect x="63" y="17" width="19" height="19" rx="4" fill="#fff" fill-opacity=".32"/><rect x="17" y="40" width="19" height="19" rx="4" fill="#fff" fill-opacity=".32"/><rect x="63" y="40" width="19" height="19" rx="4" fill="#fff" fill-opacity=".32"/><rect x="17" y="63" width="19" height="19" rx="4" fill="#fff" fill-opacity=".32"/><rect x="40" y="63" width="19" height="19" rx="4" fill="#fff" fill-opacity=".32"/><rect x="63" y="63" width="19" height="19" rx="4" fill="#fff" fill-opacity=".32"/><path d="M50 38 L61 47 V59 a2 2 0 0 1 -2 2 H41 a2 2 0 0 1 -2 -2 V47 Z" fill="#fff"/></svg>`;
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 const mdKo = (s) => `${+s.slice(5, 7)}월 ${+s.slice(8, 10)}일`;
 
@@ -26,7 +28,7 @@ const BASE = `<!doctype html><html lang="ko"><head><meta charset="utf-8">
 *{box-sizing:border-box}body{margin:0;width:1200px;height:630px;font-family:'Noto Sans KR',sans-serif;color:${T.ink};-webkit-font-smoothing:antialiased}
 .card{width:1200px;height:630px;background:#fff;display:flex;flex-direction:column;position:relative;overflow:hidden}
 .brand{display:flex;align-items:center;gap:12px;font-size:21px;font-weight:700}
-.mark{width:36px;height:36px;border-radius:9px;background:${T.brand};color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:900}
+.mark{width:36px;height:36px;display:inline-flex;flex:none}.mark svg{width:100%;height:100%};color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:900}
 .foot{display:flex;justify-content:space-between;align-items:center;padding:0 64px;height:64px;border-top:1px solid ${T.line};font-size:17px;color:${T.muted}}
 .foot b{color:${T.brand}}
 </style></head><body>`;
@@ -41,7 +43,7 @@ export function weeklyHtml(w) {
   const legend = TILE.map(([bg], i) => `<i style="display:inline-block;width:16px;height:16px;border-radius:4px;margin-left:6px;background:${bg}"></i>${['0', '1', '2', '3–4', '5+'][i]}`).join('');
   return `${BASE}<div class="card" style="padding:52px 64px">
   <div style="width:600px">
-    <div class="brand"><span class="mark">우</span>우리의 청약달력</div>
+    <div class="brand"><span class="mark">${LOGO}</span>우리의 청약달력</div>
     <h1 style="margin:30px 0 0;font-size:84px;font-weight:900;line-height:1.04;letter-spacing:-0.05em">이번 주<br>청약 일정</h1>
     <p style="margin:16px 0 0;font-size:30px;font-weight:700;color:${T.brand}">${mdKo(w.start)} ~ ${mdKo(w.end)}</p>
     <div style="display:flex;gap:16px;margin-top:38px">${stat('접수', w.facts.receipt, T.receipt)}${stat('당첨자 발표', w.facts.win, T.announce)}${stat('계약', w.facts.con, T.contract)}</div>
@@ -75,7 +77,7 @@ export function itemHtml(it, w) {
 <div style="flex:1;padding:44px 64px 30px;display:flex;flex-direction:column;gap:20px">
   <div style="display:flex;align-items:center;gap:12px;font-size:22px;font-weight:700;color:${T.muted}">
     <span style="padding:5px 16px;border-radius:999px;background:#eaf1fd;border:1px solid #b9cff5;color:#0a3a91">${esc(it.kind)}</span>${esc([it.region, it.district].filter(Boolean).join(' '))}
-    <span style="margin-left:auto;color:${T.ink}" class="brand"><span class="mark">우</span>우리의 청약달력</span>
+    <span style="margin-left:auto;color:${T.ink}" class="brand"><span class="mark">${LOGO}</span>우리의 청약달력</span>
   </div>
   <div style="font-size:${it.name.length > 18 ? 52 : 64}px;font-weight:900;letter-spacing:-0.05em;line-height:1.12;word-break:keep-all">${esc(it.name)}</div>
   <div style="display:flex;gap:14px">${facts.map(([k, v]) => `<div style="background:${T.panel};border-radius:16px;padding:12px 22px"><span style="font-size:19px;color:${T.muted};font-weight:700">${k}</span> <span style="font-size:28px;font-weight:900;margin-left:6px">${v}</span></div>`).join('')}</div>
