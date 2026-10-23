@@ -51,25 +51,28 @@ export async function checkGuide(d) {
 // 관련 글: posts/related.json(slug → 관련 slug) 중 이미 발행된 글만 링크. 발행 주소는 RSS에서 제목으로 찾아 posts/published.json에 쌓는다(RSS는 최근 글만 보여 줘서)
 const PUB = join(ROOT, 'posts/published.json');
 const decode = (s) => s.replace(/&amp;/g, '&').replace(/&mdash;/g, '—').replace(/&middot;/g, '·').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+let rss;
 export async function published() {
   const before = await readFile(PUB, 'utf8').catch(() => '{}');
   const known = JSON.parse(before);
   try {
-    const xml = await (await fetch('https://aulee.tistory.com/rss')).text();
+    const xml = await (rss ??= fetch('https://aulee.tistory.com/rss').then((r) => r.text())); // 한 번 실행에 RSS는 한 번만
     for (const m of xml.matchAll(/<item>[\s\S]*?<title>([\s\S]*?)<\/title>[\s\S]*?<link>([\s\S]*?)<\/link>/g)) known[decode(m[1]).trim()] = m[2].trim();
     const after = JSON.stringify(known, null, 2) + '\n';
     if (after !== before) await writeFile(PUB, after); // 바뀔 때만 써서 여러 작업이 동시에 돌 때 덜 겹치게
-  } catch (e) { console.log(`RSS 읽기 실패(${e.message}) — 저장된 발행 목록만 씁니다`); }
+  } catch (e) { rss = Promise.resolve(''); console.log(`RSS 읽기 실패(${e.message}) — 저장된 발행 목록만 씁니다`); }
   return known;
 }
 
-async function relatedOf(slug) {
+// at('YYYY-MM-DD HH:MM'): 이 글이 공개될 시각. 예약 글(posts/scheduled.json) 중 그보다 늦게 공개되는 글은 링크하지 않는다
+export async function relatedOf(slug, at) {
   const pub = await published();
+  const sched = JSON.parse(await readFile(join(ROOT, 'posts/scheduled.json'), 'utf8').catch(() => '{}'));
   const rel = JSON.parse(await readFile(join(ROOT, 'posts/related.json'), 'utf8'))[slug] || [];
   const out = [];
   for (const s of rel) {
     const t = JSON.parse(await readFile(join(ROOT, 'drafts', `guide_${s}.json`), 'utf8').catch(() => '{}')).title;
-    if (t && pub[t]) out.push({ title: t, url: pub[t] });
+    if (t && pub[t] && !(at && sched[t] && sched[t].when >= at)) out.push({ title: t, url: pub[t] });
   }
   return out;
 }
@@ -97,7 +100,8 @@ async function main() {
   const [file] = await renderPngs([{ name: 'thumb', html: thumbHtml(d) }], dir);
   d.images = [{ key: 'thumb', file: file.replace(/\\/g, '/'), alt: `${d.title} 대표 이미지` }];
   d.type = 'guide';
-  d.related = await relatedOf(basename(p, '.json').replace(/^guide_/, ''));
+  const ai = process.argv.indexOf('--at'); // 예약 시각(schedule_guides.mjs가 넘김)
+  d.related = await relatedOf(basename(p, '.json').replace(/^guide_/, ''), ai > 0 ? process.argv[ai + 1] : null);
   d.html = render(d);
   await writeFile(p, JSON.stringify(d, null, 2));
   const issues = await checkGuide(d);

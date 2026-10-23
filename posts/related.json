@@ -1,25 +1,397 @@
 {
-  "loans-2026": ["didimdol-2026", "jungdogeum-2026", "ltv-dsr-2026"],
-  "didimdol-2026": ["newborn-loan-2026", "bogeumjari-2026", "loans-2026"],
-  "newborn-loan-2026": ["didimdol-2026", "newlyweds", "special-supply"],
-  "bogeumjari-2026": ["didimdol-2026", "ltv-dsr-2026", "loans-2026"],
-  "jungdogeum-2026": ["loans-2026", "process", "ltv-dsr-2026"],
-  "ltv-dsr-2026": ["policy-recap-2026", "loans-2026", "bogeumjari-2026"],
-  "beotimmok-2026": ["youth-dream-2026", "newlyweds", "starter"],
-  "youth-dream-2026": ["savings-account-2026", "starter", "beotimmok-2026"],
-  "acquisition-tax-2026": ["loans-2026", "process", "special-supply"],
-  "savings-account-2026": ["youth-dream-2026", "first-rank-2026", "starter"],
-  "policy-recap-2026": ["ltv-dsr-2026", "changes-2024-2026", "loans-2026"],
-  "points-2026": ["homeless-2026", "dependents-2026", "ratio-rewin-2026"],
-  "first-rank-2026": ["savings-account-2026", "points-2026", "ratio-rewin-2026"],
-  "homeless-2026": ["points-2026", "dependents-2026", "first-rank-2026"],
-  "dependents-2026": ["points-2026", "homeless-2026", "newlyweds"],
-  "ratio-rewin-2026": ["points-2026", "first-rank-2026", "changes-2024-2026"],
-  "changes-2024-2026": ["policy-recap-2026", "special-supply", "newlyweds"],
-  "glossary": ["process", "notice-reading", "starter"],
-  "starter": ["glossary", "savings-account-2026", "first-rank-2026"],
-  "newlyweds": ["special-supply", "newborn-loan-2026", "points-2026"],
-  "process": ["notice-reading", "jungdogeum-2026", "loans-2026"],
-  "notice-reading": ["process", "glossary", "special-supply"],
-  "special-supply": ["newlyweds", "points-2026", "glossary"]
+  "loans-2026": [
+    "didimdol-2026",
+    "jungdogeum-2026",
+    "ltv-dsr-2026"
+  ],
+  "didimdol-2026": [
+    "newborn-loan-2026",
+    "bogeumjari-2026",
+    "loans-2026"
+  ],
+  "newborn-loan-2026": [
+    "didimdol-2026",
+    "newlyweds",
+    "special-supply"
+  ],
+  "bogeumjari-2026": [
+    "didimdol-2026",
+    "ltv-dsr-2026",
+    "loans-2026"
+  ],
+  "jungdogeum-2026": [
+    "loans-2026",
+    "process",
+    "ltv-dsr-2026"
+  ],
+  "ltv-dsr-2026": [
+    "policy-recap-2026",
+    "loans-2026",
+    "bogeumjari-2026"
+  ],
+  "beotimmok-2026": [
+    "youth-dream-2026",
+    "newlyweds",
+    "starter"
+  ],
+  "youth-dream-2026": [
+    "savings-account-2026",
+    "starter",
+    "beotimmok-2026"
+  ],
+  "acquisition-tax-2026": [
+    "loans-2026",
+    "process",
+    "special-supply"
+  ],
+  "savings-account-2026": [
+    "youth-dream-2026",
+    "first-rank-2026",
+    "starter"
+  ],
+  "policy-recap-2026": [
+    "ltv-dsr-2026",
+    "changes-2024-2026",
+    "loans-2026"
+  ],
+  "points-2026": [
+    "homeless-2026",
+    "dependents-2026",
+    "ratio-rewin-2026"
+  ],
+  "first-rank-2026": [
+    "savings-account-2026",
+    "points-2026",
+    "ratio-rewin-2026"
+  ],
+  "homeless-2026": [
+    "points-2026",
+    "dependents-2026",
+    "first-rank-2026"
+  ],
+  "dependents-2026": [
+    "points-2026",
+    "homeless-2026",
+    "newlyweds"
+  ],
+  "ratio-rewin-2026": [
+    "points-2026",
+    "first-rank-2026",
+    "changes-2024-2026"
+  ],
+  "changes-2024-2026": [
+    "policy-recap-2026",
+    "special-supply",
+    "newlyweds"
+  ],
+  "glossary": [
+    "process",
+    "notice-reading",
+    "starter"
+  ],
+  "starter": [
+    "glossary",
+    "savings-account-2026",
+    "first-rank-2026"
+  ],
+  "newlyweds": [
+    "special-supply",
+    "newborn-loan-2026",
+    "points-2026"
+  ],
+  "process": [
+    "notice-reading",
+    "jungdogeum-2026",
+    "loans-2026"
+  ],
+  "notice-reading": [
+    "process",
+    "glossary",
+    "special-supply"
+  ],
+  "special-supply": [
+    "newlyweds",
+    "points-2026",
+    "glossary"
+  ],
+  "resale-limit": [
+    "residence-duty",
+    "price-cap",
+    "notice-reading"
+  ],
+  "residence-duty": [
+    "resale-limit",
+    "price-cap",
+    "process"
+  ],
+  "price-cap": [
+    "resale-limit",
+    "residence-duty",
+    "ratio-rewin-2026"
+  ],
+  "ineligible-win": [
+    "give-up-win",
+    "points-2026",
+    "homeless-2026"
+  ],
+  "give-up-win": [
+    "ratio-rewin-2026",
+    "ineligible-win",
+    "waitlist"
+  ],
+  "contract-docs": [
+    "process",
+    "jungdogeum-2026",
+    "ineligible-win"
+  ],
+  "waitlist": [
+    "give-up-win",
+    "contract-docs",
+    "process"
+  ],
+  "unranked": [
+    "remaining-units",
+    "applyhome-howto",
+    "homeless-2026"
+  ],
+  "remaining-units": [
+    "unranked",
+    "ratio-rewin-2026",
+    "glossary"
+  ],
+  "applyhome-howto": [
+    "process",
+    "competition-rate",
+    "winner-check"
+  ],
+  "competition-rate": [
+    "local-priority",
+    "points-2026",
+    "applyhome-howto"
+  ],
+  "couple-double": [
+    "newlyweds",
+    "special-supply",
+    "ratio-rewin-2026"
+  ],
+  "local-priority": [
+    "competition-rate",
+    "first-rank-2026",
+    "notice-reading"
+  ],
+  "winner-check": [
+    "process",
+    "applyhome-howto",
+    "competition-rate"
+  ],
+  "hug-return-guarantee": [
+    "guarantee-compare",
+    "jeonse-check-docs",
+    "move-in-fixed-date"
+  ],
+  "jeonse-check-docs": [
+    "hug-return-guarantee",
+    "move-in-fixed-date",
+    "jeonse-fraud-support"
+  ],
+  "move-in-fixed-date": [
+    "rent-report",
+    "jeonse-check-docs",
+    "hug-return-guarantee"
+  ],
+  "renewal-right": [
+    "rent-report",
+    "move-in-fixed-date",
+    "beotimmok-2026"
+  ],
+  "jeonse-fraud-support": [
+    "hug-return-guarantee",
+    "jeonse-check-docs",
+    "move-in-fixed-date"
+  ],
+  "guarantee-compare": [
+    "hug-return-guarantee",
+    "beotimmok-2026",
+    "jeonse-check-docs"
+  ],
+  "rent-report": [
+    "move-in-fixed-date",
+    "renewal-right",
+    "hug-return-guarantee"
+  ],
+  "stress-dsr": [
+    "ltv-dsr-2026",
+    "balance-loan",
+    "first-home-ltv"
+  ],
+  "first-home-ltv": [
+    "ltv-dsr-2026",
+    "didimdol-2026",
+    "bogeumjari-2026"
+  ],
+  "youth-beotimmok": [
+    "beotimmok-2026",
+    "jeonse-loan-guarantee",
+    "fund-rate-discount"
+  ],
+  "interest-deferral": [
+    "jungdogeum-2026",
+    "notice-reading",
+    "balance-loan"
+  ],
+  "balance-loan": [
+    "loans-2026",
+    "jungdogeum-2026",
+    "stress-dsr"
+  ],
+  "fund-rate-discount": [
+    "didimdol-2026",
+    "beotimmok-2026",
+    "youth-beotimmok"
+  ],
+  "jeonse-loan-guarantee": [
+    "beotimmok-2026",
+    "youth-beotimmok",
+    "ltv-dsr-2026"
+  ],
+  "newhome-types": [
+    "public-general",
+    "land-lease",
+    "public-income-asset"
+  ],
+  "public-general": [
+    "newhome-types",
+    "savings-account-2026",
+    "homeless-2026"
+  ],
+  "land-lease": [
+    "newhome-types",
+    "public-income-asset",
+    "pre-subscription"
+  ],
+  "hope-town": [
+    "newlyweds",
+    "public-income-asset",
+    "special-supply"
+  ],
+  "public-youth": [
+    "newhome-types",
+    "public-income-asset",
+    "starter"
+  ],
+  "public-income-asset": [
+    "hope-town",
+    "public-youth",
+    "newhome-types"
+  ],
+  "pre-subscription": [
+    "newhome-types",
+    "process",
+    "public-general"
+  ],
+  "happy-house": [
+    "integrated-rental",
+    "lh-purchase-rental",
+    "starter"
+  ],
+  "national-rental": [
+    "permanent-rental",
+    "integrated-rental",
+    "happy-house"
+  ],
+  "permanent-rental": [
+    "national-rental",
+    "lh-purchase-rental",
+    "integrated-rental"
+  ],
+  "integrated-rental": [
+    "happy-house",
+    "national-rental",
+    "permanent-rental"
+  ],
+  "long-jeonse": [
+    "national-rental",
+    "newlyweds",
+    "private-rental"
+  ],
+  "private-rental": [
+    "happy-house",
+    "long-jeonse",
+    "beotimmok-2026"
+  ],
+  "lh-purchase-rental": [
+    "happy-house",
+    "beotimmok-2026",
+    "newlyweds"
+  ],
+  "multi-child": [
+    "special-once",
+    "points-2026",
+    "special-supply"
+  ],
+  "elderly-parent": [
+    "dependents-2026",
+    "points-2026",
+    "homeless-2026"
+  ],
+  "first-home-special": [
+    "acquisition-tax-2026",
+    "didimdol-2026",
+    "special-supply"
+  ],
+  "newlywed-income": [
+    "newlyweds",
+    "newborn-special",
+    "special-supply"
+  ],
+  "newborn-special": [
+    "newborn-loan-2026",
+    "newlywed-income",
+    "special-once"
+  ],
+  "institution-special": [
+    "special-supply",
+    "notice-reading",
+    "process"
+  ],
+  "special-once": [
+    "special-supply",
+    "newborn-special",
+    "multi-child"
+  ],
+  "acquisition-tax-rates": [
+    "acquisition-tax-2026",
+    "temp-two-houses",
+    "funding-plan"
+  ],
+  "property-tax": [
+    "comprehensive-tax",
+    "acquisition-tax-rates",
+    "one-house-exemption"
+  ],
+  "comprehensive-tax": [
+    "property-tax",
+    "temp-two-houses",
+    "one-house-exemption"
+  ],
+  "one-house-exemption": [
+    "temp-two-houses",
+    "presale-right-tax",
+    "property-tax"
+  ],
+  "temp-two-houses": [
+    "one-house-exemption",
+    "acquisition-tax-rates",
+    "comprehensive-tax"
+  ],
+  "presale-right-tax": [
+    "one-house-exemption",
+    "acquisition-tax-rates",
+    "policy-recap-2026"
+  ],
+  "funding-plan": [
+    "ltv-dsr-2026",
+    "acquisition-tax-rates",
+    "loans-2026"
+  ]
 }
