@@ -44,7 +44,9 @@ async function compare(page, draft) {
       bodySame: txt(content) === txt(html), bodyLen: txt(content).length, content,
     };
   }, { sel: SEL, html: draft.html, tok: SEL.attach.token });
-  const want = (draft.images || []).map((i) => basename(i.file));
+  // 그림 순서는 본문에 놓인 자리 순서(그림 목록 순서와 다를 수 있다 — 분석 글의 조감도·평면도)
+  const fileOf = Object.fromEntries((draft.images || []).map((i) => [i.key, basename(i.file)]));
+  const want = [...draft.html.matchAll(IMG_RE)].map((m) => fileOf[m[1]]).filter(Boolean);
   r.images = fileNames(r.content);
   r.imagesSame = JSON.stringify(r.images) === JSON.stringify(want);
   delete r.content;
