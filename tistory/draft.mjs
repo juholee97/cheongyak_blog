@@ -141,6 +141,13 @@ async function main() {
       await page.evaluate(GUARD, guard);
       await page.waitForFunction((id) => window.tinymce?.get(id)?.initialized, SEL.editor.tinymceId, { timeout: 30000 });
       await page.waitForTimeout(1500);
+      // 대표이미지는 처음 예약 때 그림이 따로 남는다(2026-10-23 실측). 발행 레이어에서 먼저 지워 두면, 본문에 처음 올리는 그림이 새 대표가 된다
+      await page.click(SEL.publish.open);
+      await page.waitForSelector('.box_thumb', { timeout: 10000 });
+      await page.click('.box_thumb .ico_delete').catch(() => {});
+      await page.waitForTimeout(500);
+      await page.click('#unpublish-btn');
+      await page.waitForTimeout(500);
       await page.evaluate((id) => window.tinymce.get(id).setContent(''), SEL.editor.tinymceId); // 예전 그림·본문 비우고 새로 넣는다
     }
 
@@ -211,7 +218,8 @@ async function main() {
           hm: [P.hour, P.minute].map((s) => String(document.querySelector(s).value).padStart(2, '0')).join(':'),
           url: document.querySelector(P.url)?.value,
         }), P);
-        const setOk = set.public && set.mode === '예약' && set.date === d && set.hm === hm;
+        set.rep = await page.evaluate(() => (document.querySelector('.box_thumb .thumb_g')?.getAttribute('style') || '').match(/fname=([^&"]+)/)?.[1]?.slice(-40) || '없음');
+        const setOk = set.public && set.mode === '예약' && set.date === d && set.hm === hm && set.rep !== '없음';
         step('예약 설정', setOk, set);
         if (!setOk) { report.shot = await shot('error'); return 1; }
         report.urlSlug = set.url;
