@@ -52,11 +52,13 @@ export async function checkGuide(d) {
 const PUB = join(ROOT, 'posts/published.json');
 const decode = (s) => s.replace(/&amp;/g, '&').replace(/&mdash;/g, '—').replace(/&middot;/g, '·').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>');
 export async function published() {
-  const known = JSON.parse(await readFile(PUB, 'utf8').catch(() => '{}'));
+  const before = await readFile(PUB, 'utf8').catch(() => '{}');
+  const known = JSON.parse(before);
   try {
     const xml = await (await fetch('https://aulee.tistory.com/rss')).text();
     for (const m of xml.matchAll(/<item>[\s\S]*?<title>([\s\S]*?)<\/title>[\s\S]*?<link>([\s\S]*?)<\/link>/g)) known[decode(m[1]).trim()] = m[2].trim();
-    await writeFile(PUB, JSON.stringify(known, null, 2) + '\n');
+    const after = JSON.stringify(known, null, 2) + '\n';
+    if (after !== before) await writeFile(PUB, after); // 바뀔 때만 써서 여러 작업이 동시에 돌 때 덜 겹치게
   } catch (e) { console.log(`RSS 읽기 실패(${e.message}) — 저장된 발행 목록만 씁니다`); }
   return known;
 }

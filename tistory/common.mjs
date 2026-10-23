@@ -74,3 +74,28 @@ export async function isLoggedIn(page) {
   const u = page.url();
   return u.startsWith(BLOG + '/manage') && !/auth\/login|accounts\.kakao\.com/.test(u);
 }
+
+// 발행 가드: 임시저장 흐름은 '완료'를 누를 일이 없다. 완료 버튼과 '발행' 글자가 든 버튼 클릭을 캡처 단계에서 막는다. 절대 제거하지 않는다.
+// 예외(2026-10-23 사용자 결정, CLAUDE.md 규칙 3): --schedule 일 때만 '완료'(레이어 열기)와, 발행일이 '예약'이고 그 시각이 10분 넘게 뒤일 때의 마지막 버튼을 통과시킨다. 즉시 발행은 계속 막는다.
+export function GUARD({ block, blockText, schedule }) {
+  if (window.__cheongyakGuard) return;
+  window.__cheongyakGuard = true;
+  const reservedLater = () => {
+    const on = document.querySelector('.btn_date.on');
+    if (!on || on.innerText.trim() !== '예약') return false;
+    const d = (document.querySelector('.btn_reserve')?.innerText || '').trim();
+    const hm = ['#dateHour', '#dateMinute'].map((s) => String(document.querySelector(s)?.value || '').padStart(2, '0')).join(':');
+    const t = new Date(`${d}T${hm}:00`);
+    return !isNaN(t) && t - Date.now() > 10 * 60 * 1000;
+  };
+  document.addEventListener('click', (e) => {
+    const t = e.target && e.target.closest && e.target.closest('button, a, [role="button"]');
+    if (!t) return;
+    if (schedule && (t.matches('#publish-layer-btn') || (t.matches('#publish-btn') && reservedLater()))) return;
+    if (block.some((s) => t.matches(s)) || (t.innerText || '').includes(blockText)) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      console.warn('[PUBLISH GUARD] 발행 차단');
+    }
+  }, true);
+}

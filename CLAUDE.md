@@ -17,7 +17,7 @@
 ## 절대 규칙
 1. **사실은 공고 기준.** 일정·세대수·분양가는 API 값만. 없으면 비워 둔다(추정 금지). 글에는 출처와 갱신 시각을 표기한다.
 2. **투자 권유 금지.** "사세요/오른다" 류 표현 금지, 면책 문구 유지("정확한 내용은 입주자모집공고 확인").
-3. **발행은 사람이.** 자동화는 임시저장까지만.
+3. **발행은 사람이.** 자동화는 임시저장까지만. 유일한 예외(2026-10-23 사용자 결정): 채팅에서 승인받고 검수를 통과한 글을 `tistory/draft.mjs --approved --schedule "YYYY-MM-DD HH:MM"`로 **미래 시각 예약발행**하는 것. 가드(`tistory/common.mjs` GUARD)는 발행일이 「예약」이고 10분 넘게 뒤일 때만 마지막 버튼을 통과시키고, 즉시 발행은 계속 막는다(자체 점검 `node tistory/guard.check.mjs`).
 4. **키 비공개.** `DATA_GO_KR_KEY`는 GitHub Secrets·로컬 환경변수에만. 커밋 금지.
 5. **스킨 수정 후엔 `preview.bat check`와 브라우저 미리보기(PC·휴대폰 폭) 확인.** 티스토리 치환자는 `tistory.github.io/document-tistory-skin` 문서에 있는 것만 쓰고, 새로 쓰면 `preview/serve.mjs`의 KNOWN에도 추가한다.
 

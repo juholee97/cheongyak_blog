@@ -6,7 +6,7 @@
 // 주의(2026-10-22 실측): 편집기가 입력 도중 자동 임시저장을 하므로 "개수 +1"로 저장을 판정하지 않는다 → 저장본을 다시 열어 확인한다.
 import { readFile, writeFile } from 'node:fs/promises';
 import { join, basename } from 'node:path';
-import { launch, ensureLogin, NEWPOST, ROOT } from './common.mjs';
+import { launch, ensureLogin, NEWPOST, ROOT, BLOG, GUARD } from './common.mjs';
 import { checkDraft } from '../posts/check.mjs';
 import { checkAnalysis } from '../posts/analysis_post.mjs';
 import { checkGuide } from '../posts/guide.mjs';
@@ -15,22 +15,19 @@ import { IMG_RE } from '../posts/weekly.mjs';
 const SEL = JSON.parse(await readFile(join(ROOT, 'tistory', 'selectors.json'), 'utf8'));
 const TOKEN_RE = new RegExp(SEL.attach.token, 'g');
 
-// 발행 가드: 임시저장 흐름은 '완료'를 누를 일이 없다. 완료 버튼과 '발행' 글자가 든 버튼 클릭을 캡처 단계에서 막는다. 절대 제거하지 않는다.
-function GUARD({ block, blockText }) {
-  if (window.__cheongyakGuard) return;
-  window.__cheongyakGuard = true;
-  document.addEventListener('click', (e) => {
-    const t = e.target && e.target.closest && e.target.closest('button, a, [role="button"]');
-    if (!t) return;
-    if (block.some((s) => t.matches(s)) || (t.innerText || '').includes(blockText)) {
-      e.preventDefault();
-      e.stopImmediatePropagation();
-      console.warn('[PUBLISH GUARD] 발행 차단');
-    }
-  }, true);
-}
-
 const log = (...a) => console.log(...a);
+// 태그: 발행·예약된 글은 티스토리가 소문자·가나다순으로 바꿔 보여 준다(2026-10-23 실측) → 대소문자·순서 무시
+const sameTags = (a, b) => JSON.stringify(a.map((t) => t.toLowerCase()).sort()) === JSON.stringify(b.map((t) => t.toLowerCase()).sort());
+// 예약한 글: posts/scheduled.json(제목 → 주소·시각)과 posts/published.json(관련 글 링크용 제목 → 주소)에 적는다.
+// 관련 글은 이 목록에 먼저 오른 글(= 먼저 예약된, 더 이른 시각의 글)만 가리키게 되므로 예약은 시각 순서대로 한다.
+async function recordScheduled(title, url, when) {
+  for (const [f, v] of [['scheduled.json', { url, when }], ['published.json', url]]) {
+    const p = join(ROOT, 'posts', f);
+    const m = JSON.parse(await readFile(p, 'utf8').catch(() => '{}'));
+    m[title] = v;
+    await writeFile(p, JSON.stringify(m, null, 2) + '\n');
+  }
+}
 const norm = (s) => s.replace(/\s+/g, ' ').trim();
 const fileNames = (html) => [...html.matchAll(TOKEN_RE)].map((m) => (m[0].match(/"filename":"([^"]+)"/) || [])[1]);
 
@@ -51,7 +48,7 @@ async function compare(page, draft) {
   r.images = fileNames(r.content);
   r.imagesSame = JSON.stringify(r.images) === JSON.stringify(want);
   delete r.content;
-  r.ok = r.title === draft.title && r.category.includes(draft.category) && JSON.stringify(r.tags) === JSON.stringify(draft.tags) && r.bodySame && r.imagesSame;
+  r.ok = r.title === draft.title && r.category.includes(draft.category) && sameTags(r.tags, draft.tags) && r.bodySame && r.imagesSame;
   return r;
 }
 
@@ -59,6 +56,10 @@ async function main() {
   const path = process.argv[2];
   const verifyOnly = process.argv.includes('--verify-only');
   const dryRun = process.argv.includes('--dry-run');
+  const si = process.argv.indexOf('--schedule');
+  const when = si > 0 ? process.argv[si + 1] : null; // 'YYYY-MM-DD HH:MM' (한국 시각)
+  if (when && (!/^\d{4}-\d\d-\d\d \d\d:\d\d$/.test(when) || new Date(when.replace(' ', 'T') + ':00') - Date.now() < 15 * 60 * 1000)) { log('예약 시각은 "YYYY-MM-DD HH:MM", 지금부터 15분 넘게 뒤여야 합니다.'); return 4; }
+  if (when && !process.argv.includes('--approved')) { log('예약발행은 채팅 승인을 받은 글만 — --approved 필요'); return 4; }
   if (!path || (!verifyOnly && !dryRun && !process.argv.includes('--approved'))) {
     log('사용: node tistory/draft.mjs drafts/<월요일>_weekly.json --approved  (채팅에서 사용자 승인을 받은 초안만)');
     log('      --dry-run (저장 없이 업로드·조립까지) · --verify-only (저장 없이 대조만)');
@@ -72,7 +73,8 @@ async function main() {
   for (const im of draft.images || []) await readFile(join(ROOT, im.file)).catch(() => { throw new Error(`그림 파일 없음: ${im.file} (posts/images.mjs 먼저)`); });
 
   const { context, page } = await launch({ headless: true });
-  const report = { draft: path, title: draft.title, mode: verifyOnly ? 'verify-only' : dryRun ? 'dry-run' : 'save', at: new Date().toISOString(), steps: [] };
+  const report = { draft: path, title: draft.title, mode: verifyOnly ? 'verify-only' : dryRun ? 'dry-run' : when ? 'schedule' : 'save', when, at: new Date().toISOString(), steps: [] };
+  const guard = { ...SEL.publishGuard, schedule: !!when }; // 시험 실행은 POST를 막으므로 레이어를 열어 예약 칸까지 채워 봐도 저장·발행이 안 된다
   const step = (s, ok = true, extra) => { report.steps.push({ s, ok, ...extra }); log((ok ? '✓ ' : '✗ ') + s + (extra ? ' ' + JSON.stringify(extra) : '')); };
   const shot = async (name) => { const p = path.replace(/\.json$/, `.${name}.png`); await page.screenshot({ path: p, fullPage: true }); return p; };
   const countOf = async () => { const a = await page.getAttribute(SEL.draft.count, 'aria-label').catch(() => null); return a ? +(a.match(/\d+/) || [NaN])[0] : NaN; };
@@ -80,7 +82,7 @@ async function main() {
   let acceptDialogs = false; // 평소엔 확인창을 수락하지 않음("이어서 작성?" 등). 저장본 불러오기 단계에서만 수락
   const openEditor = async () => {
     await page.goto(NEWPOST, { waitUntil: 'domcontentloaded', timeout: 30000 });
-    await page.evaluate(GUARD, SEL.publishGuard);
+    await page.evaluate(GUARD, guard);
     await page.waitForFunction((id) => window.tinymce && window.tinymce.get(id) && window.tinymce.get(id).initialized, SEL.editor.tinymceId, { timeout: 30000 });
     await page.waitForSelector(SEL.draft.count, { timeout: 10000 }).catch(() => {});
   };
@@ -94,7 +96,7 @@ async function main() {
       // 시험 실행: 그림 업로드만 통과시키고 다른 POST(자동 임시저장 등)는 막는다
       await page.route('**/*', (route) => (route.request().method() === 'POST' && !route.request().url().includes(SEL.attach.upload) ? route.abort() : route.continue()));
     }
-    await page.addInitScript(GUARD, SEL.publishGuard);
+    await page.addInitScript(GUARD, guard);
     await openEditor();
     report.countAtStart = await countOf();
     step('글쓰기 화면·발행 가드', true, { 임시저장_개수: report.countAtStart, ...(dryRun ? { 시험: '저장 요청 차단' } : {}) });
@@ -143,11 +145,61 @@ async function main() {
       step('입력값 대조(저장 전)', typed.ok, typed.ok ? { 본문_글자수: typed.bodyLen, 그림: typed.images.length } : typed);
       if (!typed.ok) { report.shot = await shot('error'); return 1; }
 
+      if (when) {
+        // 예약발행: 발행 레이어 → 공개 → 발행일 '예약' → 달력에서 날짜 → 시·분 → 화면 값 확인
+        const P = SEL.publish;
+        const [d, hm] = when.split(' ');
+        const [y, mo, day] = d.split('-').map(Number);
+        const [h, mi] = hm.split(':');
+        await page.click(P.open);
+        await page.waitForSelector(P.publicRadio, { state: 'attached', timeout: 10000 });
+        await page.click(P.public);
+        await page.locator(P.dateBtn, { hasText: '예약' }).click();
+        await page.click(P.reserveDate);
+        for (let i = 0; i < 13 && norm(await page.innerText(P.month)) !== `${y}년 ${mo}월`; i++) { await page.click(P.next); await page.waitForTimeout(200); }
+        await page.locator(`${P.day}:not([disabled])`, { hasText: new RegExp(`^${day}$`) }).click();
+        await page.fill(P.hour, String(+h));
+        await page.fill(P.minute, String(+mi));
+        await page.waitForTimeout(300);
+        const set = await page.evaluate((P) => ({
+          public: document.querySelector(P.publicRadio).checked,
+          mode: document.querySelector(P.dateBtn + '.on')?.innerText.trim(),
+          date: document.querySelector(P.reserveDate)?.innerText.trim(),
+          hm: [P.hour, P.minute].map((s) => String(document.querySelector(s).value).padStart(2, '0')).join(':'),
+          url: document.querySelector(P.url)?.value,
+        }), P);
+        const setOk = set.public && set.mode === '예약' && set.date === d && set.hm === hm;
+        step('예약 설정', setOk, set);
+        if (!setOk) { report.shot = await shot('error'); return 1; }
+        report.urlSlug = set.url;
+      }
       if (dryRun) {
         report.shot = await shot('dryrun');
         step('시험 실행 끝 — 저장하지 않음', true);
         report.ok = true;
         return 0;
+      }
+      if (when) {
+        await page.click(SEL.publish.submit);
+        await page.waitForTimeout(5000);
+        report.shot = await shot('scheduled');
+        // 검증: 관리 > 글 목록에서 같은 제목 맨 위 글의 주소·시각 → 그 글 수정 화면을 열어 전문 대조
+        await page.goto(BLOG + '/manage/posts/', { waitUntil: 'networkidle' });
+        const row = page.locator('li', { has: page.locator(`a.link_cont[title="${draft.title.replace(/"/g, '\\"')}"]`) }).first();
+        if (!(await row.count())) { step('글 목록에 제목', false); report.shot = await shot('posts'); return 2; }
+        const info = await row.evaluate((li) => ({ url: li.querySelector('a.link_cont').href, edit: li.querySelector('a.btn_post').getAttribute('href'), text: li.innerText.replace(/\s+/g, ' ') }));
+        const timeOk = info.text.includes(when);
+        step('예약 목록', timeOk, { 주소: info.url, 시각: when });
+        report.url = info.url;
+        await page.goto(BLOG + info.edit.split('?')[0], { waitUntil: 'domcontentloaded' });
+        await page.waitForFunction((id) => window.tinymce?.get(id)?.initialized, SEL.editor.tinymceId, { timeout: 30000 });
+        await page.waitForTimeout(1500);
+        const saved = await compare(page, draft);
+        report.loadedShot = await shot('loaded');
+        step('예약 글 불러와 전문 대조', saved.ok, saved.ok ? { 본문_글자수: saved.bodyLen, 그림: saved.images.length } : saved);
+        report.ok = timeOk && saved.ok;
+        if (report.ok) await recordScheduled(draft.title, info.url, when);
+        return report.ok ? 0 : 2;
       }
       await page.click(SEL.draft.save);
       await page.waitForTimeout(3000);

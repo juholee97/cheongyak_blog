@@ -33,6 +33,21 @@
     "count": ".btn-draft a.count",
     "_note": "count의 aria-label = \"임시저장 개수 N개\" → 저장 전후 N 비교로 저장 확인"
   },
+  "publish": {
+    "open": "#publish-layer-btn",
+    "public": "label[for=\"open20\"] .checkbox-text",
+    "publicRadio": "#open20",
+    "dateBtn": ".btn_date",
+    "reserveDate": ".btn_reserve",
+    "month": ".txt_calendar",
+    "next": ".btn_next",
+    "day": ".tbl_calendar .btn_day",
+    "hour": "#dateHour",
+    "minute": "#dateMinute",
+    "url": "#urlPublish",
+    "submit": "#publish-btn",
+    "_note": "2026-10-23 probe_publish.mjs 실측(모든 POST 차단): 완료 → 발행 레이어. 기본 공개 설정은 '비공개'. '공개'를 고르면 발행일 '현재'·'예약' 버튼이 생기고, 예약 → .btn_reserve(YYYY-MM-DD)를 누르면 달력(.txt_calendar 'YYYY년 M월', .btn_next, .btn_day)과 시(#dateHour)·분(#dateMinute) 입력. 마지막 버튼 #publish-btn 글자는 '공개 발행'. 근거: tistory/probe-out/publish-*.json·publish-calendar.html"
+  },
   "publishGuard": {
     "block": ["#publish-layer-btn"],
     "blockText": "발행",
