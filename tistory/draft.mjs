@@ -62,6 +62,8 @@ async function main() {
   const updateSched = process.argv.includes('--update-scheduled'); // 이미 예약된 같은 제목 글의 본문·그림을 바꿔 같은 시각으로 다시 예약
   // 이미 공개된 글 고치기(2026-10-23 사용자 결정: 썸네일·대표이미지 같은 고침은 늘 허용). --schedule 에 원래 공개 시각. 공개 시각은 바꾸지 않는다
   const updatePub = process.argv.includes('--update-published');
+  const pi = process.argv.indexOf('--post'); // 고치기: 제목이 바뀌는 글은 글 번호로 찾는다(예: --post 4)
+  const postId = pi > 0 ? process.argv[pi + 1] : null;
   const updating = updateSched || updatePub;
   if (updating && !when) { log('--update-scheduled·--update-published 는 --schedule "시각"과 함께'); return 4; }
   if (updatePub && (!/^\d{4}-\d\d-\d\d \d\d:\d\d$/.test(when) || new Date(when.replace(' ', 'T') + ':00') > Date.now())) { log('--update-published 의 시각은 원래 공개 시각(지난 시각)'); return 4; }
@@ -112,7 +114,7 @@ async function main() {
     const findRow = async () => {
       for (let n = 1; n <= 15; n++) {
         await page.goto(`${BLOG}/manage/posts/?page=${n}`, { waitUntil: 'networkidle' });
-        const r = page.locator('li', { has: page.locator(`a.link_cont[title="${draft.title.replace(/"/g, '\\"')}"]`) }).first();
+        const r = page.locator('li', { has: page.locator(postId ? `a.link_cont[href$="/${postId}"]` : `a.link_cont[title="${draft.title.replace(/"/g, '\\"')}"]`) }).first();
         if (await r.count()) return r.evaluate((li) => ({ url: li.querySelector('a.link_cont').href, edit: li.querySelector('a.btn_post').getAttribute('href'), text: li.innerText.replace(/\s+/g, ' ') }));
         if (!(await page.locator('a.link_cont').count())) break; // 빈 쪽 = 끝
       }
@@ -135,12 +137,14 @@ async function main() {
         // 고치기 뒤 블로그 목록 썸네일이 빈칸으로 남는 경우가 가끔 있었다(2026-10-23) → 카테고리 목록에서 확인, 비면 다시 돌린다
         const id = info.url.split('/').pop();
         let src = null;
+        const lp = await context.newPage(); // 편집 화면은 떠날 때 막히므로 새 탭에서
         for (let n = 1; n <= 6 && src === null; n++) {
-          await page.goto(`${BLOG}/category/${encodeURIComponent(draft.category)}?page=${n}`, { waitUntil: 'networkidle' });
-          const r = await page.evaluate((id) => { const a = document.querySelector(`a.card[href="/${id}"]`); return a ? (a.querySelector('img')?.getAttribute('src') || '') : null; }, id);
+          await lp.goto(`${BLOG}/category/${encodeURIComponent(draft.category)}?page=${n}`, { waitUntil: 'networkidle' });
+          const r = await lp.evaluate((id) => { const a = document.querySelector(`a.card[href="/${id}"]`); return a ? (a.querySelector('img')?.getAttribute('src') || '') : null; }, id);
           if (r !== null) src = r;
-          else if (!(await page.locator('a.card').count())) break;
+          else if (!(await lp.locator('a.card').count())) break;
         }
+        await lp.close();
         step('목록 썸네일', !!src, { 상태: src ? '있음' : src === '' ? '빈칸 — 같은 명령을 다시 돌리세요' : '목록에서 못 찾음' });
         report.ok = !!src;
       }

@@ -248,7 +248,7 @@ export function thumbOf(f) {
   return searchThumbHtml({ category: '분양분석', lines, label: price[0], value: price[1], foot: `${where(it)}${rec ? ` · ${label(it, rec.k)} ${md(rec.date)}` : ''}` });
 }
 
-async function images(f, out) {
+export async function images(f, out) {
   await mkdir(out, { recursive: true });
   const it = f.item, rec = it.phases.find((p) => ['sp', 'p1', 'p2'].includes(p.k)) || it.phases[0];
   const mon = new Date(rec.date + 'T00:00:00Z'); mon.setUTCDate(mon.getUTCDate() - ((mon.getUTCDay() + 6) % 7));
