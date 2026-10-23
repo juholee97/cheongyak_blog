@@ -12,7 +12,7 @@ import { busNear, isCore } from './bus.mjs';
 import { routeReach, canonLine, ASSUMED_KMH, LIMIT_MIN } from './routes.mjs';
 import { nearbyTrades, dataKey, tierOf, locate, PY } from './trades.mjs';
 import { keyOf, mapHtml } from './map.mjs';
-import { itemHtml, renderPngs } from './card.mjs';
+import { itemHtml, renderPngs, searchThumbHtml } from './card.mjs';
 
 const ODCLOUD = 'https://api.odcloud.kr/api/ApplyhomeInfoDetailSvc/v1/';
 const LOANS_CHECKED = '2026-10-23';
@@ -172,7 +172,7 @@ export function render(f, notes = {}, images = []) {
   const x = renderFacts(f), has = new Set(images.map((i) => i.key));
   const img = (k) => (has.has(k) ? IMG(k) : '');
   return [
-    img('card'), (notes.intro || []).filter(Boolean).length ? `<p>${notes.intro.filter(Boolean).map(esc).join(' ')}</p>` : '', H2('한눈에'), x.glance, x.types,
+    img('thumb'), img('card'), (notes.intro || []).filter(Boolean).length ? `<p>${notes.intro.filter(Boolean).map(esc).join(' ')}</p>` : '', H2('한눈에'), x.glance, x.types,
     H2('분양가와 주변 실거래'), x.leasehold, note(notes.price), x.trades,
     H2('입지 — 교통·학교'), img('map'), note(notes.place), x.place, x.busRoutes,
     H2('자격·규제'), note(notes.rules), x.rules,
@@ -237,16 +237,27 @@ export function checkAnalysis(draft) {
   return issues;
 }
 
+// 검색용 썸네일(첫 그림 = 대표 이미지): 단지 이름 두 줄 + 3.3㎡당 분양가(없으면 첫 접수일) + 지역·접수일
+export function thumbOf(f) {
+  const it = f.item, name = it.name.replace(/\(.*?\)/g, '').trim(), w = name.split(' ');
+  let cut = 1, best = Infinity; // 두 줄 길이가 비슷하게 띄어쓰기에서 나눈다
+  for (let i = 1; i < w.length; i++) { const d = Math.abs(w.slice(0, i).join(' ').length - w.slice(i).join(' ').length); if (d < best) { best = d; cut = i; } }
+  const lines = w.length > 1 ? `${w.slice(0, cut).join(' ')}\n${w.slice(cut).join(' ')}` : name;
+  const rec = it.phases.filter((p) => ['sp', 'p1'].includes(p.k)).sort((a, b) => (a.date < b.date ? -1 : 1))[0];
+  const price = it.pricePerPyeong ? ['분양가 3.3㎡당(공급면적)', man(it.pricePerPyeong)] : rec ? [label(it, rec.k), md(rec.date)] : [];
+  return searchThumbHtml({ category: '분양분석', lines, label: price[0], value: price[1], foot: `${where(it)}${rec ? ` · ${label(it, rec.k)} ${md(rec.date)}` : ''}` });
+}
+
 async function images(f, out) {
   await mkdir(out, { recursive: true });
   const it = f.item, rec = it.phases.find((p) => ['sp', 'p1', 'p2'].includes(p.k)) || it.phases[0];
   const mon = new Date(rec.date + 'T00:00:00Z'); mon.setUTCDate(mon.getUTCDate() - ((mon.getUTCDay() + 6) % 7));
   const start = mon.toISOString().slice(0, 10), end = new Date(mon.getTime() + 6 * 864e5).toISOString().slice(0, 10);
-  const pages = [{ name: 'card', html: itemHtml(it, { start, end }) }];
+  const pages = [{ name: 'thumb', html: thumbOf(f) }, { name: 'card', html: itemHtml(it, { start, end }) }];
   const m = await mapHtml(it, await keyOf());
   if (!m.skip) pages.push({ name: 'map', html: m.html });
   const files = await renderPngs(pages, out);
-  return files.map((file, i) => ({ key: pages[i].name, file: file.replace(/\\/g, '/'), alt: pages[i].name === 'card' ? `${it.name} 청약 일정 카드` : `${it.name} 위치 지도(반경 500m·1km)` }));
+  return files.map((file, i) => ({ key: pages[i].name, file: file.replace(/\\/g, '/'), alt: { thumb: `${it.name} 분양가·청약 분석 대표 이미지`, card: `${it.name} 청약 일정 카드` }[pages[i].name] || `${it.name} 위치 지도(반경 500m·1km)` }));
 }
 
 async function main() {

@@ -3,7 +3,8 @@
 // 위치 지도는 VWORLD_KEY가 있을 때만, 주소로 위치를 확실히 못 찾는 단지는 지도 없이(카드만).
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { build, draftOf } from './weekly.mjs';
-import { weeklyHtml, itemHtml } from './card.mjs';
+import { weeklyHtml, itemHtml, searchThumbHtml } from './card.mjs';
+import { titleOf } from './weekly.mjs';
 import { mapHtml, keyOf } from './map.mjs';
 
 const path = process.argv[2];
@@ -22,12 +23,17 @@ const page = await browser.newPage({ viewport: { width: 1200, height: 630 } });
 const shoot = async (html, file) => {
   await page.setContent(html, { waitUntil: 'networkidle' });
   await page.evaluate(() => document.fonts.ready);
+  if (html.includes('class="fit"')) await page.waitForFunction(() => document.body.dataset.fit === '1');
   await page.screenshot({ path: file, clip: { x: 0, y: 0, width: 1200, height: 630 } });
   return file.replace(/\\/g, '/');
 };
 
 const images = [];
 const fmt = (s) => `${+s.slice(5, 7)}월 ${+s.slice(8, 10)}일`;
+// 검색용 썸네일(첫 그림 = 대표 이미지): 제목 앞부분(○월 ○째 주) + 청약 일정, 노란 칸에 접수·발표 수
+const wk = titleOf(w).split(' 청약 일정')[0];
+images.push({ key: 'thumb', file: await shoot(searchThumbHtml({ category: '청약일정', lines: `${wk}
+청약 일정`, label: `${fmt(w.start)} ~ ${fmt(w.end)}`, value: `접수 ${w.facts.receipt}곳 · 발표 ${w.facts.win}곳`, foot: '우리의 청약달력 · 청약홈 공고 기준' }), `${out}/00_thumb.png`), alt: `${titleOf(w)} 대표 이미지` });
 images.push({ key: 'weekly', file: await shoot(weeklyHtml(w), `${out}/00_weekly.png`), alt: `이번 주 청약 일정 ${fmt(w.start)}~${fmt(w.end)}: 접수 ${w.facts.receipt}곳, 당첨자 발표 ${w.facts.win}곳, 계약 ${w.facts.con}곳` });
 let maps = 0;
 for (const [n, { it }] of w.receipt.entries()) {
@@ -47,4 +53,4 @@ await browser.close();
 
 const next = draftOf(data, d.week.start, d.summary, images);
 await writeFile(path, JSON.stringify(next, null, 2));
-console.log(`그림 ${images.length}장 (썸네일 1 · 카드 ${w.receipt.length} · 지도 ${maps}) → ${out}/`);
+console.log(`그림 ${images.length}장 (썸네일·주간 그림 2 · 카드 ${w.receipt.length} · 지도 ${maps}) → ${out}/`);

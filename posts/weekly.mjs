@@ -103,7 +103,8 @@ export function render(w, summary = [], images = []) {
   const img = (k) => (has.has(k) ? IMG(k) + '\n' : '');
   const kindText = Object.entries(w.facts.kinds).map(([k, n]) => `${k} ${n}`).join(' · ');
   const out = [];
-  if (has.has('weekly')) out.push(IMG('weekly')); // 첫 이미지 = 티스토리 대표 이미지
+  if (has.has('thumb')) out.push(IMG('thumb')); // 첫 이미지 = 티스토리 대표 이미지(검색용 썸네일)
+  if (has.has('weekly')) out.push(IMG('weekly'));
   // 요약은 한 문단으로(티스토리 자동 요약이 문단 사이 띄어쓰기를 지워 문장이 붙는 것 방지)
   if (summary.filter(Boolean).length) out.push(`<p>${summary.filter(Boolean).map(esc).join(' ')}</p>`);
   // 티스토리 편집기는 <b>의 style을 지운다(2026-10-23 저장본 확인) → 꾸밀 글자는 <span>으로

@@ -6,7 +6,7 @@ import { join, basename } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { esc, C, TH, TD, IMG, DISCLAIMER } from './weekly.mjs';
 import { BANNED } from './check.mjs';
-import { renderPngs } from './card.mjs';
+import { renderPngs, searchThumbHtml } from './card.mjs';
 import { ROOT } from '../tistory/common.mjs';
 
 const two = (top, sub) => `<span style="font-weight:700;white-space:nowrap">${top}</span>${sub ? `<br><span style="font-size:13px;font-weight:400;color:${C.muted};white-space:nowrap">${sub}</span>` : ''}`;
@@ -77,18 +77,10 @@ export async function relatedOf(slug, at) {
   return out;
 }
 
-// 썸네일: 카테고리 칩 + 큰 제목 + 부제 + 브랜드(디자인 시스템 색)
+// 썸네일: 검색용 공용 썸네일(card.mjs searchThumbHtml) — 제목 두 줄(thumbTitle) + 핵심 숫자(thumbStats 첫 칸)
 export function thumbHtml(d) {
-  return `<!doctype html><html lang="ko"><head><meta charset="utf-8"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap">
-<style>*{box-sizing:border-box}body{margin:0;width:1200px;height:630px;font-family:'Noto Sans KR',sans-serif;color:#1c1f24;-webkit-font-smoothing:antialiased}</style></head><body>
-<div style="width:1200px;height:630px;padding:56px 64px;display:flex;flex-direction:column;gap:22px;background:#fff;position:relative">
-  <div style="display:flex;align-items:center;gap:12px;font-size:21px;font-weight:700"><span style="width:36px;height:36px;border-radius:9px;background:#0b4fc4;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900">우</span>우리의 청약달력
-    <span style="margin-left:14px;padding:4px 16px;border-radius:999px;background:#eaf1fd;border:1px solid #b9cff5;color:#0a3a91;font-size:18px">${esc(d.category)}</span></div>
-  <div style="margin-top:28px;font-size:${d.thumbTitle.length > 14 ? 76 : 88}px;font-weight:900;line-height:1.08;letter-spacing:-0.05em;white-space:pre-line">${esc(d.thumbTitle)}</div>
-  <div style="font-size:30px;font-weight:700;color:#0b4fc4">${esc(d.subtitle)}</div>
-  <div style="position:absolute;left:64px;right:64px;bottom:48px;display:flex;gap:16px">${(d.thumbStats || []).map((s, i) => `<div style="flex:1;border-top:6px solid ${['#0a7a5c', '#b3261e', '#4a4fa0'][i % 3]};padding-top:10px"><div style="font-size:18px;font-weight:700;color:#4b5260">${esc(s[0])}</div><div style="font-size:40px;font-weight:900;letter-spacing:-0.03em">${esc(s[1])}</div></div>`).join('')}</div>
-  <div style="position:absolute;right:64px;top:62px;font-size:16px;color:#4b5260">확인일 ${esc(d.checked)} · aulee.tistory.com</div>
-</div></body></html>`;
+  const [label, value] = (d.thumbStats || [])[0] || [];
+  return searchThumbHtml({ category: d.category, lines: d.thumbTitle, label, value, foot: `우리의 청약달력 · ${(d.checked || '').slice(0, 4)}` });
 }
 
 async function main() {

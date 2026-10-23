@@ -87,6 +87,29 @@ export function itemHtml(it, w) {
 <div class="foot"><span>입주자모집공고 기준 · 출처 청약홈(한국부동산원)</span><b>aulee.tistory.com</b></div></div></body></html>`;
 }
 
+// 썸네일(1200×630): 검색 결과에서 잘려 보이는 것을 기준으로 — 네이버는 가운데 정사각형, 구글은 가로형(16:9 근처)으로 자른다.
+// 그래서 카테고리·제목·핵심 숫자는 가운데 630×630 안에 크게, 양옆은 장식만. 글자는 칸에 맞게 줄여 넣는다(fit, 제목 두 줄은 같은 크기).
+export const THUMB_BG = { 청약가이드: '#0b4fc4', '대출·정책': '#0a6b52', 분양분석: '#4a3fa0', 청약일정: '#12306e' };
+// { category, lines: 제목 두 줄('\n'으로 나눔), label·value: 노란 칸(핵심 숫자), foot: 아래 작은 글씨 }
+export function searchThumbHtml({ category, lines, label: hk, value: hv, foot }) {
+  const bg = THUMB_BG[category] || THUMB_BG.청약가이드;
+  const grid = (x) => `<div style="position:absolute;top:0;bottom:0;${x};width:285px;display:grid;grid-template-columns:repeat(4,1fr);gap:14px;padding:34px 26px;opacity:.13">${Array.from({ length: 28 }, (_, i) => `<div style="border-radius:10px;background:#fff;${i % 7 === 3 ? 'opacity:1' : 'opacity:.45'}"></div>`).join('')}</div>`;
+  return `<!doctype html><html lang="ko"><head><meta charset="utf-8"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@500;700;900&display=swap">
+<style>*{box-sizing:border-box}body{margin:0;width:1200px;height:630px;font-family:'Noto Sans KR',sans-serif;-webkit-font-smoothing:antialiased}
+.fit{white-space:nowrap;display:inline-block}</style></head><body>
+<div style="width:1200px;height:630px;background:${bg};position:relative;overflow:hidden;color:#fff">
+  ${grid('left:0')}${grid('right:0')}
+  <div style="position:absolute;left:285px;top:0;width:630px;height:630px;padding:44px 40px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;text-align:center">
+    <div style="font-size:28px;font-weight:700;padding:6px 22px;border-radius:999px;background:rgba(255,255,255,.18)">${esc(category)}</div>
+    <div id="h" style="font-weight:900;line-height:1.12;letter-spacing:-0.04em;width:550px">${esc(lines).split('\n').map((l) => `<div><span class="fit" data-max="124">${l}</span></div>`).join('')}</div>
+    ${hv ? `<div style="background:#ffd43b;color:#1c1f24;border-radius:20px;padding:12px 28px 16px;max-width:550px"><div style="font-size:24px;font-weight:700;color:#5a4a00">${esc(hk)}</div><div><span class="fit" data-max="54" style="font-weight:900;letter-spacing:-0.03em;line-height:1.15">${esc(hv)}</span></div></div>` : ''}
+    <div style="font-size:21px;font-weight:500;opacity:.8">${esc(foot || '우리의 청약달력')}</div>
+  </div>
+</div>
+<script>document.fonts.ready.then(() => { for (const el of document.querySelectorAll('.fit')) { let s = +el.dataset.max; el.style.fontSize = s + 'px'; const w = el.dataset.max > 60 ? 550 : 490; while (el.getBoundingClientRect().width > w && s > 30) { s -= 2; el.style.fontSize = s + 'px'; } } const hs = [...document.querySelectorAll('#h .fit')], m = Math.min(...hs.map((e) => parseFloat(e.style.fontSize))); hs.forEach((e) => (e.style.fontSize = m + 'px')); document.body.dataset.fit = '1'; });</script>
+</body></html>`;
+}
+
 export async function renderPngs(pages, outDir) {
   const { chromium } = await import('playwright');
   const browser = await chromium.launch({ headless: true });
@@ -96,6 +119,7 @@ export async function renderPngs(pages, outDir) {
   for (const { name, html } of pages) {
     await page.setContent(html, { waitUntil: 'networkidle' });
     await page.evaluate(() => document.fonts.ready);
+    if (html.includes('class="fit"')) await page.waitForFunction(() => document.body.dataset.fit === '1'); // 검색 썸네일: 글자 맞추기 끝날 때까지
     const f = `${outDir}/${name}.png`;
     await page.screenshot({ path: f, clip: { x: 0, y: 0, width: 1200, height: 630 } });
     files.push(f);
