@@ -1,4 +1,4 @@
-// 로고 파일 만들기: node brand/make.mjs  → brand/blog-image.png(티스토리 블로그 이미지 800×800), icon-512.png, favicon.ico(16·32·48)
+// 로고 파일 만들기: node brand/make.mjs  → brand/blog-image.png(티스토리 블로그 이미지 800×800), icon-64.png(블로그 아이콘), icon-512.png, favicon.ico(16·32·48)
 // 로고 원본은 skin/images/logo.svg 하나. 로고를 바꾸면 그 파일과 posts/card.mjs LOGO를 같이 고치고 이 스크립트를 다시 돌린다.
 import { chromium } from 'playwright';
 import { readFile, writeFile } from 'node:fs/promises';
@@ -18,6 +18,7 @@ const shot = async (html, w, h) => {
 };
 const logo = (n) => shot(`<div style="width:${n}px;height:${n}px">${svg}</div>`, n, n);
 await writeFile(out('icon-512.png'), await logo(512));
+await writeFile(out('icon-64.png'), await logo(64)); // 티스토리 블로그 아이콘(32×32·64×64 권장)
 await writeFile(out('blog-image.png'), await shot(`<div style="width:800px;height:800px;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:40px;font-family:'Noto Sans KR'"><div style="width:400px;height:400px">${svg}</div><div style="font-size:76px;font-weight:900;letter-spacing:-0.05em;color:#1c1f24">우리의 청약달력</div></div>`, 800, 800));
 // ICO: 크기마다 PNG를 그대로 담는다(Vista 이후 표준)
 const sizes = [16, 32, 48], pngs = [];

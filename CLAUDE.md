@@ -24,6 +24,7 @@
 ## 변경 이력
 | 날짜 | 변경 | 사유 |
 |------|------|------|
+| 2026-10-23 | 로고 L3(지붕 체크) 확정 — 원본 `skin/images/logo.svg`(헤더·카드 그림 공용, `card.mjs` LOGO), `brand/make.mjs`로 블로그 이미지 800×800·아이콘 64·파비콘 ico. 스킨 적용 자동화 `tistory/apply_skin.mjs`(Monaco html 편집, 적용 전 `data/skin-backup/` 백업·적용 후 저장본 대조), 블로그 이미지·아이콘·파비콘 `tistory/apply_blog_images.mjs`, 관리 화면 실측 `tistory/probe_manage.mjs` | 사용자: 로고 다시 디자인, 직접 적용 |
 | 2026-10-23 | 검색용 썸네일(`card.mjs` searchThumbHtml): 네이버(가운데 정사각형으로 잘림) 우선·구글(가로) 다음 — 카테고리·제목 두 줄·노란 핵심 숫자를 가운데 630×630 안에 크게(글자 자동 맞춤), 양옆은 장식. 카테고리 색(청약가이드 파랑·대출·정책 초록·분양분석 보라·청약일정 남색). 가이드·분양분석·주간 글 모두 첫 그림(대표 이미지)으로 | 사용자: 검색 노출 썸네일로 시선 끌기 |
 | 2026-10-23 | 예약발행: `draft.mjs --schedule`(발행 레이어 실측 `tistory/probe_publish.mjs`, 예약 글 목록·전문 대조, `--verify-scheduled`), 가드 예외와 자체 점검, `schedule_guides.mjs`(빈 시각에 관련 글 많은 글부터, 링크는 더 이른 시각 글만). 분석 글 자동 예약 `posts/analysis_auto.mjs`(자동 설명 `autoNotes`, 공개 시각 `publishAt` 자체 점검 `analysis_auto.check.mjs`, 실행기 `analysis_auto.bat`, 바로가기 D:\AI_산출물). 가이드 63편 추가(근거 문서 public·special·afterwin·apply·rental·jeonse·tax·loans3·beginner2) | 사용자: 하루 3편 한 달 예약, 분석 글은 접수 1주일 전 상시·승인 없이 |
 | 2026-10-23 | 검색어 먼저 제목: 주간 글 「10월 다섯째 주 청약 일정(10월 26일~11월 1일) — 접수 n곳·발표 n곳」(주차 = 목요일이 속한 달), 분석 글 「{단지} 분양가·청약 분석 — …」, 저장 전 검수에서 `[말머리]`로 시작하는 제목을 막음(가이드 제목은 이미 검색어 먼저). 가이드 끝 「함께 보면 좋은 글」: `posts/related.json`(slug → 관련 slug) 중 이미 발행된 글만, 발행 주소는 RSS에서 제목으로 찾아 `posts/published.json`에 쌓음 | 사용자: 검색 노출 개선 |
