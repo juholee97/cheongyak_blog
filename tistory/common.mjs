@@ -78,7 +78,8 @@ export async function isLoggedIn(page) {
 
 // 발행 가드: 임시저장 흐름은 '완료'를 누를 일이 없다. 완료 버튼과 '발행' 글자가 든 버튼 클릭을 캡처 단계에서 막는다. 절대 제거하지 않는다.
 // 예외(2026-10-23 사용자 결정, CLAUDE.md 규칙 3): --schedule 일 때만 '완료'(레이어 열기)와, 발행일이 '예약'이고 그 시각이 10분 넘게 뒤일 때의 마지막 버튼을 통과시킨다. 즉시 발행은 계속 막는다.
-export function GUARD({ block, blockText, schedule }) {
+// 예외 2(2026-10-23 사용자 결정): --update-published 일 때만, 발행일이 원래의 지난 시각 그대로 선택돼 있으면 마지막 버튼 통과(공개된 글 고치기 — 공개 시각은 안 바뀐다).
+export function GUARD({ block, blockText, schedule, republish }) {
   if (window.__cheongyakGuard) return;
   window.__cheongyakGuard = true;
   const reservedLater = () => {
@@ -89,9 +90,15 @@ export function GUARD({ block, blockText, schedule }) {
     const t = new Date(`${d}T${hm}:00`);
     return !isNaN(t) && t - Date.now() > 10 * 60 * 1000;
   };
+  const keptPastDate = () => {
+    const on = (document.querySelector('.btn_date.on')?.innerText || '').trim();
+    const m = on.match(/^(\d{4}-\d\d-\d\d) (\d\d:\d\d)$/);
+    return !!m && new Date(`${m[1]}T${m[2]}:00`) < Date.now();
+  };
   document.addEventListener('click', (e) => {
     const t = e.target && e.target.closest && e.target.closest('button, a, [role="button"]');
     if (!t) return;
+    if (republish && (t.matches('#publish-layer-btn') || (t.matches('#publish-btn') && keptPastDate()))) return;
     if (schedule && (t.matches('#publish-layer-btn') || (t.matches('#publish-btn') && reservedLater()))) return;
     if (block.some((s) => t.matches(s)) || (t.innerText || '').includes(blockText)) {
       e.preventDefault();

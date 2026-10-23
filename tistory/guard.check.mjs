@@ -15,13 +15,15 @@ const browser = await chromium.launch();
 const passes = async (schedule, html, sel) => {
   const page = await browser.newPage(); // 새 창마다(가드는 창당 한 번만 설치된다)
   await page.setContent(html + '<script>window.hits=[];document.addEventListener("click",(e)=>hits.push(e.target.id||e.target.className))</script>');
-  await page.evaluate(GUARD, { ...SEL.publishGuard, schedule });
+  await page.evaluate(GUARD, { ...SEL.publishGuard, schedule: schedule === true, republish: schedule === 'republish' });
   await page.click(sel);
   const n = await page.evaluate(() => window.hits.length);
   await page.close();
   return n > 0;
 };
 const later = at(60 * 60 * 1000), soon = at(3 * 60 * 1000), past = at(-60 * 60 * 1000);
+// 공개 글 고치기: 발행일 칸에 원래 시각이 선택된 레이어
+const pubLayer = (on, t) => `<button id="publish-layer-btn">완료</button><button class="btn_date ${on === 'orig' ? 'on' : ''}">${t.d} ${String(t.h).padStart(2, '0')}:${String(t.m).padStart(2, '0')}</button><button class="btn_date ${on === '현재' ? 'on' : ''}">현재</button><button class="btn_date ${on === '예약' ? 'on' : ''}">예약</button><button id="publish-btn">공개 발행</button>`;
 const cases = [
   ['임시저장 모드: 완료 막음', false, layer('예약', later), '#publish-layer-btn', false],
   ['임시저장 모드: 예약이어도 발행 막음', false, layer('예약', later), '#publish-btn', false],
@@ -31,6 +33,10 @@ const cases = [
   ['예약 모드: 지난 시각 막음', true, layer('예약', past), '#publish-btn', false],
   ['예약 모드: 1시간 뒤 예약 통과', true, layer('예약', later), '#publish-btn', true],
   ['예약 모드: 다른 발행 버튼 막음', true, layer('예약', later), '#other', false],
+  ['공개 글 고치기: 원래 지난 시각 그대로면 통과', 'republish', pubLayer('orig', past), '#publish-btn', true],
+  ['공개 글 고치기: 발행일 현재로 바꾸면 막음', 'republish', pubLayer('현재', past), '#publish-btn', false],
+  ['공개 글 고치기: 원래 시각이 미래면 막음', 'republish', pubLayer('orig', later), '#publish-btn', false],
+  ['임시저장 모드: 공개 글 레이어도 막음', false, pubLayer('orig', past), '#publish-btn', false],
 ];
 let bad = 0;
 for (const [name, schedule, html, sel, want] of cases) {

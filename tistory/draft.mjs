@@ -60,8 +60,12 @@ async function main() {
   const when = si > 0 ? process.argv[si + 1] : null; // 'YYYY-MM-DD HH:MM' (한국 시각)
   const verifySched = process.argv.includes('--verify-scheduled'); // 예약한 글을 다시 대조만(저장·발행 없음)
   const updateSched = process.argv.includes('--update-scheduled'); // 이미 예약된 같은 제목 글의 본문·그림을 바꿔 같은 시각으로 다시 예약
-  if (updateSched && !when) { log('--update-scheduled 는 --schedule "예약 시각"과 함께'); return 4; }
-  if (when && !verifySched && (!/^\d{4}-\d\d-\d\d \d\d:\d\d$/.test(when) || new Date(when.replace(' ', 'T') + ':00') - Date.now() < (updateSched ? 12 : 15) * 60 * 1000)) { log('예약 시각은 "YYYY-MM-DD HH:MM", 지금부터 15분 넘게 뒤여야 합니다.'); return 4; }
+  // 이미 공개된 글 고치기(2026-10-23 사용자 결정: 썸네일·대표이미지 같은 고침은 늘 허용). --schedule 에 원래 공개 시각. 공개 시각은 바꾸지 않는다
+  const updatePub = process.argv.includes('--update-published');
+  const updating = updateSched || updatePub;
+  if (updating && !when) { log('--update-scheduled·--update-published 는 --schedule "시각"과 함께'); return 4; }
+  if (updatePub && (!/^\d{4}-\d\d-\d\d \d\d:\d\d$/.test(when) || new Date(when.replace(' ', 'T') + ':00') > Date.now())) { log('--update-published 의 시각은 원래 공개 시각(지난 시각)'); return 4; }
+  if (when && !verifySched && !updatePub && (!/^\d{4}-\d\d-\d\d \d\d:\d\d$/.test(when) || new Date(when.replace(' ', 'T') + ':00') - Date.now() < (updateSched ? 12 : 15) * 60 * 1000)) { log('예약 시각은 "YYYY-MM-DD HH:MM", 지금부터 15분 넘게 뒤여야 합니다.'); return 4; }
   if (when && !verifySched && !process.argv.includes('--approved')) { log('예약발행은 채팅 승인을 받은 글만 — --approved 필요'); return 4; }
   if (!path || (!verifyOnly && !verifySched && !dryRun && !process.argv.includes('--approved'))) {
     log('사용: node tistory/draft.mjs drafts/<월요일>_weekly.json --approved  (채팅에서 사용자 승인을 받은 초안만)');
@@ -76,8 +80,8 @@ async function main() {
   for (const im of draft.images || []) await readFile(join(ROOT, im.file)).catch(() => { throw new Error(`그림 파일 없음: ${im.file} (posts/images.mjs 먼저)`); });
 
   const { context, page } = await launch({ headless: true });
-  const report = { draft: path, title: draft.title, mode: updateSched ? 'update-scheduled' : verifySched ? 'verify-scheduled' : verifyOnly ? 'verify-only' : dryRun ? 'dry-run' : when ? 'schedule' : 'save', when, at: new Date().toISOString(), steps: [] };
-  const guard = { ...SEL.publishGuard, schedule: !!when && !verifySched }; // 시험 실행은 POST를 막으므로 레이어를 열어 예약 칸까지 채워 봐도 저장·발행이 안 된다
+  const report = { draft: path, title: draft.title, mode: updatePub ? 'update-published' : updateSched ? 'update-scheduled' : verifySched ? 'verify-scheduled' : verifyOnly ? 'verify-only' : dryRun ? 'dry-run' : when ? 'schedule' : 'save', when, at: new Date().toISOString(), steps: [] };
+  const guard = { ...SEL.publishGuard, schedule: !!when && !verifySched && !updatePub, republish: updatePub }; // 시험 실행은 POST를 막으므로 레이어를 열어 예약 칸까지 채워 봐도 저장·발행이 안 된다
   const step = (s, ok = true, extra) => { report.steps.push({ s, ok, ...extra }); log((ok ? '✓ ' : '✗ ') + s + (extra ? ' ' + JSON.stringify(extra) : '')); };
   const shot = async (name) => { const p = path.replace(/\.json$/, `.${name}.png`); await page.screenshot({ path: p, fullPage: true }); return p; };
   const countOf = async () => { const a = await page.getAttribute(SEL.draft.count, 'aria-label').catch(() => null); return a ? +(a.match(/\d+/) || [NaN])[0] : NaN; };
@@ -127,15 +131,28 @@ async function main() {
       report.loadedShot = await shot('loaded');
       step('예약 글 불러와 전문 대조', saved.ok, saved.ok ? { 본문_글자수: saved.bodyLen, 그림: saved.images.length } : saved);
       report.ok = timeOk && saved.ok;
+      if (report.ok && updating) {
+        // 고치기 뒤 블로그 목록 썸네일이 빈칸으로 남는 경우가 가끔 있었다(2026-10-23) → 카테고리 목록에서 확인, 비면 다시 돌린다
+        const id = info.url.split('/').pop();
+        let src = null;
+        for (let n = 1; n <= 6 && src === null; n++) {
+          await page.goto(`${BLOG}/category/${encodeURIComponent(draft.category)}?page=${n}`, { waitUntil: 'networkidle' });
+          const r = await page.evaluate((id) => { const a = document.querySelector(`a.card[href="/${id}"]`); return a ? (a.querySelector('img')?.getAttribute('src') || '') : null; }, id);
+          if (r !== null) src = r;
+          else if (!(await page.locator('a.card').count())) break;
+        }
+        step('목록 썸네일', !!src, { 상태: src ? '있음' : src === '' ? '빈칸 — 같은 명령을 다시 돌리세요' : '목록에서 못 찾음' });
+        report.ok = !!src;
+      }
       if (report.ok) await recordScheduled(draft.title, info.url, when);
       return report.ok ? 0 : 2;
     };
     if (verifySched) return await verifyScheduled();
-    if (updateSched) {
-      // 고치기: 예약 목록에서 같은 제목·같은 시각 글을 찾아 그 수정 화면을 연다(공개된 글은 고치지 않는다)
+    if (updating) {
+      // 고치기: 글 목록에서 같은 제목·같은 시각 글을 찾아 그 수정 화면을 연다(예약 글 고치기는 [예약]인 글만, 공개 글 고치기는 공개된 글만)
       const info = await findRow();
-      const ok = !!info && info.text.includes(when) && info.text.includes('[예약]');
-      step('고칠 예약 글', ok, info ? { 주소: info.url, 시각: when } : { 없음: draft.title });
+      const ok = !!info && info.text.includes(when) && (updatePub ? !info.text.includes('[예약]') : info.text.includes('[예약]'));
+      step(updatePub ? '고칠 공개 글' : '고칠 예약 글', ok, info ? { 주소: info.url, 시각: when } : { 없음: draft.title });
       if (!ok) { report.shot = await shot('posts'); return 2; }
       await page.goto(BLOG + info.edit.split('?')[0], { waitUntil: 'domcontentloaded' });
       await page.evaluate(GUARD, guard);
@@ -181,10 +198,11 @@ async function main() {
         step('그림 업로드', !missing.length, missing.length ? { 빠짐: missing } : { 장수: draft.images.length });
         if (missing.length) { report.shot = await shot('error'); return 1; }
         html = draft.html.replace(IMG_RE, (m, k) => `<p>${byKey[k]}</p>`);
+        if (updating) await page.waitForTimeout(8000); // 고치기: 대표이미지 처리가 끝나기 전에 저장하면 목록 썸네일이 비는 경우가 있었다(2026-10-23)
       }
 
       await page.evaluate(({ id, html }) => { const ed = window.tinymce.get(id); ed.setContent(html); ed.fire('change'); ed.save && ed.save(); }, { id: SEL.editor.tinymceId, html });
-      for (const t of updateSched ? [] : draft.tags) { // 고치기: 태그는 이미 있다
+      for (const t of updating ? [] : draft.tags) { // 고치기: 태그는 이미 있다
         if (!(await page.$(SEL.tags))) break; // 10개를 채우면 입력칸이 사라진다
         await page.click(SEL.tags);
         await page.type(SEL.tags, t);
@@ -195,7 +213,17 @@ async function main() {
       step('입력값 대조(저장 전)', typed.ok, typed.ok ? { 본문_글자수: typed.bodyLen, 그림: typed.images.length } : typed);
       if (!typed.ok) { report.shot = await shot('error'); return 1; }
 
-      if (when) {
+      if (updatePub) {
+        // 공개 글 고치기: 발행일은 원래 시각 그대로(가드도 이때만 통과), 공개 상태·새 대표이미지 확인
+        await page.click(SEL.publish.open);
+        await page.waitForSelector(SEL.publish.publicRadio, { state: 'attached', timeout: 10000 });
+        await page.waitForTimeout(500);
+        const set = await page.evaluate((P) => ({ public: document.querySelector(P.publicRadio).checked, date: document.querySelector(P.dateBtn + '.on')?.innerText.trim() }), SEL.publish);
+        set.rep = await page.evaluate(() => (document.querySelector('.box_thumb .thumb_g')?.getAttribute('style') || '').match(/fname=([^&"]+)/)?.[1]?.slice(-40) || '없음');
+        const setOk = set.public && set.date === when && set.rep !== '없음';
+        step('공개 글 수정 설정', setOk, set);
+        if (!setOk) { report.shot = await shot('error'); return 1; }
+      } else if (when) {
         // 예약발행: 발행 레이어 → 공개 → 발행일 '예약' → 달력에서 날짜 → 시·분 → 화면 값 확인
         const P = SEL.publish;
         const [d, hm] = when.split(' ');
