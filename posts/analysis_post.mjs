@@ -185,7 +185,7 @@ export function render(f, notes = {}, images = []) {
 
 export function titleOf(f) {
   const short = f.item.name.replace(/\(.*?\)/g, '').trim();
-  return `[분양분석] ${short} — 분양가·주변 실거래·교통·학군·대출 정리`;
+  return `${short} 분양가·청약 분석 — 주변 실거래·교통·학군·대출`;
 }
 
 export function draftOf(f, notes = {}, images = []) {

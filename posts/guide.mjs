@@ -2,7 +2,7 @@
 // node posts/guide.mjs drafts/guide_loans-2026.json   본문을 다시 그리고 썸네일(1200×630)을 만들고 검수
 // 규칙: 숫자는 근거 문서(factsDoc, 공식 출처를 확인일과 함께 정리한 docs/policy/*.md)에 있는 것만 — 검수(checkGuide)가 막는다.
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
-import { join } from 'node:path';
+import { join, basename } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { esc, C, TH, TD, IMG, DISCLAIMER } from './weekly.mjs';
 import { BANNED } from './check.mjs';
@@ -27,6 +27,7 @@ export function render(d) {
     if (s.table) out.push(table(s.table));
     if (s.foot) out.push(foot(s.foot));
   }
+  if (d.related?.length) out.push(`<h2 style="font-weight:700">함께 보면 좋은 글</h2>\n<ul>${d.related.map((r) => `<li><a href="${esc(r.url)}">${esc(r.title)}</a></li>`).join('')}</ul>`);
   out.push(`<p style="font-size:13px;color:${C.muted}">출처(확인일 ${esc(d.checked)}): ${d.sources.map((x) => `<a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.name)}</a>`).join(' · ')} · 제도 요건 정리이며 대출·청약 권유가 아닙니다. 실제 대상·한도는 기관 심사로 정해집니다.</p>`);
   out.push(`<p style="font-size:13px;color:${C.muted}">※ ${DISCLAIMER}</p>`);
   return out.join('\n');
@@ -45,6 +46,30 @@ export async function checkGuide(d) {
   const nums = new Set(doc.match(/\d+(\.\d+)?/g));
   for (const m of new Set(text.replace(/,/g, '').match(/\d+(\.\d+)?/g) || [])) if (!nums.has(m)) issues.push(`숫자 "${m}"가 근거 문서(${d.factsDoc})에 없습니다`);
   return issues;
+}
+
+// 관련 글: posts/related.json(slug → 관련 slug) 중 이미 발행된 글만 링크. 발행 주소는 RSS에서 제목으로 찾아 posts/published.json에 쌓는다(RSS는 최근 글만 보여 줘서)
+const PUB = join(ROOT, 'posts/published.json');
+const decode = (s) => s.replace(/&amp;/g, '&').replace(/&mdash;/g, '—').replace(/&middot;/g, '·').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+export async function published() {
+  const known = JSON.parse(await readFile(PUB, 'utf8').catch(() => '{}'));
+  try {
+    const xml = await (await fetch('https://aulee.tistory.com/rss')).text();
+    for (const m of xml.matchAll(/<item>[\s\S]*?<title>([\s\S]*?)<\/title>[\s\S]*?<link>([\s\S]*?)<\/link>/g)) known[decode(m[1]).trim()] = m[2].trim();
+    await writeFile(PUB, JSON.stringify(known, null, 2) + '\n');
+  } catch (e) { console.log(`RSS 읽기 실패(${e.message}) — 저장된 발행 목록만 씁니다`); }
+  return known;
+}
+
+async function relatedOf(slug) {
+  const pub = await published();
+  const rel = JSON.parse(await readFile(join(ROOT, 'posts/related.json'), 'utf8'))[slug] || [];
+  const out = [];
+  for (const s of rel) {
+    const t = JSON.parse(await readFile(join(ROOT, 'drafts', `guide_${s}.json`), 'utf8').catch(() => '{}')).title;
+    if (t && pub[t]) out.push({ title: t, url: pub[t] });
+  }
+  return out;
 }
 
 // 썸네일: 카테고리 칩 + 큰 제목 + 부제 + 브랜드(디자인 시스템 색)
@@ -70,10 +95,11 @@ async function main() {
   const [file] = await renderPngs([{ name: 'thumb', html: thumbHtml(d) }], dir);
   d.images = [{ key: 'thumb', file: file.replace(/\\/g, '/'), alt: `${d.title} 대표 이미지` }];
   d.type = 'guide';
+  d.related = await relatedOf(basename(p, '.json').replace(/^guide_/, ''));
   d.html = render(d);
   await writeFile(p, JSON.stringify(d, null, 2));
   const issues = await checkGuide(d);
-  console.log(issues.length ? issues.map((i) => '✗ ' + i).join('\n') : `검수 통과 — ${d.title}`);
+  console.log(issues.length ? issues.map((i) => '✗ ' + i).join('\n') : `검수 통과 — ${d.title} (관련 글 ${d.related.length})`);
   process.exitCode = issues.length ? 4 : 0;
 }
 

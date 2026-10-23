@@ -67,6 +67,7 @@ async function main() {
   const draft = JSON.parse(await readFile(path, 'utf8'));
   // 분양분석 글(type: analysis)은 facts·notes로 검수, 주간 글은 수집본 사본으로 검수
   const issues = draft.type === 'guide' ? await checkGuide(draft) : draft.type === 'analysis' ? checkAnalysis(draft) : checkDraft(draft, JSON.parse(await readFile(path.replace(/\.json$/, '.data.json'), 'utf8')));
+  if (draft.title.startsWith('[')) issues.push('제목 앞 [말머리] 금지 — 검색어를 제목 맨 앞에');
   if (issues.length) { issues.forEach((i) => log('✗ ' + i)); log('검수 실패 — 저장하지 않습니다.'); return 4; }
   for (const im of draft.images || []) await readFile(join(ROOT, im.file)).catch(() => { throw new Error(`그림 파일 없음: ${im.file} (posts/images.mjs 먼저)`); });
 

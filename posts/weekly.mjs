@@ -60,8 +60,11 @@ export function build(data, start) {
   };
 }
 
+// 검색어(월·주차 + 청약 일정)를 제목 앞에. 주차는 목요일이 속한 달 기준
 export function titleOf(w) {
-  return `이번 주 청약 일정 (${mdKo(w.start)}~${mdKo(w.end)}) | 접수 ${w.facts.receipt}곳·발표 ${w.facts.win}곳`;
+  const th = new Date(w.start + 'T00:00:00Z'); th.setUTCDate(th.getUTCDate() + 3);
+  const nth = ['첫째', '둘째', '셋째', '넷째', '다섯째'][Math.ceil(th.getUTCDate() / 7) - 1];
+  return `${th.getUTCMonth() + 1}월 ${nth} 주 청약 일정(${mdKo(w.start)}~${mdKo(w.end)}) — 접수 ${w.facts.receipt}곳·발표 ${w.facts.win}곳`;
 }
 
 export function tagsOf(w) {
