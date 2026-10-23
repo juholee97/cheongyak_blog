@@ -17,13 +17,14 @@
 ## 절대 규칙
 1. **사실은 공고 기준.** 일정·세대수·분양가는 API 값만. 없으면 비워 둔다(추정 금지). 글에는 출처와 갱신 시각을 표기한다.
 2. **투자 권유 금지.** "사세요/오른다" 류 표현 금지, 면책 문구 유지("정확한 내용은 입주자모집공고 확인").
-3. **발행은 사람이.** 자동화는 임시저장까지만. 유일한 예외(2026-10-23 사용자 결정): 채팅에서 승인받고 검수를 통과한 글을 `tistory/draft.mjs --approved --schedule "YYYY-MM-DD HH:MM"`로 **미래 시각 예약발행**하는 것. 가드(`tistory/common.mjs` GUARD)는 발행일이 「예약」이고 10분 넘게 뒤일 때만 마지막 버튼을 통과시키고, 즉시 발행은 계속 막는다(자체 점검 `node tistory/guard.check.mjs`).
+3. **발행은 사람이.** 자동화는 임시저장까지만. 유일한 예외(2026-10-23 사용자 결정): 채팅에서 승인받고 검수를 통과한 글을 `tistory/draft.mjs --approved --schedule "YYYY-MM-DD HH:MM"`로 **미래 시각 예약발행**하는 것. 가드(`tistory/common.mjs` GUARD)는 발행일이 「예약」이고 10분 넘게 뒤일 때만 마지막 버튼을 통과시키고, 즉시 발행은 계속 막는다(자체 점검 `node tistory/guard.check.mjs`). 분양분석 글만은 채팅 승인 없이 자동 예약(같은 날 사용자 결정): `posts/analysis_auto.mjs`(작업 스케줄러 `cheongyak_analysis_auto` 매일 07:00) — 첫 접수 7일 전 10:00 공개, 검수 통과한 글만. 가이드·대출·정책 글은 하루 3편(08:00·12:00·19:00), 채팅 승인 후 `tistory/schedule_guides.mjs`.
 4. **키 비공개.** `DATA_GO_KR_KEY`는 GitHub Secrets·로컬 환경변수에만. 커밋 금지.
 5. **스킨 수정 후엔 `preview.bat check`와 브라우저 미리보기(PC·휴대폰 폭) 확인.** 티스토리 치환자는 `tistory.github.io/document-tistory-skin` 문서에 있는 것만 쓰고, 새로 쓰면 `preview/serve.mjs`의 KNOWN에도 추가한다.
 
 ## 변경 이력
 | 날짜 | 변경 | 사유 |
 |------|------|------|
+| 2026-10-23 | 예약발행: `draft.mjs --schedule`(발행 레이어 실측 `tistory/probe_publish.mjs`, 예약 글 목록·전문 대조, `--verify-scheduled`), 가드 예외와 자체 점검, `schedule_guides.mjs`(빈 시각에 관련 글 많은 글부터, 링크는 더 이른 시각 글만). 분석 글 자동 예약 `posts/analysis_auto.mjs`(자동 설명 `autoNotes`, 공개 시각 `publishAt` 자체 점검 `analysis_auto.check.mjs`, 실행기 `analysis_auto.bat`, 바로가기 D:\AI_산출물). 가이드 63편 추가(근거 문서 public·special·afterwin·apply·rental·jeonse·tax·loans3·beginner2) | 사용자: 하루 3편 한 달 예약, 분석 글은 접수 1주일 전 상시·승인 없이 |
 | 2026-10-23 | 검색어 먼저 제목: 주간 글 「10월 다섯째 주 청약 일정(10월 26일~11월 1일) — 접수 n곳·발표 n곳」(주차 = 목요일이 속한 달), 분석 글 「{단지} 분양가·청약 분석 — …」, 저장 전 검수에서 `[말머리]`로 시작하는 제목을 막음(가이드 제목은 이미 검색어 먼저). 가이드 끝 「함께 보면 좋은 글」: `posts/related.json`(slug → 관련 slug) 중 이미 발행된 글만, 발행 주소는 RSS에서 제목으로 찾아 `posts/published.json`에 쌓음 | 사용자: 검색 노출 개선 |
 | 2026-10-23 | 청약가이드·대출·정책 글: `posts/guide.mjs`(drafts/guide_*.json → 본문·썸네일, 검수: 글 속 숫자는 근거 문서 `docs/policy/*.md`에 있어야 통과). 첫 글 「청약 당첨 후 대출 총정리」(근거 loans.md) | 사용자: 청약 가이드·대출 정책 글 |
 | 2026-10-23 | 가점 기준 조사표 `docs/policy/points.md`(주택공급에 관한 규칙 시행 2026.6.15. 원문·별표 1·2, 청약홈 대조) + 청약가이드 첫 글 「청약 가점 계산법 총정리」 초안. 대출 글 「대출·정책」 임시저장 | 사용자 요청 |

@@ -393,5 +393,40 @@
     "ltv-dsr-2026",
     "acquisition-tax-rates",
     "loans-2026"
+  ],
+  "house-type": [
+    "notice-reading",
+    "price-options",
+    "glossary"
+  ],
+  "account-rules": [
+    "savings-account-2026",
+    "one-account",
+    "youth-dream-2026"
+  ],
+  "one-account": [
+    "first-rank-2026",
+    "account-rules",
+    "starter"
+  ],
+  "price-options": [
+    "notice-reading",
+    "house-type",
+    "process"
+  ],
+  "pre-inspection": [
+    "process",
+    "price-options",
+    "notice-reading"
+  ],
+  "eligibility-check": [
+    "homeless-2026",
+    "first-rank-2026",
+    "points-2026"
+  ],
+  "presale-vs-entry": [
+    "homeless-2026",
+    "acquisition-tax-2026",
+    "glossary"
   ]
 }

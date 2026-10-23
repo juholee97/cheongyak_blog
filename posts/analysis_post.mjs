@@ -183,6 +183,34 @@ export function render(f, notes = {}, images = []) {
   ].filter(Boolean).join('\n');
 }
 
+// 자동 설명(분석 글 자동 예약용, 2026-10-23 사용자 결정): facts 값만으로 짧은 문장. 숫자는 renderFacts와 같은 형식이라 검수를 통과한다.
+export function autoNotes(f) {
+  const { item: it, detail: d, types, trades: t, nearby: n } = f;
+  const main = types.find((g) => g.area === f.mainArea) || types[0];
+  const ph = it.phases.filter((p) => ['sp', 'p1', 'win'].includes(p.k)).map((p) => `${label(it, p.k)} ${span(p, md)}`);
+  const near = (t.same || []).filter((g) => g.near).map((g) => g.near.amount);
+  const sc = n.schools || {}, elem = sc.elem?.[0]?.schools?.[0];
+  const st = Array.isArray(n.stations) ? n.stations[0] : null;
+  const fit = LOAN.filter((l) => main.max <= l.max && (!l.area || main.area <= l.area)).map((l) => l.name);
+  const notes = {
+    intro: [`${where(it)}의 ${d.units.toLocaleString()}세대 ${d.kind === '국민' ? '국민주택' : '민영주택'} 단지로, 시공은 ${d.builder}입니다.`, `${ph.join(', ')}입니다.`],
+    price: [
+      `가장 많은 주택형은 전용 ${main.area}㎡(${main.units.toLocaleString()}세대)이고, 최고 분양가는 ${eok(main.max)}(전용면적 기준 3.3㎡당 ${man(main.perPy)})입니다.`,
+      f.leasehold ? '토지임대부라 분양가에 땅값이 빠져 있어 주변 아파트 거래가와 그대로 비교할 수 없습니다.' : null,
+      t.skip ? null : near.length
+        ? `반경 ${(t.widened ? t.wide : t.range) / 1000}km 안 같은 ${t.tier} 등급 단지의 비슷한 면적 거래 중앙값은 ${eok(Math.min(...near))}~${eok(Math.max(...near))}입니다.`
+        : `반경 ${(t.widened ? t.wide : t.range) / 1000}km 안에 같은 ${t.tier} 등급 단지의 비슷한 면적 거래가 없어 비교표가 비어 있습니다.`,
+    ],
+    place: n.skip ? [] : [
+      st ? `가장 가까운 역은 ${st.name}으로 직선 ${dist(st.d)}입니다.` : '3km 안에 지하철·철도역이 없습니다.',
+      elem ? `초등학교는 ${elem.name}(${dist(elem.d)}) ${sc.elem[0].near != null ? '인접 구역(통학구역 지정 전)' : '통학구역'}입니다.` : null,
+    ],
+    rules: [d.flags.length ? `청약홈 공고 정보상 ${d.flags.join('·')}입니다.` : '청약홈 공고 정보에 규제지역 표시가 없는 단지입니다.', '전매제한·실거주 의무는 공고문에 적힌 기간을 확인해야 합니다.'],
+    loans: [fit.length ? `전용 ${main.area}㎡(최고 ${eok(main.max)})는 ${fit.join('·')} 가격·면적 기준 안에 듭니다.` : `전용 ${main.area}㎡(최고 ${eok(main.max)})는 정책대출 가격·면적 기준 밖입니다.`, '실제 한도는 소득과 심사로 정해집니다.'],
+  };
+  return Object.fromEntries(Object.entries(notes).map(([k, v]) => [k, v.filter(Boolean)]));
+}
+
 export function titleOf(f) {
   const short = f.item.name.replace(/\(.*?\)/g, '').trim();
   return `${short} 분양가·청약 분석 — 주변 실거래·교통·학군·대출`;
@@ -237,7 +265,7 @@ async function main() {
   const f = await collect(no, arg('--data') || undefined);
   const base = `drafts/analysis_${no}`;
   const imgs = await images(f, base + '.img');
-  await writeFile(base + '.json', JSON.stringify(draftOf(f, {}, imgs), null, 2));
+  await writeFile(base + '.json', JSON.stringify(draftOf(f, process.argv.includes('--auto') ? autoNotes(f) : {}, imgs), null, 2)); // --auto: 자동 설명(분석 글 자동 예약)
   console.log(`${base}.json — ${titleOf(f)}\n등급 ${f.tier} · 같은 급 비교 ${f.trades.same?.length ?? 0}곳 · 그림 ${imgs.length}장`);
 }
 
