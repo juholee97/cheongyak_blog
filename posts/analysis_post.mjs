@@ -13,6 +13,7 @@ import { routeReach, canonLine, ASSUMED_KMH, LIMIT_MIN } from './routes.mjs';
 import { nearbyTrades, dataKey, tierOf, locate, PY } from './trades.mjs';
 import { keyOf, mapHtml } from './map.mjs';
 import { itemHtml, renderPngs, searchThumbHtml } from './card.mjs';
+import { findPlans } from './floorplan.mjs';
 
 const ODCLOUD = 'https://api.odcloud.kr/api/ApplyhomeInfoDetailSvc/v1/';
 const LOANS_CHECKED = '2026-10-23';
@@ -172,7 +173,10 @@ export function render(f, notes = {}, images = []) {
   const x = renderFacts(f), has = new Set(images.map((i) => i.key));
   const img = (k) => (has.has(k) ? IMG(k) : '');
   return [
-    img('thumb'), img('card'), (notes.intro || []).filter(Boolean).length ? `<p>${notes.intro.filter(Boolean).map(esc).join(' ')}</p>` : '', H2('한눈에'), x.glance, x.types,
+    img('thumb'), img('card'), (notes.intro || []).filter(Boolean).length ? `<p>${notes.intro.filter(Boolean).map(esc).join(' ')}</p>` : '',
+    has.has('aerial') ? `${img('aerial')}
+<p style="font-size:13px;color:${C.muted}">단지 조감도 · 출처: ${homeLink(f)} · 홍보용 이미지로 실제와 다를 수 있습니다.</p>` : '',
+    H2('한눈에'), x.glance, x.types, plans(f, images),
     H2('분양가와 주변 실거래'), x.leasehold, note(notes.price), x.trades,
     H2('입지 — 교통·학교'), img('map'), note(notes.place), x.place, x.busRoutes,
     H2('자격·규제'), note(notes.rules), x.rules,
@@ -209,6 +213,16 @@ export function autoNotes(f) {
     loans: [fit.length ? `전용 ${main.area}㎡(최고 ${eok(main.max)})는 ${fit.join('·')} 가격·면적 기준 안에 듭니다.` : `전용 ${main.area}㎡(최고 ${eok(main.max)})는 정책대출 가격·면적 기준 밖입니다.`, '실제 한도는 소득과 심사로 정해집니다.'],
   };
   return Object.fromEntries(Object.entries(notes).map(([k, v]) => [k, v.filter(Boolean)]));
+}
+
+// 평면도(분양 홈페이지 그림, posts/floorplan.mjs): 주택형마다 한 장 + 출처
+const homeLink = (f) => (f.detail.homepage ? `<a href="${esc(f.detail.homepage)}" target="_blank" rel="noopener">사업주체 분양 홈페이지</a>` : '사업주체 분양 홈페이지');
+function plans(f, images) {
+  const ps = images.filter((i) => i.key.startsWith('plan:'));
+  if (!ps.length) return '';
+  return [H2('주택형 평면도'), ...ps.map((i) => `${IMG(i.key)}
+<p style="font-size:13px;color:${C.muted};text-align:center">전용 ${esc(i.key.slice(5))}㎡${i.type && i.type !== i.key.slice(5) ? ` (${esc(i.type)} 타입)` : ''}</p>`),
+    `<p style="font-size:13px;color:${C.muted}">평면도 출처: ${homeLink(f)} · 주택형마다 대표 타입 한 장(같은 면적의 다른 타입·확장 여부는 홈페이지와 입주자모집공고에서 확인) · 홍보용 이미지로 실제와 다를 수 있으며, 요청이 있으면 바로 내립니다.</p>`].join('\n');
 }
 
 export function titleOf(f) {
@@ -257,7 +271,10 @@ export async function images(f, out) {
   const m = await mapHtml(it, await keyOf());
   if (!m.skip) pages.push({ name: 'map', html: m.html });
   const files = await renderPngs(pages, out);
-  return files.map((file, i) => ({ key: pages[i].name, file: file.replace(/\\/g, '/'), alt: { thumb: `${it.name} 분양가·청약 분석 대표 이미지`, card: `${it.name} 청약 일정 카드` }[pages[i].name] || `${it.name} 위치 지도(반경 500m·1km)` }));
+  const fp = await findPlans(f.detail.homepage, f.types.map((g) => g.area), out, { name: f.item.name }).catch((e) => ({ skip: e.message }));
+  if (fp.skip) console.log(`- 평면도 없음(${fp.skip})`);
+  const extra = (fp.images || []).map(({ key, file, alt, type }) => ({ key, file, alt, type }));
+  return [...files.map((file, i) => ({ key: pages[i].name, file: file.replace(/\\/g, '/'), alt: { thumb: `${it.name} 분양가·청약 분석 대표 이미지`, card: `${it.name} 청약 일정 카드` }[pages[i].name] || `${it.name} 위치 지도(반경 500m·1km)` })), ...extra];
 }
 
 async function main() {
