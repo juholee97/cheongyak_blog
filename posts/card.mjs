@@ -17,8 +17,8 @@ const PH = [
 const MAP = ['인천', '서울', '경기', '강원', '충남', '세종', '충북', '경북', '전북', '대전', '대구', '울산', '광주', '전남', '경남', '부산', '제주'];
 const TILE = [['#eef1f5', '#5f687a'], ['#d3e2fb', '#0b2557'], ['#93b8f4', '#0b2557'], ['#2f67d8', '#ffffff'], ['#0b3a96', '#ffffff']];
 const level = (n) => (n >= 5 ? 4 : n >= 3 ? 3 : n);
-// 로고(L4 「격자 속 집」, 2026-10-23 사용자 선택): 달력 아홉 칸 중 가운데가 집. 원본 skin/images/logo.svg
-export const LOGO = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" rx="22" fill="#0b4fc4"/><rect x="17" y="17" width="19" height="19" rx="4" fill="#fff" fill-opacity=".32"/><rect x="40" y="17" width="19" height="19" rx="4" fill="#fff" fill-opacity=".32"/><rect x="63" y="17" width="19" height="19" rx="4" fill="#fff" fill-opacity=".32"/><rect x="17" y="40" width="19" height="19" rx="4" fill="#fff" fill-opacity=".32"/><rect x="63" y="40" width="19" height="19" rx="4" fill="#fff" fill-opacity=".32"/><rect x="17" y="63" width="19" height="19" rx="4" fill="#fff" fill-opacity=".32"/><rect x="40" y="63" width="19" height="19" rx="4" fill="#fff" fill-opacity=".32"/><rect x="63" y="63" width="19" height="19" rx="4" fill="#fff" fill-opacity=".32"/><path d="M50 38 L61 47 V59 a2 2 0 0 1 -2 2 H41 a2 2 0 0 1 -2 -2 V47 Z" fill="#fff"/></svg>`;
+// 로고(L3 「지붕 체크」, 2026-10-23 사용자 선택): 지붕 아래 체크 표시. 원본 skin/images/logo.svg
+export const LOGO = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" rx="22" fill="#0b4fc4"/><path d="M20 46 L50 22 L80 46" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/><path d="M34 62 L46 74 L68 52" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 const mdKo = (s) => `${+s.slice(5, 7)}월 ${+s.slice(8, 10)}일`;
 
