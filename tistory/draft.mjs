@@ -59,7 +59,9 @@ async function main() {
   const si = process.argv.indexOf('--schedule');
   const when = si > 0 ? process.argv[si + 1] : null; // 'YYYY-MM-DD HH:MM' (한국 시각)
   const verifySched = process.argv.includes('--verify-scheduled'); // 예약한 글을 다시 대조만(저장·발행 없음)
-  if (when && !verifySched && (!/^\d{4}-\d\d-\d\d \d\d:\d\d$/.test(when) || new Date(when.replace(' ', 'T') + ':00') - Date.now() < 15 * 60 * 1000)) { log('예약 시각은 "YYYY-MM-DD HH:MM", 지금부터 15분 넘게 뒤여야 합니다.'); return 4; }
+  const updateSched = process.argv.includes('--update-scheduled'); // 이미 예약된 같은 제목 글의 본문·그림을 바꿔 같은 시각으로 다시 예약
+  if (updateSched && !when) { log('--update-scheduled 는 --schedule "예약 시각"과 함께'); return 4; }
+  if (when && !verifySched && (!/^\d{4}-\d\d-\d\d \d\d:\d\d$/.test(when) || new Date(when.replace(' ', 'T') + ':00') - Date.now() < (updateSched ? 12 : 15) * 60 * 1000)) { log('예약 시각은 "YYYY-MM-DD HH:MM", 지금부터 15분 넘게 뒤여야 합니다.'); return 4; }
   if (when && !verifySched && !process.argv.includes('--approved')) { log('예약발행은 채팅 승인을 받은 글만 — --approved 필요'); return 4; }
   if (!path || (!verifyOnly && !verifySched && !dryRun && !process.argv.includes('--approved'))) {
     log('사용: node tistory/draft.mjs drafts/<월요일>_weekly.json --approved  (채팅에서 사용자 승인을 받은 초안만)');
@@ -74,7 +76,7 @@ async function main() {
   for (const im of draft.images || []) await readFile(join(ROOT, im.file)).catch(() => { throw new Error(`그림 파일 없음: ${im.file} (posts/images.mjs 먼저)`); });
 
   const { context, page } = await launch({ headless: true });
-  const report = { draft: path, title: draft.title, mode: verifySched ? 'verify-scheduled' : verifyOnly ? 'verify-only' : dryRun ? 'dry-run' : when ? 'schedule' : 'save', when, at: new Date().toISOString(), steps: [] };
+  const report = { draft: path, title: draft.title, mode: updateSched ? 'update-scheduled' : verifySched ? 'verify-scheduled' : verifyOnly ? 'verify-only' : dryRun ? 'dry-run' : when ? 'schedule' : 'save', when, at: new Date().toISOString(), steps: [] };
   const guard = { ...SEL.publishGuard, schedule: !!when && !verifySched }; // 시험 실행은 POST를 막으므로 레이어를 열어 예약 칸까지 채워 봐도 저장·발행이 안 된다
   const step = (s, ok = true, extra) => { report.steps.push({ s, ok, ...extra }); log((ok ? '✓ ' : '✗ ') + s + (extra ? ' ' + JSON.stringify(extra) : '')); };
   const shot = async (name) => { const p = path.replace(/\.json$/, `.${name}.png`); await page.screenshot({ path: p, fullPage: true }); return p; };
@@ -103,16 +105,18 @@ async function main() {
     step('글쓰기 화면·발행 가드', true, { 임시저장_개수: report.countAtStart, ...(dryRun ? { 시험: '저장 요청 차단' } : {}) });
 
     // 예약 검증: 관리 > 글 목록(여러 쪽, 발행 시각 순)에서 같은 제목 맨 위 글의 주소·시각 → 그 글 수정 화면을 열어 전문 대조
-    const verifyScheduled = async () => {
-      let row = null;
-      for (let n = 1; n <= 15 && !row; n++) {
+    const findRow = async () => {
+      for (let n = 1; n <= 15; n++) {
         await page.goto(`${BLOG}/manage/posts/?page=${n}`, { waitUntil: 'networkidle' });
         const r = page.locator('li', { has: page.locator(`a.link_cont[title="${draft.title.replace(/"/g, '\\"')}"]`) }).first();
-        if (await r.count()) row = r;
-        else if (!(await page.locator('a.link_cont').count())) break; // 빈 쪽 = 끝
+        if (await r.count()) return r.evaluate((li) => ({ url: li.querySelector('a.link_cont').href, edit: li.querySelector('a.btn_post').getAttribute('href'), text: li.innerText.replace(/\s+/g, ' ') }));
+        if (!(await page.locator('a.link_cont').count())) break; // 빈 쪽 = 끝
       }
-      if (!row) { step('글 목록에 제목', false); report.shot = await shot('posts'); return 2; }
-      const info = await row.evaluate((li) => ({ url: li.querySelector('a.link_cont').href, edit: li.querySelector('a.btn_post').getAttribute('href'), text: li.innerText.replace(/\s+/g, ' ') }));
+      return null;
+    };
+    const verifyScheduled = async () => {
+      const info = await findRow();
+      if (!info) { step('글 목록에 제목', false); report.shot = await shot('posts'); return 2; }
       const timeOk = info.text.includes(when);
       step('예약 목록', timeOk, { 주소: info.url, 시각: when });
       report.url = info.url;
@@ -127,6 +131,18 @@ async function main() {
       return report.ok ? 0 : 2;
     };
     if (verifySched) return await verifyScheduled();
+    if (updateSched) {
+      // 고치기: 예약 목록에서 같은 제목·같은 시각 글을 찾아 그 수정 화면을 연다(공개된 글은 고치지 않는다)
+      const info = await findRow();
+      const ok = !!info && info.text.includes(when) && info.text.includes('[예약]');
+      step('고칠 예약 글', ok, info ? { 주소: info.url, 시각: when } : { 없음: draft.title });
+      if (!ok) { report.shot = await shot('posts'); return 2; }
+      await page.goto(BLOG + info.edit.split('?')[0], { waitUntil: 'domcontentloaded' });
+      await page.evaluate(GUARD, guard);
+      await page.waitForFunction((id) => window.tinymce?.get(id)?.initialized, SEL.editor.tinymceId, { timeout: 30000 });
+      await page.waitForTimeout(1500);
+      await page.evaluate((id) => window.tinymce.get(id).setContent(''), SEL.editor.tinymceId); // 예전 그림·본문 비우고 새로 넣는다
+    }
 
     if (!verifyOnly) {
       await page.fill(SEL.title, draft.title);
@@ -161,7 +177,7 @@ async function main() {
       }
 
       await page.evaluate(({ id, html }) => { const ed = window.tinymce.get(id); ed.setContent(html); ed.fire('change'); ed.save && ed.save(); }, { id: SEL.editor.tinymceId, html });
-      for (const t of draft.tags) {
+      for (const t of updateSched ? [] : draft.tags) { // 고치기: 태그는 이미 있다
         if (!(await page.$(SEL.tags))) break; // 10개를 채우면 입력칸이 사라진다
         await page.click(SEL.tags);
         await page.type(SEL.tags, t);

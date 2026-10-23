@@ -19,7 +19,8 @@ export const BLOG = 'https://aulee.tistory.com';
 export const NEWPOST = BLOG + '/manage/newpost/';
 
 export async function launch({ headless = true } = {}) {
-  const context = await chromium.launchPersistentContext(SESSION, {
+  // TISTORY_PROFILE: 다른 자동화가 전용 프로필을 쓰는 중일 때 임시 프로필로(로그인은 저장된 쿠키로)
+  const context = await chromium.launchPersistentContext(process.env.TISTORY_PROFILE || SESSION, {
     headless,
     viewport: { width: 1440, height: 1000 },
     locale: 'ko-KR',
