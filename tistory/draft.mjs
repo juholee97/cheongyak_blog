@@ -83,7 +83,9 @@ async function main() {
   if (issues.length) { issues.forEach((i) => log('✗ ' + i)); log('검수 실패 — 저장하지 않습니다.'); return 4; }
   for (const im of draft.images || []) await readFile(join(ROOT, im.file)).catch(() => { throw new Error(`그림 파일 없음: ${im.file} (posts/images.mjs 먼저)`); });
 
-  const { context, page } = await launch({ headless: true });
+  // TISTORY_HEADED=1: 브라우저를 화면에 띄워 실행 — 보안 확인(reCAPTCHA)이 뜨면 사람이 그 창에서 직접 풀 수 있게 기다린다
+  const headed = process.env.TISTORY_HEADED === '1';
+  const { context, page } = await launch({ headless: !headed });
   const report = { draft: path, title: draft.title, mode: updatePub ? 'update-published' : updateSched ? 'update-scheduled' : verifySched ? 'verify-scheduled' : verifyOnly ? 'verify-only' : dryRun ? 'dry-run' : when ? 'schedule' : 'save', when, at: new Date().toISOString(), steps: [] };
   const guard = { ...SEL.publishGuard, schedule: !!when && !verifySched && !updatePub, republish: updatePub }; // 시험 실행은 POST를 막으므로 레이어를 열어 예약 칸까지 채워 봐도 저장·발행이 안 된다
   const step = (s, ok = true, extra) => { report.steps.push({ s, ok, ...extra }); log((ok ? '✓ ' : '✗ ') + s + (extra ? ' ' + JSON.stringify(extra) : '')); };
@@ -271,15 +273,18 @@ async function main() {
         await page.click(SEL.publish.submit);
         // 저장이 끝나 편집 화면을 벗어날 때까지 기다린다(그림이 크면 「저장중」이 길다), 최대 90초.
         // 그 사이 Google reCAPTCHA(보안 확인)가 뜨면 멈춘다 — 대신 풀거나 넘기지 않는다(2026-10-24 실측: 짧은 시간에 수정·예약이 많으면 뜬다)
+        // 화면 없이 돌 때는 20초가 지나도 「저장중」이면 보안 확인으로 본다(팝업이 빈 창이라 따로 알아보기 어렵다 — 2026-10-24 실측)
         let captcha = false;
-        for (let i = 0; i < 45; i++) {
-          if (!/\/manage\/(newpost|post)\//.test(page.url())) break;
-          captcha = await page.evaluate(() => [...document.querySelectorAll('iframe')].some((f) => /recaptcha/.test(f.src) && f.getBoundingClientRect().width > 50)
-            || [...document.querySelectorAll('.googleRecaptcha')].some((e) => getComputedStyle(e).display !== 'none' && e.getBoundingClientRect().width > 50)).catch(() => false);
-          if (captcha) break;
+        const limit = headed ? 300 : 90; // 화면에 띄웠으면 사람이 풀 시간 5분
+        for (let i = 0; i < limit / 2; i++) {
+          if (!/\/manage\/(newpost|post)\//.test(page.url())) { captcha = false; break; }
+          const saving = await page.evaluate(() => (document.querySelector('#publish-btn')?.innerText || '').includes('저장중')).catch(() => false);
+          captcha = saving && i * 2 >= 20;
+          if (captcha && !headed) break;
+          if (captcha && headed && i * 2 === 20) log('※ 보안 확인이 뜬 것 같아요 — 화면의 티스토리 창에서 직접 풀어 주세요(5분 기다림)');
           await page.waitForTimeout(2000);
         }
-        if (captcha) { report.shot = await shot('captcha'); step('티스토리 보안 확인(reCAPTCHA) — 자동으로 풀지 않음. 사람이 직접 하거나 시간이 지난 뒤 다시', false); return 6; }
+        if (captcha) { report.shot = await shot('captcha'); step('티스토리 보안 확인(reCAPTCHA) — 자동으로 풀지 않음. TISTORY_HEADED=1로 화면에 띄워 사람이 풀거나 시간이 지난 뒤 다시', false); return 6; }
         await page.waitForTimeout(1500);
         const msg = await page.evaluate(() => [...document.querySelectorAll('.toast, [class*="toast"], [class*="alert"], [role="alert"], .layer_msg, .txt_error')].map((e) => e.innerText.trim()).filter(Boolean).join(' / '));
         if (dialogs.length || msg) step('발행 버튼 뒤 안내', true, { 확인창: dialogs, 화면: msg });

@@ -4,6 +4,8 @@ rem Stops quietly at Tistory daily post limit (50) and keeps the rest for the ne
 rem Log: data\logs\guide_queue.log
 setlocal
 title cheongyak
+rem Tistory shows reCAPTCHA to headless browsers, so the browser window is shown (2026-10-24)
+set TISTORY_HEADED=1
 cd /d "%~dp0"
 if not exist data\logs mkdir data\logs
 echo ===== %DATE% %TIME% >> data\logs\guide_queue.log

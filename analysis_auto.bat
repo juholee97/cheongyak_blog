@@ -5,6 +5,8 @@ rem analysis_auto.bat check = same steps, Tistory step as --dry-run (no save)
 rem Log: data\logs\analysis_auto.log
 setlocal
 title cheongyak
+rem Tistory shows reCAPTCHA to headless browsers, so the browser window is shown (2026-10-24)
+set TISTORY_HEADED=1
 cd /d "%~dp0"
 if /i "%~1"=="check" (
   node posts\analysis_auto.mjs --dry-run %2 %3
