@@ -203,6 +203,8 @@ a.hero-row:hover { background: var(--tint3); text-decoration: none; color: var(-
 .latest-head { display: none; }
 #tt-body-index .latest-head { display: flex; }
 #tt-body-index .list-head, #tt-body-index .list-block { display: none; } /* 홈은 글 묶음(s_article_rep) 하나만: 목록(s_list)까지 그리면 같은 글이 두 번 나옴 */ /* 홈이 글 목록형이면 티스토리가 "전체 글" 목록을 그린다: 머리는 "최신 게시물" 하나만 */
+/* 카테고리·태그·검색 쪽은 목록(s_list) 하나만: 스킨 설정 「목록+내용」이면 같은 글이 카드(s_index_article_rep)로 한 번 더 나온다(2026-10-24). 글 본문(permalink)은 그대로 */
+#tt-body-category .rep-grid > .card, #tt-body-tag .rep-grid > .card, #tt-body-search .rep-grid > .card { display: none; }
 .post-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 28px 20px; }
 .post-grid:empty { display: none; }
 .card { display: flex; flex-direction: column; gap: 8px; }
