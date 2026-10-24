@@ -3,6 +3,7 @@ rem Weekly auto run (Task Scheduler, Sunday 18:00): next week's draft, images, a
 rem weekly_auto.bat check = same steps, Tistory step as --dry-run (no save)
 rem Log: data\logs\weekly_auto.log
 setlocal
+title cheongyak
 cd /d "%~dp0"
 if /i "%~1"=="check" (
   node posts\auto.mjs --dry-run %2 %3 %4

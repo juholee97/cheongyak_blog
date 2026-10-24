@@ -115,6 +115,85 @@ export async function findPlans(homepage, areas, outDir, { timeoutMs = 90000, na
   }
 }
 
+// ── 청약홈 입주자모집공고문 PDF에서(홈페이지에 없는 주택형만) ─────────────────────────
+// 2026-10-24 실측(고덕강일 3단지): 상세 페이지의 getAtchmnfl.do 링크가 공고문 PDF, 평면도 쪽은 그림이 아닌 선 도면이라
+// 브라우저 안 pdf.js로 쪽을 그려 낸다. 쪽 글자의 「(주거)전용면적 49.96」으로 주택형을 맞추고, 같은 면적이면 앞 쪽(A 타입).
+const PDFJS = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174';
+const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36';
+export async function noticePlans(no, areas, outDir, { wantAerial = true } = {}) {
+  const detail = `https://www.applyhome.co.kr/ai/aia/selectAPTLttotPblancDetail.do?houseManageNo=${no}&pblancNo=${no}`;
+  const html = await (await fetch(detail, { headers: { 'User-Agent': UA } })).text();
+  const pdfUrl = (html.match(/https:\/\/static\.applyhome\.co\.kr\/ai\/aia\/getAtchmnfl\.do\?[^"'\s<]+/) || [])[0]?.replace(/&amp;/g, '&');
+  if (!pdfUrl) return { skip: '공고문 PDF 링크 없음' };
+  const r = await fetch(pdfUrl, { headers: { 'User-Agent': UA, Referer: 'https://www.applyhome.co.kr/' } });
+  if (!r.ok) return { skip: `공고문 PDF ${r.status}` };
+  const pdf = Buffer.from(await r.arrayBuffer());
+  const { chromium } = await import('playwright');
+  const browser = await chromium.launch();
+  try {
+    const page = await browser.newPage();
+    await page.setContent(`<script src="${PDFJS}/pdf.min.js"></script>`);
+    await page.waitForFunction(() => window.pdfjsLib, null, { timeout: 30000 });
+    const picked = await page.evaluate(async ({ b64, areas, PDFJS, wantAerial }) => {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = `${PDFJS}/pdf.worker.min.js`;
+      const doc = await pdfjsLib.getDocument({ data: Uint8Array.from(atob(b64), (c) => c.charCodeAt(0)) }).promise;
+      const plans = {}; let aerial = null;
+      for (let n = 1; n <= Math.min(doc.numPages, 150); n++) {
+        const pg = await doc.getPage(n);
+        const t = (await pg.getTextContent()).items.map((i) => i.str).join(' ').replace(/\s+/g, ' ');
+        // 조감도: 글자가 적고(안내문 쪽 제외 — 주의사항 속 "조감도" 단어에 걸렸던 실측) 그림이 들어 있는 쪽
+        if (wantAerial && !aerial && /조감도/.test(t) && !/개요|지역도|목차/.test(t) && t.length < 1500) {
+          const ops = await pg.getOperatorList();
+          if (ops.fnArray.includes(pdfjsLib.OPS.paintImageXObject)) aerial = n;
+        }
+        if (!/평면/.test(t) || t.length > 3000) continue; // 평면도 쪽은 글자가 적다(표·안내문 쪽 제외)
+        const m = t.match(/(?:주거\s*)?전용\s*면적\s*:?\s*(\d{2,3}(?:\.\d+)?)/);
+        if (!m) continue;
+        const area = areas.find((a) => Math.floor(+m[1]) === a || Math.round(+m[1]) === a);
+        if (!area || plans[area]) continue;
+        const letter = (t.match(new RegExp(`\\b${area}\\s?([A-Z])\\b`)) || [])[1] || '';
+        plans[area] = { n, letter };
+      }
+      const draw = async (n) => { const pg = await doc.getPage(n); const vp = pg.getViewport({ scale: 1.5 }); const c = document.createElement('canvas'); c.width = vp.width; c.height = vp.height; const ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height); await pg.render({ canvasContext: ctx, viewport: vp }).promise; return c.toDataURL('image/jpeg', 0.85); };
+      const out = {};
+      for (const [a, v] of Object.entries(plans)) out[a] = { ...v, url: await draw(v.n) };
+      return { plans: out, aerial: aerial ? { n: aerial, url: await draw(aerial) } : null };
+    }, { b64: pdf.toString('base64'), areas, PDFJS, wantAerial });
+    await mkdir(outDir, { recursive: true });
+    const rel = (f) => f.replace(/\\/g, '/').replace(ROOT.replace(/\\/g, '/'), '').replace(/^\//, '');
+    const images = [];
+    for (const [a, v] of Object.entries(picked.plans)) {
+      const file = join(outDir, `plan_${a}.jpg`);
+      await writeFile(file, Buffer.from(v.url.split(',')[1], 'base64'));
+      images.push({ key: `plan:${a}`, file: rel(file), alt: `전용 ${a}㎡${v.letter ? ` ${a}${v.letter}` : ''} 평면도(입주자모집공고문 ${v.n}쪽)`, type: `${a}${v.letter}`, origin: `notice:${v.n}` });
+    }
+    if (picked.aerial) {
+      const file = join(outDir, 'aerial.jpg');
+      await writeFile(file, Buffer.from(picked.aerial.url.split(',')[1], 'base64'));
+      images.push({ key: 'aerial', file: rel(file), alt: `단지 조감도(입주자모집공고문 ${picked.aerial.n}쪽)`, origin: `notice:${picked.aerial.n}` });
+    }
+    return { images, pdfUrl };
+  } catch (e) {
+    return { skip: e.message.split('\n')[0] };
+  } finally { await browser.close().catch(() => {}); }
+}
+
+// 홈페이지 먼저, 없는 주택형·조감도만 공고문 PDF에서
+export async function plansFor(f, outDir) {
+  const areas = f.types.map((g) => g.area);
+  const home = await findPlans(f.detail.homepage, areas, outDir, { name: f.item.name }).catch((e) => ({ skip: e.message }));
+  const images = (home.images || []).map((i) => ({ ...i, origin: 'home' }));
+  const missing = areas.filter((a) => !images.some((i) => i.key === `plan:${a}`));
+  const needAerial = !images.some((i) => i.key === 'aerial');
+  if (missing.length || needAerial) {
+    const nt = await noticePlans(f.detail.no, missing, outDir, { wantAerial: needAerial }).catch((e) => ({ skip: e.message }));
+    if (nt.skip) console.log(`- 공고문 PDF: ${nt.skip}`);
+    images.push(...(nt.images || []));
+  }
+  if (home.skip) console.log(`- 홈페이지 평면도: ${home.skip}`);
+  return images.map(({ key, file, alt, type, origin }) => ({ key, file, alt, type, origin }));
+}
+
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const no = process.argv[2];
   const d = JSON.parse(await readFile(join(ROOT, 'drafts', `analysis_${no}.json`), 'utf8'));

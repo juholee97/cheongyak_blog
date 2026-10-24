@@ -3,6 +3,7 @@ rem Daily queue run (Task Scheduler, 00:30): schedule approved guides waiting in
 rem Stops quietly at Tistory daily post limit (50) and keeps the rest for the next day. Never publishes immediately.
 rem Log: data\logs\guide_queue.log
 setlocal
+title cheongyak
 cd /d "%~dp0"
 if not exist data\logs mkdir data\logs
 echo ===== %DATE% %TIME% >> data\logs\guide_queue.log

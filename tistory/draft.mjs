@@ -2,7 +2,7 @@
 // node tistory/draft.mjs drafts/2026-10-26_weekly.json --approved      그림 업로드 → 입력 → 임시저장 → 저장본을 다시 불러와 전문 대조
 // node tistory/draft.mjs drafts/2026-10-26_weekly.json --dry-run       저장 없이 업로드·조립·입력·대조까지 (업로드 외 POST를 막아 자동 임시저장도 안 생김)
 // node tistory/draft.mjs drafts/2026-10-26_weekly.json --verify-only   저장 없이, 임시저장 목록의 같은 제목 글을 불러와 대조만
-// 종료 코드: 0 통과, 1 오류, 2 저장본 불일치·목록에 없음, 3 로그인 필요, 4 검수 실패·승인 없음, 5 티스토리 하루 글 작성 한도(50개)
+// 종료 코드: 0 통과, 1 오류, 2 저장본 불일치·목록에 없음, 3 로그인 필요, 4 검수 실패·승인 없음, 5 티스토리 하루 글 작성 한도(50개), 6 티스토리 보안 확인(reCAPTCHA)
 // 주의(2026-10-22 실측): 편집기가 입력 도중 자동 임시저장을 하므로 "개수 +1"로 저장을 판정하지 않는다 → 저장본을 다시 열어 확인한다.
 import { readFile, writeFile } from 'node:fs/promises';
 import { join, basename } from 'node:path';
@@ -90,7 +90,8 @@ async function main() {
   const shot = async (name) => { const p = path.replace(/\.json$/, `.${name}.png`); await page.screenshot({ path: p, fullPage: true }); return p; };
   const countOf = async () => { const a = await page.getAttribute(SEL.draft.count, 'aria-label').catch(() => null); return a ? +(a.match(/\d+/) || [NaN])[0] : NaN; };
   const dialogs = [];
-  let acceptDialogs = false; // 평소엔 확인창을 수락하지 않음("이어서 작성?" 등). 저장본 불러오기 단계에서만 수락
+  let acceptDialogs = false, leaving = false;
+  const go = async (url, opts) => { leaving = true; try { return await page.goto(url, opts); } finally { leaving = false; } }; // 평소엔 확인창을 수락하지 않음("이어서 작성?" 등). 저장본 불러오기 단계에서만 수락
   const openEditor = async () => {
     await page.goto(NEWPOST, { waitUntil: 'domcontentloaded', timeout: 30000 });
     await page.evaluate(GUARD, guard);
@@ -102,7 +103,9 @@ async function main() {
     const login = await ensureLogin(page, context); // 세션이 끊겼으면 카카오 로그인으로 다시(비밀번호가 필요하면 멈춤)
     if (!login.ok) { log('로그인 필요 — ' + login.reason); return 3; }
     report.login = login.how;
-    page.on('dialog', async (d) => { dialogs.push(d.message()); await (acceptDialogs ? d.accept() : d.dismiss()).catch(() => {}); });
+    // 페이지 떠나기 확인(beforeunload)은 이 스크립트가 직접 다른 쪽으로 옮길 때(leaving)만 수락 — 새 글 화면에 남은 작성 중 내용 때문에
+    // 목록 이동이 막힌 일이 있었다(2026-10-24). 저장 버튼 뒤에는 수락하면 저장이 끝나기 전에 넘어가 버리므로 예전처럼 취소. 서버의 임시저장 글은 지워지지 않는다
+    page.on('dialog', async (d) => { dialogs.push(d.message()); await (acceptDialogs || (leaving && d.type() === 'beforeunload') ? d.accept() : d.dismiss()).catch(() => {}); });
     if (dryRun) {
       // 시험 실행: 그림 업로드만 통과시키고 다른 POST(자동 임시저장 등)는 막는다
       await page.route('**/*', (route) => (route.request().method() === 'POST' && !route.request().url().includes(SEL.attach.upload) ? route.abort() : route.continue()));
@@ -115,7 +118,7 @@ async function main() {
     // 예약 검증: 관리 > 글 목록(여러 쪽, 발행 시각 순)에서 같은 제목 맨 위 글의 주소·시각 → 그 글 수정 화면을 열어 전문 대조
     const findRow = async () => {
       for (let n = 1; n <= 15; n++) {
-        await page.goto(`${BLOG}/manage/posts/?page=${n}`, { waitUntil: 'networkidle' });
+        await go(`${BLOG}/manage/posts/?page=${n}`, { waitUntil: 'networkidle' });
         const r = page.locator('li', { has: page.locator(postId ? `a.link_cont[href$="/${postId}"]` : `a.link_cont[title="${draft.title.replace(/"/g, '\\"')}"]`) }).first();
         if (await r.count()) return r.evaluate((li) => ({ url: li.querySelector('a.link_cont').href, edit: li.querySelector('a.btn_post').getAttribute('href'), text: li.innerText.replace(/\s+/g, ' ') }));
         if (!(await page.locator('a.link_cont').count())) break; // 빈 쪽 = 끝
@@ -128,7 +131,7 @@ async function main() {
       const timeOk = info.text.includes(when);
       step('예약 목록', timeOk, { 주소: info.url, 시각: when });
       report.url = info.url;
-      await page.goto(BLOG + info.edit.split('?')[0], { waitUntil: 'domcontentloaded' });
+      await go(BLOG + info.edit.split('?')[0], { waitUntil: 'domcontentloaded' });
       await page.waitForFunction((id) => window.tinymce?.get(id)?.initialized, SEL.editor.tinymceId, { timeout: 30000 });
       await page.waitForTimeout(1500);
       const saved = await compare(page, draft);
@@ -160,7 +163,7 @@ async function main() {
       const ok = !!info && info.text.includes(when) && (updatePub ? !info.text.includes('[예약]') : info.text.includes('[예약]'));
       step(updatePub ? '고칠 공개 글' : '고칠 예약 글', ok, info ? { 주소: info.url, 시각: when } : { 없음: draft.title });
       if (!ok) { report.shot = await shot('posts'); return 2; }
-      await page.goto(BLOG + info.edit.split('?')[0], { waitUntil: 'domcontentloaded' });
+      await go(BLOG + info.edit.split('?')[0], { waitUntil: 'domcontentloaded' });
       await page.evaluate(GUARD, guard);
       await page.waitForFunction((id) => window.tinymce?.get(id)?.initialized, SEL.editor.tinymceId, { timeout: 30000 });
       await page.waitForTimeout(1500);
@@ -266,7 +269,18 @@ async function main() {
       }
       if (when) {
         await page.click(SEL.publish.submit);
-        await page.waitForTimeout(5000);
+        // 저장이 끝나 편집 화면을 벗어날 때까지 기다린다(그림이 크면 「저장중」이 길다), 최대 90초.
+        // 그 사이 Google reCAPTCHA(보안 확인)가 뜨면 멈춘다 — 대신 풀거나 넘기지 않는다(2026-10-24 실측: 짧은 시간에 수정·예약이 많으면 뜬다)
+        let captcha = false;
+        for (let i = 0; i < 45; i++) {
+          if (!/\/manage\/(newpost|post)\//.test(page.url())) break;
+          captcha = await page.evaluate(() => [...document.querySelectorAll('iframe')].some((f) => /recaptcha/.test(f.src) && f.getBoundingClientRect().width > 50)
+            || [...document.querySelectorAll('.googleRecaptcha')].some((e) => getComputedStyle(e).display !== 'none' && e.getBoundingClientRect().width > 50)).catch(() => false);
+          if (captcha) break;
+          await page.waitForTimeout(2000);
+        }
+        if (captcha) { report.shot = await shot('captcha'); step('티스토리 보안 확인(reCAPTCHA) — 자동으로 풀지 않음. 사람이 직접 하거나 시간이 지난 뒤 다시', false); return 6; }
+        await page.waitForTimeout(1500);
         const msg = await page.evaluate(() => [...document.querySelectorAll('.toast, [class*="toast"], [class*="alert"], [role="alert"], .layer_msg, .txt_error')].map((e) => e.innerText.trim()).filter(Boolean).join(' / '));
         if (dialogs.length || msg) step('발행 버튼 뒤 안내', true, { 확인창: dialogs, 화면: msg });
         if (dialogs.some((m) => m.includes('최대 50개'))) { step('티스토리 하루 글 한도(50개) — 내일 다시', false); return 5; } // 2026-10-23 실측

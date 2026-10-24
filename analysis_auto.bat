@@ -4,6 +4,7 @@ rem User decision 2026-10-23: no chat approval; only posts that pass the check a
 rem analysis_auto.bat check = same steps, Tistory step as --dry-run (no save)
 rem Log: data\logs\analysis_auto.log
 setlocal
+title cheongyak
 cd /d "%~dp0"
 if /i "%~1"=="check" (
   node posts\analysis_auto.mjs --dry-run %2 %3

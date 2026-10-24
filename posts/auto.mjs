@@ -29,7 +29,7 @@ const run = async (name, args) => {
   return r.status;
 };
 
-const DRAFT_EXIT = { 1: '티스토리 입력 중 오류', 2: '저장본 대조 불일치(티스토리 임시저장 목록 확인 필요)', 3: '티스토리 로그인 필요 — tistory_login.bat으로 직접 로그인', 4: '검수 실패' };
+const DRAFT_EXIT = { 1: '티스토리 입력 중 오류', 2: '저장본 대조 불일치(티스토리 임시저장 목록 확인 필요)', 3: '티스토리 로그인 필요 — tistory_login.bat으로 직접 로그인', 4: '검수 실패', 5: '티스토리 하루 글 한도(50개)', 6: '티스토리 보안 확인(reCAPTCHA) — 사람이 직접 확인 필요' };
 
 async function main() {
   await log(`\n===== ${new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 16).replace('T', ' ')} KST · ${week} 주${dryRun ? ' · 시험' : ''} =====`);

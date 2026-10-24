@@ -3,19 +3,19 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { ROOT } from '../tistory/common.mjs';
-import { findPlans } from './floorplan.mjs';
+import { plansFor } from './floorplan.mjs';
 import { draftOf, checkAnalysis } from './analysis_post.mjs';
 
 for (const no of process.argv.slice(2)) {
   const p = join(ROOT, 'drafts', `analysis_${no}.json`);
   const d = JSON.parse(await readFile(p, 'utf8'));
-  const fp = await findPlans(d.facts.detail.homepage, d.facts.types.map((g) => g.area), join(ROOT, 'drafts', `analysis_${no}.img`), { name: d.facts.item.name });
-  if (fp.skip || !fp.images.length) { console.log(`${no}: 평면도 없음${fp.skip ? ` (${fp.skip})` : ''}`); continue; }
+  const imgs = await plansFor(d.facts, join(ROOT, 'drafts', `analysis_${no}.img`));
+  if (!imgs.length) { console.log(`${no}: 평면도 없음`); continue; }
   const keep = d.images.filter((i) => !i.key.startsWith('plan:') && i.key !== 'aerial');
-  const next = draftOf(d.facts, d.notes, [...keep, ...fp.images.map(({ key, file, alt, type }) => ({ key, file, alt, type }))]);
+  const next = draftOf(d.facts, d.notes, [...keep, ...imgs]);
   const issues = checkAnalysis(next);
   if (issues.length) { console.log(`${no}: 검수 실패`, issues); continue; }
   await writeFile(p, JSON.stringify(next, null, 2));
-  console.log(`${no}: ${fp.images.map((i) => i.type || i.key).join(', ')} — ${next.title}`);
+  console.log(`${no}: ${imgs.map((i) => `${i.type || i.key}(${i.origin})`).join(', ')} — ${next.title}`);
 }
 process.exit(0);

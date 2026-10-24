@@ -10,6 +10,8 @@ import { spawnSync } from 'node:child_process';
 import { ROOT } from './common.mjs';
 import { relatedOf } from '../posts/guide.mjs';
 
+// 대기열 자동 실행(작업 스케줄러)에서 멈추면 화면에 알림 창 하나
+const notify = (msg) => { if (!queue) return; const ps = `Add-Type -AssemblyName PresentationFramework; [System.Windows.MessageBox]::Show('${msg.replace(/'/g, "''")}', '청약 가이드 대기열 예약') | Out-Null`; spawnSync('powershell', ['-NoProfile', '-Command', ps], { stdio: 'ignore' }); };
 const arg = (k) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : null; };
 const queue = arg('--queue');
 const pad0 = (n) => String(n).padStart(2, '0');
@@ -49,8 +51,9 @@ while (left.length) {
   const run = (args) => spawnSync(process.execPath, args, { cwd: ROOT, stdio: 'inherit' }).status;
   if (run(['posts/guide.mjs', `drafts/guide_${slug}.json`, '--at', when]) !== 0) { console.log(`검수 실패 — ${slug}에서 멈춤`); process.exit(4); }
   const code = run(['tistory/draft.mjs', `drafts/guide_${slug}.json`, '--approved', '--schedule', when]);
+  if (code === 6) { const m = `티스토리 보안 확인(reCAPTCHA)이 떠서 멈춤 — ${left.length}편은 대기열에 남김. 티스토리에서 직접 글을 한 번 저장해 보거나 시간이 지난 뒤 다시`; console.log(m); notify(m); process.exit(6); }
   if (code === 5) { console.log(`티스토리 하루 글 한도 — ${left.length}편은 대기열에 남겨 두고 내일 다시`); process.exit(0); }
-  if (code !== 0) { console.log(`예약 실패(코드 ${code}) — ${slug}에서 멈춤. 티스토리 글 목록을 확인하세요.`); process.exit(code); }
+  if (code !== 0) { const m = `예약 실패(코드 ${code}) — ${slug}에서 멈춤. 티스토리 글 목록을 확인하세요.`; console.log(m); notify(m); process.exit(code); }
   left.splice(left.indexOf(slug), 1);
   if (queue) await writeFile(join(ROOT, queue), left.join(' '));
 }

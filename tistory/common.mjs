@@ -1,4 +1,7 @@
 // 티스토리 자동화 공용: 전용 브라우저 프로필(로그인 세션)과 로그인 여부 확인
+// 작업 스케줄러로 화면이 잠긴 때 돌면 콘솔 제목을 못 읽어 Node가 'Assertion failed: process_title'로 꺼진 일이 있었다(2026-10-24 00:30·07:00)
+// → 제목을 먼저 정해 둔다(이 파일은 자동 실행 스크립트들이 가장 먼저 불러온다)
+try { process.title = 'cheongyak'; } catch { /* 무시 */ }
 import { chromium } from 'playwright';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
