@@ -19,9 +19,10 @@ const later = new Date(Date.now() + 3600e3), tomorrow = new Date(); tomorrow.set
 const from = later > tomorrow ? later : tomorrow; // 대기열은 내일부터(오늘 편수는 이미 정해져 있음), 적어도 1시간 뒤
 const start = arg('--start') || (queue ? `${from.getFullYear()}-${pad0(from.getMonth() + 1)}-${pad0(from.getDate())} ${pad0(from.getHours())}:00` : null);
 const times = (arg('--times') || '08:00,12:00,19:00').split(',');
-const gap = +(arg('--gap') ?? (queue ? 60 : 0)); // 글 사이 쉬는 초(짧은 시간에 저장이 몰리면 보안 확인이 뜬다 — 2026-10-24)
+const gap = +(arg('--gap') ?? (queue ? 60 : 0));
+const max = +(arg('--max') ?? (queue ? 6 : Infinity)); // 한 번에 예약할 최대 편수(대기열은 하루 6편 — 하루 3편씩 나가니 앞으로 쌓이는 양이 늘 2주쯤 앞서 있다) // 글 사이 쉬는 초(짧은 시간에 저장이 몰리면 보안 확인이 뜬다 — 2026-10-24)
 const slugs = queue ? (await readFile(join(ROOT, queue), 'utf8').catch(() => '')).split(/\s+/).filter(Boolean)
-  : process.argv.slice(2).filter((a, i, all) => !a.startsWith('--') && !['--start', '--times', '--queue', '--gap'].includes(all[i - 1]));
+  : process.argv.slice(2).filter((a, i, all) => !a.startsWith('--') && !['--start', '--times', '--queue', '--gap', '--max'].includes(all[i - 1]));
 if (queue && !slugs.length) { console.log('대기열 비어 있음'); process.exit(0); }
 const json = async (p, d = {}) => JSON.parse(await readFile(join(ROOT, p), 'utf8').catch(() => JSON.stringify(d)));
 const pad = (n) => String(n).padStart(2, '0');
@@ -41,7 +42,8 @@ function* slots() {
 
 const left = [...slugs];
 const gen = slots();
-while (left.length) {
+let done = 0;
+while (left.length && done < max) {
   const when = gen.next().value;
   const score = async (s) => (await relatedOf(s, when)).length; // 이 시각에 이미 공개돼 있을 관련 글 수
   const scored = [];
@@ -56,6 +58,7 @@ while (left.length) {
   if (code === 5) { console.log(`티스토리 하루 글 한도 — ${left.length}편은 대기열에 남겨 두고 내일 다시`); process.exit(0); }
   if (code !== 0) { const m = `예약 실패(코드 ${code}) — ${slug}에서 멈춤. 티스토리 글 목록을 확인하세요.`; console.log(m); notify(m); process.exit(code); }
   left.splice(left.indexOf(slug), 1);
+  done++;
   if (queue) await writeFile(join(ROOT, queue), left.join(' '));
   if (gap && left.length) await new Promise((r) => setTimeout(r, gap * 1000));
 }

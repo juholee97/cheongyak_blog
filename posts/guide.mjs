@@ -83,17 +83,30 @@ export function thumbHtml(d) {
   return searchThumbHtml({ category: d.category, lines: d.thumbTitle, label, value, foot: `우리의 청약달력 · ${(d.checked || '').slice(0, 4)}` });
 }
 
+// 기준 시점 표기 정리: 확인한 달(checked)이 아닌 달에 공개되는 글은 「(2026년 10월 기준)」「(2026년 10월)」을 「(2026년)」으로,
+// 「2026년 10월 금리」처럼 기준 시점을 적은 말은 「고시 금리」로(2026-10-24 사용자 지시: 11월 글이 10월로 나가지 않게).
+// 법령 시행일(「2026년 10월 1일 시행」)·예시 공고의 달은 사실이라 그대로 둔다. 정확한 확인일은 글 끝 「출처(확인일 …)」에 남는다.
+export function undate(d, at) {
+  const [cy, cm] = (d.checked || '').split('-').map(Number);
+  const [ay, am] = (at || '').split(/[- ]/).map(Number);
+  if (!cy || !ay || (cy === ay && cm === am)) return d;
+  const stamp = new RegExp(`\\(${cy}년 ${cm}월( 기준)?\\)`, 'g');
+  const fix = (v) => (typeof v === 'string' ? v.replace(stamp, `(${cy}년)`).replace(new RegExp(`${cy}년 ${cm}월 기준`, 'g'), `${cy}년 기준`).replace(new RegExp(`${cy}년 ${cm}월 금리`, 'g'), '고시 금리') : Array.isArray(v) ? v.map(fix) : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, fix(x)])) : v);
+  return { ...d, title: fix(d.title), subtitle: fix(d.subtitle), thumbTitle: fix(d.thumbTitle), thumbStats: fix(d.thumbStats), intro: fix(d.intro), sections: fix(d.sections) };
+}
+
 async function main() {
   const p = process.argv[2];
   if (!p) { console.log('사용: node posts/guide.mjs drafts/guide_<slug>.json'); process.exit(1); }
-  const d = JSON.parse(await readFile(p, 'utf8'));
+  const ai = process.argv.indexOf('--at'); // 예약 시각(schedule_guides.mjs가 넘김)
+  const at = ai > 0 ? process.argv[ai + 1] : null;
+  const d = undate(JSON.parse(await readFile(p, 'utf8')), at);
   const dir = p.replace(/\.json$/, '.img');
   await mkdir(dir, { recursive: true });
   const [file] = await renderPngs([{ name: 'thumb', html: thumbHtml(d) }], dir);
   d.images = [{ key: 'thumb', file: file.replace(/\\/g, '/'), alt: `${d.title} 대표 이미지` }];
   d.type = 'guide';
-  const ai = process.argv.indexOf('--at'); // 예약 시각(schedule_guides.mjs가 넘김)
-  d.related = await relatedOf(basename(p, '.json').replace(/^guide_/, ''), ai > 0 ? process.argv[ai + 1] : null);
+  d.related = await relatedOf(basename(p, '.json').replace(/^guide_/, ''), at);
   d.html = render(d);
   await writeFile(p, JSON.stringify(d, null, 2));
   const issues = await checkGuide(d);
