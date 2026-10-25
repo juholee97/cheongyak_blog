@@ -83,7 +83,8 @@ export async function isLoggedIn(page) {
 // 예외(2026-10-23 사용자 결정, CLAUDE.md 규칙 3): --schedule 일 때만 '완료'(레이어 열기)와, 발행일이 '예약'이고 그 시각이 10분 넘게 뒤일 때의 마지막 버튼을 통과시킨다. 즉시 발행은 계속 막는다.
 // 예외 2(2026-10-23 사용자 결정): --update-published 일 때만, 발행일이 원래의 지난 시각 그대로 선택돼 있으면 마지막 버튼 통과(공개된 글 고치기 — 공개 시각은 안 바뀐다).
 // 예외 3: privateSave(페이지를 비공개로만 저장, tistory/page.mjs) — 공개 설정이 「비공개」이고 버튼 글자가 「비공개 저장」일 때만 통과
-export function GUARD({ block, blockText, schedule, republish, privateSave }) {
+// 예외 4: pageUpdate('/manage/page/62' 같은 기존 페이지 편집 주소) — 그 주소에서만 저장 버튼 통과(이미 공개한 소개 페이지 고치기, tistory/page.mjs --update)
+export function GUARD({ block, blockText, schedule, republish, privateSave, pageUpdate }) {
   if (window.__cheongyakGuard) return;
   window.__cheongyakGuard = true;
   const reservedLater = () => {
@@ -103,6 +104,7 @@ export function GUARD({ block, blockText, schedule, republish, privateSave }) {
     const t = e.target && e.target.closest && e.target.closest('button, a, [role="button"]');
     if (!t) return;
     if (republish && (t.matches('#publish-layer-btn') || (t.matches('#publish-btn') && keptPastDate()))) return;
+    if (pageUpdate && location.pathname.replace(/\/$/, '') === pageUpdate && (t.matches('#publish-layer-btn') || t.matches('#publish-btn'))) return;
     if (privateSave && (t.matches('#publish-layer-btn') || (t.matches('#publish-btn') && document.querySelector('#open0')?.checked && /비공개 저장/.test(t.innerText || '')))) return;
     if (schedule && (t.matches('#publish-layer-btn') || (t.matches('#publish-btn') && reservedLater()))) return;
     if (block.some((s) => t.matches(s)) || (t.innerText || '').includes(blockText)) {

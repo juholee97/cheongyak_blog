@@ -12,10 +12,11 @@ const layer = (mode, { d, h, m }) => `<button id="publish-layer-btn">완료</but
 <button class="btn_reserve">${d}</button><input id="dateHour" value="${h}"><input id="dateMinute" value="${m}"><button id="publish-btn">공개 발행</button><button id="other">발행 설정</button>`;
 
 const browser = await chromium.launch();
-const passes = async (schedule, html, sel) => {
+const passes = async (schedule, html, sel, path) => {
   const page = await browser.newPage(); // 새 창마다(가드는 창당 한 번만 설치된다)
+  if (path) { await page.route('https://guard.test/**', (r) => r.fulfill({ contentType: 'text/html', body: '' })); await page.goto('https://guard.test' + path); } // 페이지 수정 예외는 주소를 본다
   await page.setContent(html + '<script>window.hits=[];document.addEventListener("click",(e)=>hits.push(e.target.id||e.target.className))</script>');
-  await page.evaluate(GUARD, { ...SEL.publishGuard, schedule: schedule === true, republish: schedule === 'republish', privateSave: schedule === 'private' });
+  await page.evaluate(GUARD, { ...SEL.publishGuard, schedule: schedule === true, republish: schedule === 'republish', privateSave: schedule === 'private', pageUpdate: schedule === 'page' ? '/manage/page/62' : undefined });
   await page.click(sel);
   const n = await page.evaluate(() => window.hits.length);
   await page.close();
@@ -41,10 +42,14 @@ const cases = [
   ['비공개 저장: 비공개면 통과', 'private', privLayer(true, '비공개 저장'), '#publish-btn', true],
   ['비공개 저장: 공개로 바뀌면 막음', 'private', privLayer(false, '공개 발행'), '#publish-btn', false],
   ['비공개 저장: 다른 모드에선 막음', false, privLayer(true, '비공개 저장'), '#publish-btn', false],
+  ['페이지 수정: 그 페이지 편집 주소면 통과', 'page', privLayer(false, '공개 발행'), '#publish-btn', true, '/manage/page/62'],
+  ['페이지 수정: 다른 페이지 주소면 막음', 'page', privLayer(false, '공개 발행'), '#publish-btn', false, '/manage/page/63'],
+  ['페이지 수정: 글 편집 화면이면 막음', 'page', privLayer(false, '공개 발행'), '#publish-btn', false, '/manage/newpost/62'],
+  ['페이지 수정: 다른 모드에선 막음', false, privLayer(false, '공개 발행'), '#publish-btn', false, '/manage/page/62'],
 ];
 let bad = 0;
-for (const [name, schedule, html, sel, want] of cases) {
-  const got = await passes(schedule, html, sel);
+for (const [name, schedule, html, sel, want, path] of cases) {
+  const got = await passes(schedule, html, sel, path);
   if (got !== want) bad++;
   console.log(`${got === want ? '✓' : '✗'} ${name}`);
 }
