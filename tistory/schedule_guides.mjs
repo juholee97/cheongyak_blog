@@ -19,7 +19,7 @@ const later = new Date(Date.now() + 3600e3), tomorrow = new Date(); tomorrow.set
 const from = later > tomorrow ? later : tomorrow; // 대기열은 내일부터(오늘 편수는 이미 정해져 있음), 적어도 1시간 뒤
 const start = arg('--start') || (queue ? `${from.getFullYear()}-${pad0(from.getMonth() + 1)}-${pad0(from.getDate())} ${pad0(from.getHours())}:00` : null);
 const times = (arg('--times') || '08:00,12:00,19:00').split(',');
-const gap = +(arg('--gap') ?? (queue ? 60 : 0));
+const gap = +(arg('--gap') ?? (queue ? 180 : 0));
 const max = +(arg('--max') ?? (queue ? 6 : Infinity)); // 한 번에 예약할 최대 편수(대기열은 하루 6편 — 하루 3편씩 나가니 앞으로 쌓이는 양이 늘 2주쯤 앞서 있다) // 글 사이 쉬는 초(짧은 시간에 저장이 몰리면 보안 확인이 뜬다 — 2026-10-24)
 const slugs = queue ? (await readFile(join(ROOT, queue), 'utf8').catch(() => '')).split(/\s+/).filter(Boolean)
   : process.argv.slice(2).filter((a, i, all) => !a.startsWith('--') && !['--start', '--times', '--queue', '--gap', '--max'].includes(all[i - 1]));

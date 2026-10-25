@@ -175,6 +175,7 @@ export function render(f, notes = {}, images = []) {
   return [
     img('thumb'), img('card'), (notes.intro || []).filter(Boolean).length ? `<p>${notes.intro.filter(Boolean).map(esc).join(' ')}</p>` : '',
     has.has('aerial') ? `${img('aerial')}\n<p style="font-size:13px;color:${C.muted}">단지 조감도 · 출처: ${srcOf(f, images.find((i) => i.key === 'aerial'))} · 실제와 다를 수 있습니다.</p>` : '',
+    summaryBox(f),
     H2('한눈에'), x.glance, x.types, plans(f, images),
     H2('분양가와 주변 실거래'), x.leasehold, note(notes.price), x.trades,
     H2('입지 — 교통·학교'), img('map'), note(notes.place), x.place, x.busRoutes,
@@ -213,6 +214,26 @@ export function autoNotes(f) {
   };
   return Object.fromEntries(Object.entries(notes).map(([k, v]) => [k, v.filter(Boolean)]));
 }
+
+// 한 줄 요약(2026-10-25): 검색 AI 답변이 인용하기 쉬운 첫 상자 — 주력 주택형 최고 분양가와 반경 안 같은 등급 거래 중앙값의 높낮이, 첫 접수일.
+// 사실 비교만(투자 판단 문구 없음). 값은 facts 그대로라 본문 숫자와 같다.
+export function summaryOf(f) {
+  const { item: it, types, trades: t } = f;
+  const main = types.find((g) => g.area === f.mainArea) || types[0];
+  const near = (t.same || []).filter((g) => g.near).map((g) => g.near.amount);
+  const rec = it.phases.filter((p) => ['sp', 'p1'].includes(p.k)).sort((a, b) => (a.date < b.date ? -1 : 1))[0];
+  const km = (t.widened ? t.wide : t.range) / 1000;
+  let cmp;
+  if (f.leasehold) cmp = '토지임대부라 땅값이 빠진 분양가여서 주변 거래가와 바로 비교하기 어려워요.';
+  else if (t.skip || !near.length) cmp = `반경 ${km}km 안에 같은 ${t.tier} 등급 단지의 비슷한 면적 거래가 없어요.`;
+  else {
+    const lo = Math.min(...near), hi = Math.max(...near);
+    const pos = main.max < lo ? '보다 낮아요' : main.max > hi ? '보다 높아요' : ' 범위 안이에요';
+    cmp = `반경 ${km}km 같은 ${t.tier} 등급 단지 거래 중앙값(${lo === hi ? eok(lo) : `${eok(lo)}~${eok(hi)}`})${pos}.`;
+  }
+  return `전용 ${main.area}㎡ 최고 분양가는 ${eok(main.max)}이고, ${cmp}${rec ? ` 첫 접수는 ${label(it, rec.k)} ${md(rec.date)}예요.` : ''}`;
+}
+const summaryBox = (f) => `<div style="border:1px solid ${C.line};border-left:4px solid #4a3fa0;border-radius:12px;padding:14px 18px;margin:16px 0;background:#f6f5fc"><p style="margin:0 0 4px;font-size:13px;font-weight:700;color:#4a3fa0">한 줄 요약</p><p style="margin:0;font-weight:700">${esc(summaryOf(f))}</p></div>`;
 
 // 평면도·조감도(posts/floorplan.mjs): 주택형마다 한 장 + 그림마다 출처
 // origin 'home' = 사업주체 분양 홈페이지, 'notice:15' = 청약홈 입주자모집공고문 15쪽

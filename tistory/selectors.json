@@ -49,7 +49,7 @@
     "_note": "2026-10-23 probe_publish.mjs 실측(모든 POST 차단): 완료 → 발행 레이어. 기본 공개 설정은 '비공개'. '공개'를 고르면 발행일 '현재'·'예약' 버튼이 생기고, 예약 → .btn_reserve(YYYY-MM-DD)를 누르면 달력(.txt_calendar 'YYYY년 M월', .btn_next, .btn_day)과 시(#dateHour)·분(#dateMinute) 입력. 마지막 버튼 #publish-btn 글자는 '공개 발행'. 근거: tistory/probe-out/publish-*.json·publish-calendar.html"
   },
   "publishGuard": {
-    "block": ["#publish-layer-btn"],
+    "block": ["#publish-layer-btn", "#publish-btn"],
     "blockText": "발행",
     "_note": "임시저장 흐름은 '완료'(#publish-layer-btn)를 누를 일이 없다 → 완료 버튼과 '발행' 글자가 든 버튼 클릭을 캡처 단계에서 막는다. 발행 레이어는 실측하지 않음(열지 않음)."
   }

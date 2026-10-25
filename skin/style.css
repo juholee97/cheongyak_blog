@@ -283,6 +283,7 @@ a.hero-row:hover { background: var(--tint3); text-decoration: none; color: var(-
 .site-footer .inner { padding: 24px; font-size: 13px; line-height: 1.7; align-items: flex-start; gap: 12px; }
 .foot-brand { display: flex; flex-direction: column; }
 .foot-brand b { color: #fff; font-size: 14px; }
+.foot-about { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
 .foot-note { max-width: 460px; }
 
 /* ───────── 휴대폰(700px 이하): 앱형 화면 ─────────
