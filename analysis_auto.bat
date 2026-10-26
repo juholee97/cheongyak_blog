@@ -11,8 +11,12 @@ cd /d "%~dp0"
 if /i "%~1"=="check" goto check
 node posts\analysis_auto.mjs %*
 set RC=%ERRORLEVEL%
-rem Then fix up to 3 already-published analysis posts (new card, region tag in title). Queue: data\analysis_retrofit.txt (2026-10-26)
 if not exist data\logs mkdir data\logs
+rem Tistory daily post limit is now 5 (2026-10-27), so one run in priority order: analysis posts, then up to 3 queued guides, then retrofits.
+rem The 00:30 guide queue task is disabled; guides run here after analysis posts.
+echo ===== %DATE% %TIME% >> data\logs\guide_queue.log
+node tistory\schedule_guides.mjs --queue data\guide_queue.txt --max 3 >> data\logs\guide_queue.log 2>&1
+rem Then fix up to 3 already-published analysis posts (new card, region tag in title). Queue: data\analysis_retrofit.txt (2026-10-26)
 echo ===== %DATE% %TIME% >> data\logs\analysis_retrofit.log
 node posts\retrofit_analysis.mjs --max 3 >> data\logs\analysis_retrofit.log 2>&1
 exit /b %RC%

@@ -1,7 +1,7 @@
 // 승인된 가이드 여러 편을 빈 예약 시각에 차례로 예약발행한다(채팅 승인을 받은 글만 넘긴다).
 // node tistory/schedule_guides.mjs --start "2026-10-24 19:00" --times 08:00,19:00 slug1 slug2 ...
 // node tistory/schedule_guides.mjs --queue data/guide_queue.txt   승인된 대기열(공백으로 나눈 slug)을 빈 시각에. 예약한 글은 대기열에서 빼고,
-//   티스토리 하루 글 한도(50개)에 걸리면 나머지는 남겨 둔 채 끝낸다(작업 스케줄러 cheongyak_guide_queue가 매일 00:30에 다시).
+//   티스토리 하루 글 한도(10-27부터 5개)에 걸리면 나머지는 남겨 둔 채 끝낸다(10-27부터 analysis_auto.bat 07:00 분석 글 뒤 --max 3, 예전 작업 스케줄러 cheongyak_guide_queue가 매일 00:30에 다시).
 // 순서: 빈 시각마다, 그 시각에 이미 공개돼 있을 관련 글이 가장 많은 글부터. 링크는 늘 더 이른 시각의 글만 가리킨다(guide.mjs --at).
 // 한 편마다 posts/guide.mjs로 다시 그려(관련 글 갱신) 검수한 뒤 draft.mjs --schedule. 하나라도 실패하면 멈춘다.
 import { readFile, writeFile } from 'node:fs/promises';

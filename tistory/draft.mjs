@@ -2,7 +2,7 @@
 // node tistory/draft.mjs drafts/2026-10-26_weekly.json --approved      그림 업로드 → 입력 → 임시저장 → 저장본을 다시 불러와 전문 대조
 // node tistory/draft.mjs drafts/2026-10-26_weekly.json --dry-run       저장 없이 업로드·조립·입력·대조까지 (업로드 외 POST를 막아 자동 임시저장도 안 생김)
 // node tistory/draft.mjs drafts/2026-10-26_weekly.json --verify-only   저장 없이, 임시저장 목록의 같은 제목 글을 불러와 대조만
-// 종료 코드: 0 통과, 1 오류, 2 저장본 불일치·목록에 없음, 3 로그인 필요, 4 검수 실패·승인 없음, 5 티스토리 하루 글 작성 한도(50개), 6 티스토리 보안 확인(reCAPTCHA)
+// 종료 코드: 0 통과, 1 오류, 2 저장본 불일치·목록에 없음, 3 로그인 필요, 4 검수 실패·승인 없음, 5 티스토리 하루 글 작성 한도(10-23 50개 → 10-27 5개), 6 티스토리 보안 확인(reCAPTCHA)
 // 주의(2026-10-22 실측): 편집기가 입력 도중 자동 임시저장을 하므로 "개수 +1"로 저장을 판정하지 않는다 → 저장본을 다시 열어 확인한다.
 import { readFile, writeFile } from 'node:fs/promises';
 import { join, basename } from 'node:path';
@@ -290,7 +290,9 @@ async function main() {
         await page.waitForTimeout(1500);
         const msg = await page.evaluate(() => [...document.querySelectorAll('.toast, [class*="toast"], [class*="alert"], [role="alert"], .layer_msg, .txt_error')].map((e) => e.innerText.trim()).filter(Boolean).join(' / '));
         if (dialogs.length || msg) step('발행 버튼 뒤 안내', true, { 확인창: dialogs, 화면: msg });
-        if (dialogs.some((m) => m.includes('최대 50개'))) { step('티스토리 하루 글 한도(50개) — 내일 다시', false); return 5; } // 2026-10-23 실측
+        // 2026-10-23엔 「최대 50개」, 2026-10-27엔 「최대 5개」 — 숫자는 바뀌니 문구로
+        const cap = dialogs.find((m) => /하루에 작성할 수 있는 글은 최대\s*\d+\s*개/.test(m));
+        if (cap) { step(`티스토리 하루 글 한도(${cap.match(/최대\s*(\d+)/)[1]}개) — 내일 다시`, false); return 5; }
         report.shot = await shot('scheduled');
         return await verifyScheduled();
       }
