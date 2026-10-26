@@ -27,6 +27,7 @@
     </div>
   </header>
 
+  <script type="text/template" id="tpl-hero">
   <section id="hero" class="hero" aria-label="이번 주 청약 요약">
     <div class="hero-inner">
       <div class="hero-main">
@@ -50,7 +51,9 @@
       <p class="hero-meta">기준 <b data-hero="updated">-</b> · 출처 청약홈(한국부동산원) · 일정은 입주자모집공고 기준이며 바뀔 수 있습니다</p>
     </div>
   </section>
+  </script>
 
+  <script type="text/template" id="tpl-cal">
   <section id="cal" class="cal">
     <div class="cal-inner">
       <div class="cal-title">
@@ -114,6 +117,15 @@
     </div>
     <div data-ref="modal"></div>
   </section>
+  </script>
+  <!-- 홈 요약·전체 달력 틀은 스크립트 글자로 두고 홈·청약일정 화면에서만 꺼내 넣는다: 글 페이지 HTML에 같은 빈 틀과 「전국 청약 일정」 h1이 반복돼 검색 수집에 불리했음(2026-10-26) -->
+  <script>(function () {
+    var b = document.body.id, p = '';
+    try { p = decodeURIComponent(location.pathname).replace(/\/+$/, ''); } catch (e) {}
+    function put(id, on) { var t = document.getElementById(id); if (t && on) t.insertAdjacentHTML('afterend', t.textContent); }
+    put('tpl-hero', b === 'tt-body-index');
+    put('tpl-cal', b === 'tt-body-category' && p === '/category/청약일정');
+  })();</script>
 
   <main id="blog" class="blog">
     <div class="blog-main">

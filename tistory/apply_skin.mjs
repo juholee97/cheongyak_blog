@@ -9,7 +9,7 @@ const apply = process.argv.includes('--apply');
 if (!apply && !process.argv.includes('--dry-run')) { console.log('사용: node tistory/apply_skin.mjs --dry-run | --apply'); process.exit(4); }
 const want = { HTML: await readFile(join(ROOT, 'skin/skin.html'), 'utf8'), CSS: await readFile(join(ROOT, 'skin/style.css'), 'utf8') };
 const norm = (s) => s.replace(/\r\n/g, '\n').trimEnd();
-const { context, page } = await launch({ headless: true });
+const { context, page } = await launch({ headless: process.env.TISTORY_HEADED !== '1' });
 const log = (...a) => console.log(...a);
 try {
   if (!(await ensureLogin(page, context)).ok) { log('로그인 필요'); process.exit(3); }
