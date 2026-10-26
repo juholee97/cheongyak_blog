@@ -87,7 +87,11 @@
   var PHK = {};
   PH.forEach(function (p, i) { PHK[p.k] = Object.assign({ i: i }, p); });
   var W = '일월화수목금토';
-  var STORE = 'cheongyak-regions', STORE_GU = 'cheongyak-seoul-gu', STORE_FOLD = 'cheongyak-filter-folded';
+  var STORE = 'cheongyak-regions', STORE_GU = 'cheongyak-seoul-gu', STORE_FOLD = 'cheongyak-filter-folded', STORE_KIND = 'cheongyak-kinds-off';
+  // 청약 종류 필터(2026-10-27): 보이는 순서와 이름. 목록에 없는 새 종류(LH 공고 세부 유형 등)는 뒤에 그대로. 꺼 둔 종류만 저장해서 새 종류는 켜진 채로 나온다
+  var KIND_ORDER = ['APT', '오피스텔', '도시형', '무순위', '임의공급', '공공지원 민간임대', '청년안심주택', '행복주택', '국민임대', '영구임대', '통합공공임대', '공공임대'];
+  var KIND_NAME = { APT: '아파트', '공공지원 민간임대': '민간임대' };
+  var kindName = function (k) { return KIND_NAME[k] || k; };
   // 경기 시·군(2026-10-26 사용자 요청: 서울 자치구처럼 경기도도 시별로). 일정 자료의 district(「화성특례시」「용인시」)에서 시·군을 뗀 이름
   var GG = ['가평', '고양', '과천', '광명', '광주', '구리', '군포', '김포', '남양주', '동두천', '부천', '성남', '수원', '시흥', '안산', '안성',
     '안양', '양주', '양평', '여주', '연천', '오산', '용인', '의왕', '의정부', '이천', '파주', '평택', '포천', '하남', '화성'];
@@ -141,6 +145,7 @@
   }
   var S = {
     regions: load(STORE, ALL), sub: (function () { var o = {}; SUBS.forEach(function (r) { o[r] = load(SUB[r].store, SUB[r].list); }); return o; })(), subOpen: '', filterOpen: false, // filterOpen은 휴대폰에서만 의미 있음
+    kindsOff: (function () { try { var v = JSON.parse(localStorage.getItem(STORE_KIND) || '[]'); return Array.isArray(v) ? v : []; } catch (e) { return []; } })(),
     folded: (function () { try { return localStorage.getItem(STORE_FOLD) === '1'; } catch (e) { return false; } })(), // PC: 지역 칸 접기(요약 줄만, 2026-10-27)
     phases: PH.map(function (p) { return p.k; }),
     y: today.getFullYear(), m: today.getMonth(), sel: key(today),
@@ -161,8 +166,15 @@
   }
   var part = function (r) { return !!SUB[r] && S.sub[r].length < SUB[r].list.length; };
 
+  // 자료에 있는 종류: 정한 순서 먼저, 나머지는 가나다
+  function allKinds() {
+    var seen = {};
+    S.data.forEach(function (it) { if (it.kind) seen[it.kind] = 1; });
+    return KIND_ORDER.filter(function (k) { return seen[k]; }).concat(Object.keys(seen).filter(function (k) { return KIND_ORDER.indexOf(k) < 0; }).sort(function (a, b) { return a.localeCompare(b, 'ko'); }));
+  }
+
   function visible(it, rs) {
-    if (!rs.has(it.region)) return false;
+    if (!rs.has(it.region) || S.kindsOff.indexOf(it.kind) >= 0) return false;
     var sb = SUB[it.region];
     if (!sb) return true;
     var k = sb.key(it);
@@ -191,10 +203,11 @@
     var anyPart = SUBS.some(part);
 
     // 지역·구별 이 달 단지 수 (필터와 무관)
-    var counts = {}, subCounts = {};
+    var counts = {}, subCounts = {}, kindCounts = {};
     S.data.forEach(function (it) {
       if (!it.phases.some(function (p) { return p.date.slice(0, 7) === ym; })) return;
       counts[it.region] = (counts[it.region] || 0) + 1;
+      kindCounts[it.kind] = (kindCounts[it.kind] || 0) + 1;
       if (SUB[it.region]) { var c = subCounts[it.region] = subCounts[it.region] || {}, k = SUB[it.region].key(it); c[k] = (c[k] || 0) + 1; }
     });
     var monthIds = new Set();
@@ -205,7 +218,8 @@
       var l = S.sub[r];
       return l.length <= 3 ? r + '(' + l.join('·') + ')' : r + '(' + l[0] + ' 외 ' + (l.length - 1) + SUB[r].unit + ')';
     });
-    var tail = ' · ' + (S.m + 1) + '월 ' + monthIds.size + '개 단지';
+    var kinds = allKinds(), kindsOn = kinds.filter(function (k) { return S.kindsOff.indexOf(k) < 0; });
+    var tail = (kindsOn.length < kinds.length ? ' · 종류 ' + (kindsOn.length <= 3 ? kindsOn.map(kindName).join('·') || '없음' : kindsOn.length + '개') : '') + ' · ' + (S.m + 1) + '월 ' + monthIds.size + '개 단지';
     refs.summary.textContent = names.length === ALL.length && !anyPart ? '선택 지역: 전국' + tail
       : names.length ? '선택 지역: ' + names.join(', ') + tail : '조회할 지역을 선택해 주세요.';
     refs.save.textContent = S.saved ? '저장되었습니다' : '관심 지역 저장';
@@ -243,7 +257,15 @@
           var open = S.subOpen === r, label = open ? sb.close : o && part(r) ? S.sub[r].length + sb.unit + ' ▾' : sb.open;
           return '<div class="f-item-wrap">' + btn + '<button type="button" class="gu-toggle' + (open ? ' open' : '') + '" data-act="subopen" data-r="' + r + '" aria-expanded="' + open + '">' + label + '</button></div>';
         }).join('') + '</div></div>' + g.items.filter(function (r) { return SUB[r] && S.subOpen === r; }).map(subRow).join('');
-    }).join('');
+    }).join('') + (function () { // 청약 종류 줄
+      var off = new Set(S.kindsOff), on = kinds.filter(function (k) { return !off.has(k); }).length;
+      return '<div class="f-row kinds"><button type="button" class="f-head" data-act="kindall">' + box(on > 0, on < kinds.length) + '청약 종류</button>' +
+        '<div class="f-cells">' + kinds.map(function (k) {
+          var o = !off.has(k);
+          return '<button type="button" class="f-item' + (o ? ' on' : '') + '" data-act="kind" data-k="' + esc(k) + '">' + box(o, false) + esc(kindName(k)) +
+            (kindCounts[k] ? '<span class="f-n">(' + kindCounts[k] + ')</span>' : '') + '</button>';
+        }).join('') + '</div></div>';
+    })();
 
     refs.month.textContent = S.y + '. ' + pad(S.m + 1);
     refs.legend.innerHTML = PH.map(function (p) {
@@ -339,12 +361,19 @@
     if (!t || !root.contains(t)) return;
     var d = t.dataset;
     switch (d.act) {
-      case 'all': return set({ regions: ALL.slice(), sub: fullSub(), saved: false });
+      case 'all': return set({ regions: ALL.slice(), sub: fullSub(), kindsOff: [], saved: false });
+      case 'kindall': return set({ kindsOff: S.kindsOff.length ? [] : allKinds(), saved: false });
+      case 'kind': {
+        var ko = S.kindsOff.filter(function (x) { return x !== d.k; });
+        if (ko.length === S.kindsOff.length) ko.push(d.k);
+        return set({ kindsOff: ko, saved: false });
+      }
       case 'none': return setRegions([]); // 구 선택은 그대로 둔다
       case 'save':
         try {
           localStorage.setItem(STORE, JSON.stringify(S.regions));
           SUBS.forEach(function (r) { localStorage.setItem(SUB[r].store, JSON.stringify(S.sub[r])); });
+          localStorage.setItem(STORE_KIND, JSON.stringify(S.kindsOff));
         } catch (err) { /* 저장 불가 */ }
         return set({ saved: true });
       case 'group': {

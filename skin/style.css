@@ -121,6 +121,7 @@ a.hero-row:hover { background: var(--tint3); text-decoration: none; color: var(-
 .filter-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 16px; flex-wrap: wrap; background: var(--foot-row); }
 .filter-summary { font-size: 13px; color: var(--sub); }
 .filter-btns { display: flex; gap: 6px; }
+.f-row.kinds { border-top: 1px solid var(--line-strong); } /* 청약 종류 줄: 지역 묶음과 구분 */
 .filter.folded [data-ref="groups"] { display: none; } /* PC 접기: 요약 줄과 버튼만 남긴다(휴대폰은 아래에서 되돌림) */
 
 /* 캘린더 카드 */
