@@ -67,4 +67,28 @@ assert.deepEqual(rent.phases.map((p) => p.k), ['p1', 'win', 'con']);
 assert.equal(pricePerPyeong([{ LTTOT_TOP_AMOUNT: '120,000', SUPLY_AR: '84.99', SUPLY_HSHLDCO: '10', SPSPLY_HSHLDCO: '0' }]), 4668);
 assert.equal(pricePerPyeong([{ LTTOT_TOP_AMOUNT: '', SUPLY_AR: '84', SUPLY_HSHLDCO: '1' }]), null);
 
+// 청년안심주택(youth.mjs): 본문 「■청약신청 : …」 줄에서 일정 — 실제 공고 문구 그대로(2026-10-26)
+const { toYouthItem, dates } = await import('./youth.mjs');
+assert.deepEqual(dates(' 26. 09. 30. (수) 09:00 ~ 10. 05. (월) 23:00', 2026), ['2026-09-30', '2026-10-05']);
+assert.deepEqual(dates(' 2026. 08. 11. (화 ) 10:00 ~ 2026. 08. 13. (목 )', 2026), ['2026-08-11', '2026-08-13']);
+assert.deepEqual(dates(' 26. 12. 30. ~ 01. 02.', 2026), ['2026-12-30', '2027-01-02']); // 해 넘김
+const jangji = toYouthItem({ boardId: 6679, optn1: '2026-09-22', optn2: '2', nttSj: '[민간임대] 장지역 송파해링턴타워 최초모집공고',
+  content: '<p>청약신청 시 중복 신청은 무효</p><p>■주택위치 : 서울특별시 송파구 장지동 842-1 (8호선 장지역)</p><p>■공급호수 : 총 484세대 중 공공지원민간임대 245세대</p><p>[공급일정] ■모집공고 : ‘26. 09. 22. (화) ■청약신청 : ‘26. 09. 30. (수) 09:00 ~ 10. 05. (월) 23:00 ■서류심사 대상자 발표 : ‘26. 10. 07. (수) 17:00 ■계약체결: ‘26. 10. 21. (수) 10:00 ~ 10. 26. (월) [청약신청] ■ 청약신청 페이지 : https://songpaht484.com ■ 문의전화</p>' });
+assert.equal(jangji.name, '장지역 송파해링턴타워 (최초모집)');
+assert.equal(jangji.kind, '청년안심주택');
+assert.equal(jangji.district, '송파구');
+assert.equal(jangji.units, 245);
+assert.equal(jangji.homepageUrl, 'https://songpaht484.com');
+assert.deepEqual(jangji.phases, [{ k: 'p1', date: '2026-09-30', end: '2026-10-05' }, { k: 'win', date: '2026-10-07' }, { k: 'con', date: '2026-10-21', end: '2026-10-26' }]);
+const reserve = toYouthItem({ boardId: 6707, optn1: '2026-10-22', optn2: '2', nttSj: '[민간임대] 청량리역 퀸즈W 청량리역 추가모집공고',
+  content: '■공급호수 : 총 206세대 중 금회 추가모집 공공지원민간임대 예비자 모집 [공급일정] ■청약신청 : ‘26. 10. 26. (월) 09:00 ~ 18:00 ■서류심사 대상자 발표 : ‘26. 10. 27. (화)' });
+assert.equal(reserve.name, '청량리역 퀸즈W 청량리역 (추가모집·예비자)');
+assert.equal(reserve.units, null);
+assert.deepEqual(reserve.phases, [{ k: 'p1', date: '2026-10-26' }, { k: 'win', date: '2026-10-27' }]);
+const sh = toYouthItem({ boardId: 6624, optn1: '2026-07-31', optn2: '1', nttSj: '[공공임대] 2026년 2차 청년안심주택 모집공고',
+  content: '■ 청약 접수일 : 2026. 08. 11. (화 ) 10:00 ~ 2026. 08. 13. (목 ) 17:00 ■ 서류심사대상자 발표 : 2026. 08. 21.(금 ) ■ 당첨자발표 : 2026. 12. 11.(금 ) 예정' });
+assert.equal(sh.name, '2026년 2차 청년안심주택 (공공임대)');
+assert.equal(sh.district, null); // 여러 구를 한 공고로
+assert.deepEqual(sh.phases, [{ k: 'p1', date: '2026-08-11', end: '2026-08-13' }, { k: 'win', date: '2026-12-11' }]);
+
 console.log('crawler check OK');

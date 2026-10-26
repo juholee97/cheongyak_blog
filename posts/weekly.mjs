@@ -11,7 +11,7 @@ export const DISCLAIMER = '청약 일정은 입주자모집공고 기준이며 �
 const PH = { sp: '특별공급', p1: '1순위', p2: '2순위', win: '당첨자 발표', con: '계약' };
 const RECEIPT = ['sp', 'p1', 'p2'];
 const W = '일월화수목금토';
-const KIND_TAG = { 무순위: '무순위청약', 오피스텔: '오피스텔청약', 도시형: '도시형생활주택', 임의공급: '임의공급', '공공지원 민간임대': '민간임대' };
+const KIND_TAG = { 무순위: '무순위청약', 오피스텔: '오피스텔청약', 도시형: '도시형생활주택', 임의공급: '임의공급', '공공지원 민간임대': '민간임대', 청년안심주택: '청년안심주택' };
 
 const pad = (n) => String(n).padStart(2, '0');
 const toDate = (s) => new Date(s + 'T00:00:00Z');
@@ -24,7 +24,7 @@ export const full = (s) => `${s.slice(0, 4)}.${s.slice(5, 7)}.${s.slice(8, 10)} 
 // 기간 표기. 시작·끝 연도가 다르면 연도까지 쓴다("9.12 ~ 9.12"처럼 보이지 않게)
 export const span = (p, f = md) => (!p.end ? f(p.date) : p.end.slice(0, 4) !== p.date.slice(0, 4) ? `${full(p.date)} ~ ${full(p.end)}` : `${f(p.date)} ~ ${f(p.end)}`);
 export const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
-export const label = (it, k) => (k === 'p1' && it.kind !== 'APT' ? '접수' : PH[k]);
+export const label = (it, k) => (k === 'p1' && it.kind !== 'APT' ? '접수' : k === 'win' && it.kind === '청년안심주택' ? '발표' : PH[k]);
 export const where = (it) => [it.region, it.district].filter(Boolean).join(' ');
 export const updatedLabel = (u) => (/^(\d{4})-(\d\d)-(\d\d)T(\d\d):(\d\d)/.exec(u) || []).slice(1).reduce((s, v, i) => s + ['', '.', '.', ' ', ':'][i] + v, '');
 
@@ -111,7 +111,7 @@ export function render(w, summary = [], images = []) {
   // 단계별 수: 위쪽 색 막대 + 큰 숫자(홈 첫 화면·썸네일과 같은 모양). 편집기가 지키는 표로 그린다
   const stat = (label, n, c) => `<td style="width:33.3%;border-top:6px solid ${c};border-bottom:0;padding:10px 0 4px;vertical-align:top"><span style="font-size:14px;font-weight:700;color:${C.muted}">${label}</span><br><span style="font-size:36px;font-weight:900;line-height:1.15;color:${c}">${n}</span><span style="font-size:15px;font-weight:700;margin-left:2px">곳</span></td>`;
   out.push(`<table style="border-collapse:separate;border-spacing:12px 0;width:100%;margin:20px 0 4px;table-layout:fixed;border:0"><tbody><tr>${stat('접수', w.facts.receipt, C.receipt)}${stat('당첨자 발표', w.facts.win, C.announce)}${stat('계약', w.facts.con, C.contract)}</tr></tbody></table>
-<p style="font-size:14px;color:${C.muted};margin:0 0 20px"><span style="color:${C.ink};font-weight:700">기간</span> ${full(w.start)} ~ ${full(w.end)}${kindText ? ` · <span style="color:${C.ink};font-weight:700">접수 종류</span> ${esc(kindText)}` : ''}<br>기준: ${updatedLabel(w.updatedAt)} 수집 · 출처: 청약홈(한국부동산원) 분양정보, 공공데이터포털</p>`);
+<p style="font-size:14px;color:${C.muted};margin:0 0 20px"><span style="color:${C.ink};font-weight:700">기간</span> ${full(w.start)} ~ ${full(w.end)}${kindText ? ` · <span style="color:${C.ink};font-weight:700">접수 종류</span> ${esc(kindText)}` : ''}<br>기준: ${updatedLabel(w.updatedAt)} 수집 · 출처: 청약홈(한국부동산원) 분양정보, 공공데이터포털${[...w.receipt, ...w.win, ...w.con].some((x) => x.it.kind === '청년안심주택') ? ', 서울시 청년안심주택 모집공고' : ''}</p>`);
 
   out.push('<h2 style="font-weight:700">이번 주 접수 단지</h2>');
   if (!w.receipt.length) out.push('<p>이번 주에 접수가 있는 단지가 없습니다.</p>');
@@ -129,7 +129,7 @@ ${w.receipt.map(({ it, firstP }) => `<tr><td ${TD}>${span(firstP)} ${label(it, f
 ${img('card:' + it.id)}${img('map:' + it.id)}<p style="font-weight:700">${facts}</p>
 <table style="border-collapse:collapse;width:100%;table-layout:fixed"><tbody>
 ${it.phases.map((p) => `<tr><th ${TH}>${label(it, p.k)}</th><td ${TD}>${span(p, full)}</td></tr>`).join('\n')}
-</tbody></table>${it.applyhomeUrl ? `\n<p style="margin:14px 0 0"><a href="${esc(it.applyhomeUrl)}" target="_blank" rel="noopener">청약홈 공고 보기 →</a></p>` : ''}
+</tbody></table>${it.applyhomeUrl ? `\n<p style="margin:14px 0 0"><a href="${esc(it.applyhomeUrl)}" target="_blank" rel="noopener">${it.kind === '청년안심주택' ? '청년안심주택 공고 보기' : '청약홈 공고 보기'} →</a></p>` : ''}
 </div>`);
     });
   }

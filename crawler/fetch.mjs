@@ -3,6 +3,7 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { fetchYouth } from './youth.mjs';
 
 const BASE = 'https://api.odcloud.kr/api/ApplyhomeInfoDetailSvc/v1/';
 const SOURCES = [
@@ -164,6 +165,15 @@ async function main() {
       kept++;
     }
     console.log(`${src.detail}: ${rows.length}건 중 ${kept}건`);
+  }
+  // 서울시 청년안심주택(청약홈 밖의 공고). 실패해도 청약홈 일정은 그대로 배포한다
+  try {
+    const youth = await fetchYouth(noticeFrom);
+    let kept = 0;
+    for (const it of youth) if (it.phases.some((p) => p.date >= from && p.date <= to)) { items.set(it.id, it); kept++; }
+    console.log(`청년안심주택: ${youth.length}건 중 ${kept}건${youth.some((i) => !i.phases.length) ? ` (일정 못 읽음 ${youth.filter((i) => !i.phases.length).length}건 — 본문 형식 확인)` : ''}`);
+  } catch (e) {
+    console.warn(`청년안심주택 수집 실패: ${e.message}`);
   }
   if (!items.size) throw new Error('수집 결과 0건 — 빈 달력을 배포하지 않도록 중단합니다.');
 

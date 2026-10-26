@@ -119,10 +119,11 @@
   var box = function (on, part, sm) {
     return '<span class="box' + (sm ? ' sm' : '') + (on ? ' on' : '') + '">' + (on ? (part ? '–' : '✓') : '') + '</span>';
   };
-  // APT 말고는 순위가 없으니 p1을 "접수"로
+  // APT 말고는 순위가 없으니 p1을 "접수"로. 청년안심주택 발표는 서류심사 대상자·당첨자 발표라 "발표"로
   var phaseOf = function (item, k) {
     var p = PHK[k];
-    return k === 'p1' && item.kind !== 'APT' ? Object.assign({}, p, { label: '접수', full: '접수' }) : p;
+    if (k === 'p1' && item.kind !== 'APT') return Object.assign({}, p, { label: '접수', full: '접수' });
+    return k === 'win' && item.kind === '청년안심주택' ? Object.assign({}, p, { label: '발표', full: '발표' }) : p;
   };
   var load = function (k, allowed) {
     try {
@@ -318,14 +319,14 @@
           var p = phaseOf(it, ph.k);
           return '<div class="th"><span class="tl-dot" style="' + pvars(p) + '"></span>' + p.full + '</div><div>' + fmt(ph.date) + '</div>';
         }).join('');
-    var go = safeUrl(it.applyhomeUrl), home = safeUrl(it.homepageUrl);
+    var go = safeUrl(it.applyhomeUrl), home = safeUrl(it.homepageUrl), youth = it.kind === '청년안심주택';
     refs.modal.innerHTML = '<div class="overlay" data-act="close"><div class="modal" role="dialog" aria-modal="true" aria-label="' + esc(it.name) + '" data-act="noop">' +
       '<div class="modal-head"><div><div class="modal-where">' + esc(it.region + ' ' + (it.district || '')) + ' · ' + esc(it.kind) + '</div>' +
       '<div class="modal-name">' + esc(it.name) + '</div></div>' +
       '<button type="button" class="modal-close" data-act="close" aria-label="닫기">✕</button></div>' +
       '<div class="modal-body"><div class="mtable">' + rows + '</div>' +
-      '<div class="modal-btns">' + (go ? '<a class="go" href="' + esc(go) + '" target="_blank" rel="noopener">청약홈 바로가기</a>' : '') +
-      (home ? '<a href="' + esc(home) + '" target="_blank" rel="noopener">분양 홈페이지</a>' : '') + '</div></div></div></div>';
+      '<div class="modal-btns">' + (go ? '<a class="go" href="' + esc(go) + '" target="_blank" rel="noopener">' + (youth ? '청년안심주택 공고' : '청약홈 바로가기') + '</a>' : '') +
+      (home ? '<a href="' + esc(home) + '" target="_blank" rel="noopener">' + (youth ? '청약신청 페이지' : '분양 홈페이지') + '</a>' : '') + '</div></div></div></div>';
   }
 
   root.addEventListener('click', function (e) {
