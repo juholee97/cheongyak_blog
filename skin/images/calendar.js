@@ -88,6 +88,21 @@
   PH.forEach(function (p, i) { PHK[p.k] = Object.assign({ i: i }, p); });
   var W = '일월화수목금토';
   var STORE = 'cheongyak-regions', STORE_GU = 'cheongyak-seoul-gu';
+  // 경기 시·군(2026-10-26 사용자 요청: 서울 자치구처럼 경기도도 시별로). 일정 자료의 district(「화성특례시」「용인시」)에서 시·군을 뗀 이름
+  var GG = ['가평', '고양', '과천', '광명', '광주', '구리', '군포', '김포', '남양주', '동두천', '부천', '성남', '수원', '시흥', '안산', '안성',
+    '안양', '양주', '양평', '여주', '연천', '오산', '용인', '의왕', '의정부', '이천', '파주', '평택', '포천', '하남', '화성'];
+  // 시·도 아래로 나눠 고르는 곳: 서울 자치구, 경기 시·군. key = 일정 항목이 속한 칸 이름
+  var SUB = {
+    '서울': { list: GU, store: STORE_GU, title: '서울 자치구', unit: '개 구', open: '자치구별 ▾', close: '자치구 접기 ▴', key: function (it) { return it.district || ''; } },
+    '경기': { list: GG, store: 'cheongyak-gyeonggi-si', title: '경기 시·군', unit: '개 시·군', open: '시·군별 ▾', close: '시·군 접기 ▴',
+      key: function (it) { // district가 「풍무역세권」처럼 시·군이 아닐 때는 주소의 「경기도 ○○시」에서
+        var k = (it.district || '').split(' ')[0].replace(/(특례시|시|군)$/, '');
+        var m = GG.indexOf(k) < 0 && /경기도\s+(\S+?)(특례시|시|군)\s/.exec(it.address || '');
+        return m ? m[1] : k;
+      } },
+  };
+  var SUBS = Object.keys(SUB);
+  var fullSub = function () { var o = {}; SUBS.forEach(function (r) { o[r] = SUB[r].list.slice(); }); return o; };
 
   var pad = function (n) { return String(n).padStart(2, '0'); };
   var key = function (d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); };
@@ -123,7 +138,7 @@
     return;
   }
   var S = {
-    regions: load(STORE, ALL), gu: load(STORE_GU, GU), guOpen: false, filterOpen: false, // filterOpen은 휴대폰에서만 의미 있음
+    regions: load(STORE, ALL), sub: (function () { var o = {}; SUBS.forEach(function (r) { o[r] = load(SUB[r].store, SUB[r].list); }); return o; })(), subOpen: '', filterOpen: false, // filterOpen은 휴대폰에서만 의미 있음
     phases: PH.map(function (p) { return p.k; }),
     y: today.getFullYear(), m: today.getMonth(), sel: key(today),
     modal: null, saved: false, data: [], status: 'loading', updatedAt: '',
@@ -134,23 +149,27 @@
 
   function set(patch) { Object.assign(S, patch); render(); }
   function setRegions(list) { set({ regions: only(list, ALL), saved: false }); }
-  // 구를 하나라도 고르면 서울 선택, 전부 빼면 서울 해제
-  function setGu(list) {
-    var r = S.regions.filter(function (x) { return x !== '서울'; });
-    if (list.length) r.push('서울');
-    set({ gu: only(list, GU), regions: only(r, ALL), saved: false });
+  // 구·시를 하나라도 고르면 그 시·도 선택, 전부 빼면 해제
+  function setSub(region, list) {
+    var r = S.regions.filter(function (x) { return x !== region; });
+    if (list.length) r.push(region);
+    S.sub[region] = only(list, SUB[region].list);
+    set({ regions: only(r, ALL), saved: false });
   }
+  var part = function (r) { return !!SUB[r] && S.sub[r].length < SUB[r].list.length; };
 
-  function visible(it, rs, gs) {
+  function visible(it, rs) {
     if (!rs.has(it.region)) return false;
-    if (it.region !== '서울') return true;
-    return it.district ? gs.has(it.district) : S.gu.length === GU.length; // 구를 모르는 서울 항목은 25개 구 전체일 때만
+    var sb = SUB[it.region];
+    if (!sb) return true;
+    var k = sb.key(it);
+    return sb.list.indexOf(k) >= 0 ? S.sub[it.region].indexOf(k) >= 0 : !part(it.region); // 구·시를 모르는 항목은 전체일 때만
   }
 
   function eventsByDay() {
-    var rs = new Set(S.regions), gs = new Set(S.gu), ps = new Set(S.phases), by = {};
+    var rs = new Set(S.regions), ps = new Set(S.phases), by = {};
     S.data.forEach(function (it) {
-      if (!visible(it, rs, gs)) return;
+      if (!visible(it, rs)) return;
       it.phases.forEach(function (ph) {
         if (!ps.has(ph.k) || !PHK[ph.k]) return;
         (by[ph.date] = by[ph.date] || []).push({ it: it, p: phaseOf(it, ph.k) });
@@ -165,57 +184,59 @@
   function render() {
     var by = eventsByDay();
     var ym = S.y + '-' + pad(S.m + 1);
-    var rs = new Set(S.regions), gs = new Set(S.gu), ps = new Set(S.phases);
-    var guPart = S.gu.length < GU.length;
+    var rs = new Set(S.regions), ps = new Set(S.phases);
+    var anyPart = SUBS.some(part);
 
     // 지역·구별 이 달 단지 수 (필터와 무관)
-    var counts = {}, guCounts = {};
+    var counts = {}, subCounts = {};
     S.data.forEach(function (it) {
       if (!it.phases.some(function (p) { return p.date.slice(0, 7) === ym; })) return;
       counts[it.region] = (counts[it.region] || 0) + 1;
-      if (it.region === '서울' && it.district) guCounts[it.district] = (guCounts[it.district] || 0) + 1;
+      if (SUB[it.region]) { var c = subCounts[it.region] = subCounts[it.region] || {}, k = SUB[it.region].key(it); c[k] = (c[k] || 0) + 1; }
     });
     var monthIds = new Set();
     Object.keys(by).forEach(function (k) { if (k.slice(0, 7) === ym) by[k].forEach(function (x) { monthIds.add(x.it.id); }); });
 
     var names = ALL.filter(function (r) { return rs.has(r); }).map(function (r) {
-      if (r !== '서울' || !guPart) return r;
-      return S.gu.length <= 3 ? '서울(' + S.gu.join('·') + ')' : '서울(' + S.gu[0] + ' 외 ' + (S.gu.length - 1) + '개 구)';
+      if (!part(r)) return r;
+      var l = S.sub[r];
+      return l.length <= 3 ? r + '(' + l.join('·') + ')' : r + '(' + l[0] + ' 외 ' + (l.length - 1) + SUB[r].unit + ')';
     });
     var tail = ' · ' + (S.m + 1) + '월 ' + monthIds.size + '개 단지';
-    refs.summary.textContent = names.length === ALL.length && !guPart ? '선택 지역: 전국' + tail
+    refs.summary.textContent = names.length === ALL.length && !anyPart ? '선택 지역: 전국' + tail
       : names.length ? '선택 지역: ' + names.join(', ') + tail : '조회할 지역을 선택해 주세요.';
     refs.save.textContent = S.saved ? '저장되었습니다' : '관심 지역 저장';
     // 휴대폰: 지역 알약 버튼 + 바텀시트
     var picked = ALL.filter(function (r) { return rs.has(r); });
-    var first0 = picked[0] === '서울' && guPart && picked.length === 1 ? '서울 ' + S.gu.length + '개 구' : picked[0];
-    refs.regionPill.textContent = picked.length === ALL.length && !guPart ? '전국' : !picked.length ? '지역 선택'
+    var first0 = picked.length === 1 && part(picked[0]) ? picked[0] + ' ' + S.sub[picked[0]].length + SUB[picked[0]].unit : picked[0];
+    refs.regionPill.textContent = picked.length === ALL.length && !anyPart ? '전국' : !picked.length ? '지역 선택'
       : picked.length === 1 ? first0 : first0 + ' 외 ' + (picked.length - 1);
     refs.fopen.textContent = monthIds.size + '개 단지 보기';
     root.querySelector('.filter').classList.toggle('open', S.filterOpen);
     root.classList.toggle('sheet-open', S.filterOpen);
 
-    var guOn = rs.has('서울') ? S.gu.length : 0;
-    var subRow = '<div class="f-row sub"><button type="button" class="f-head" data-act="guall">' + box(guOn > 0, guOn < GU.length) + '└ 서울 자치구</button>' +
-      '<div class="f-cells">' + GU.map(function (u) {
-        var o = rs.has('서울') && gs.has(u);
-        return '<button type="button" class="f-item' + (o ? ' on' : '') + '" data-act="gu" data-g="' + u + '">' + box(o, false, true) + u +
-          (guCounts[u] ? '<span class="f-n">(' + guCounts[u] + ')</span>' : '') + '</button>';
-      }).join('') + '</div></div>';
+    function subRow(r) {
+      var sb = SUB[r], on = rs.has(r) ? S.sub[r].length : 0, gs = new Set(S.sub[r]), cn = subCounts[r] || {};
+      return '<div class="f-row sub"><button type="button" class="f-head" data-act="suball" data-r="' + r + '">' + box(on > 0, on < sb.list.length) + '└ ' + sb.title + '</button>' +
+        '<div class="f-cells">' + sb.list.map(function (u) {
+          var o = rs.has(r) && gs.has(u);
+          return '<button type="button" class="f-item' + (o ? ' on' : '') + '" data-act="sub" data-r="' + r + '" data-g="' + u + '">' + box(o, false, true) + u +
+            (cn[u] ? '<span class="f-n">(' + cn[u] + ')</span>' : '') + '</button>';
+        }).join('') + '</div></div>';
+    }
 
     refs.groups.innerHTML = GROUPS.map(function (g, gi) {
-      var hasSeoul = g.items.indexOf('서울') >= 0;
       var on = g.items.filter(function (r) { return rs.has(r); }).length;
-      var all = on === g.items.length && !(hasSeoul && guPart);
+      var all = on === g.items.length && !g.items.some(part);
       return '<div class="f-row"><button type="button" class="f-head" data-act="group" data-i="' + gi + '">' + box(on > 0, !all) + g.name + '</button>' +
         '<div class="f-cells">' + g.items.map(function (r) {
-          var o = rs.has(r), seoul = r === '서울';
-          var btn = '<button type="button" class="f-item' + (o ? ' on' : '') + '" data-act="region" data-r="' + r + '">' + box(o, seoul && guPart) + r +
+          var o = rs.has(r), sb = SUB[r];
+          var btn = '<button type="button" class="f-item' + (o ? ' on' : '') + '" data-act="region" data-r="' + r + '">' + box(o, part(r)) + r +
             (counts[r] ? '<span class="f-n">(' + counts[r] + ')</span>' : '') + '</button>';
-          if (!seoul) return btn;
-          var label = S.guOpen ? '자치구 접기 ▴' : o && guPart ? S.gu.length + '개 구 ▾' : '자치구별 ▾';
-          return '<div class="f-item-wrap">' + btn + '<button type="button" class="gu-toggle' + (S.guOpen ? ' open' : '') + '" data-act="guopen" aria-expanded="' + S.guOpen + '">' + label + '</button></div>';
-        }).join('') + '</div></div>' + (hasSeoul && S.guOpen ? subRow : '');
+          if (!sb) return btn;
+          var open = S.subOpen === r, label = open ? sb.close : o && part(r) ? S.sub[r].length + sb.unit + ' ▾' : sb.open;
+          return '<div class="f-item-wrap">' + btn + '<button type="button" class="gu-toggle' + (open ? ' open' : '') + '" data-act="subopen" data-r="' + r + '" aria-expanded="' + open + '">' + label + '</button></div>';
+        }).join('') + '</div></div>' + g.items.filter(function (r) { return SUB[r] && S.subOpen === r; }).map(subRow).join('');
     }).join('');
 
     refs.month.textContent = S.y + '. ' + pad(S.m + 1);
@@ -312,33 +333,33 @@
     if (!t || !root.contains(t)) return;
     var d = t.dataset;
     switch (d.act) {
-      case 'all': return set({ regions: ALL.slice(), gu: GU.slice(), saved: false });
+      case 'all': return set({ regions: ALL.slice(), sub: fullSub(), saved: false });
       case 'none': return setRegions([]); // 구 선택은 그대로 둔다
       case 'save':
         try {
           localStorage.setItem(STORE, JSON.stringify(S.regions));
-          localStorage.setItem(STORE_GU, JSON.stringify(S.gu));
+          SUBS.forEach(function (r) { localStorage.setItem(SUB[r].store, JSON.stringify(S.sub[r])); });
         } catch (err) { /* 저장 불가 */ }
         return set({ saved: true });
       case 'group': {
-        var g = GROUPS[+d.i], s = new Set(S.regions), seoulIn = g.items.indexOf('서울') >= 0;
-        var all = g.items.every(function (r) { return s.has(r); }) && !(seoulIn && S.gu.length < GU.length);
+        var g = GROUPS[+d.i], s = new Set(S.regions);
+        var all = g.items.every(function (r) { return s.has(r); }) && !g.items.some(part);
         g.items.forEach(function (r) { if (all) s.delete(r); else s.add(r); });
-        if (!all && seoulIn) S.gu = GU.slice();
+        if (!all) g.items.forEach(function (r) { if (SUB[r]) S.sub[r] = SUB[r].list.slice(); });
         return setRegions(ALL.filter(function (r) { return s.has(r); }));
       }
       case 'region': {
         var s2 = new Set(S.regions);
         if (s2.has(d.r)) s2.delete(d.r);
-        else { s2.add(d.r); if (d.r === '서울' && !S.gu.length) S.gu = GU.slice(); }
+        else { s2.add(d.r); if (SUB[d.r] && !S.sub[d.r].length) S.sub[d.r] = SUB[d.r].list.slice(); }
         return setRegions(ALL.filter(function (r) { return s2.has(r); }));
       }
-      case 'guopen': return set({ guOpen: !S.guOpen });
-      case 'guall': return setGu(S.regions.indexOf('서울') >= 0 && S.gu.length === GU.length ? [] : GU.slice());
-      case 'gu': {
-        var gs = new Set(S.regions.indexOf('서울') >= 0 ? S.gu : []);
+      case 'subopen': return set({ subOpen: S.subOpen === d.r ? '' : d.r });
+      case 'suball': return setSub(d.r, S.regions.indexOf(d.r) >= 0 && !part(d.r) ? [] : SUB[d.r].list.slice());
+      case 'sub': {
+        var gs = new Set(S.regions.indexOf(d.r) >= 0 ? S.sub[d.r] : []);
         if (gs.has(d.g)) gs.delete(d.g); else gs.add(d.g);
-        return setGu(GU.filter(function (x) { return gs.has(x); }));
+        return setSub(d.r, SUB[d.r].list.filter(function (x) { return gs.has(x); }));
       }
       case 'phase': {
         var p = new Set(S.phases);
