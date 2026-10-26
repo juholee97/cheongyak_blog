@@ -246,9 +246,11 @@ function plans(f, images) {
     `<p style="font-size:13px;color:${C.muted}">주택형마다 대표 타입 한 장(같은 면적의 다른 타입·확장 여부는 입주자모집공고에서 확인) · 정보 제공용으로 실었으며 실제와 다를 수 있고, 요청이 있으면 바로 내립니다.</p>`].join('\n');
 }
 
+// 괄호 설명((공공분양)·(본청약))은 빼되 블록 번호((AC4BL)·(S-1BL))는 남긴다 — 같은 단지 이름의 블록 두 곳이 같은 제목이 됐었다(2026-10-26 계양 카이브 유보라 AC3BL·AC4BL)
+export const shortName = (name) => name.replace(/\((.*?)\)/g, (m, x) => (/^[A-Z]{0,3}-?\d+[A-Z]?\s*(BL|블록)$/i.test(x.trim()) ? ` ${x.trim()}` : '')).replace(/\s+/g, ' ').trim();
+
 export function titleOf(f) {
-  const short = f.item.name.replace(/\(.*?\)/g, '').trim();
-  return `${short} 분양가·청약 분석 — 주변 실거래·교통·학군·대출`;
+  return `${shortName(f.item.name)} 분양가·청약 분석 — 주변 실거래·교통·학군·대출`;
 }
 
 export function draftOf(f, notes = {}, images = []) {
@@ -274,7 +276,7 @@ export function checkAnalysis(draft) {
 
 // 검색용 썸네일(첫 그림 = 대표 이미지): 단지 이름 두 줄 + 3.3㎡당 분양가(없으면 첫 접수일) + 지역·접수일
 export function thumbOf(f) {
-  const it = f.item, name = it.name.replace(/\(.*?\)/g, '').trim(), w = name.split(' ');
+  const it = f.item, name = shortName(it.name), w = name.split(' ');
   let cut = 1, best = Infinity; // 두 줄 길이가 비슷하게 띄어쓰기에서 나눈다
   for (let i = 1; i < w.length; i++) { const d = Math.abs(w.slice(0, i).join(' ').length - w.slice(i).join(' ').length); if (d < best) { best = d; cut = i; } }
   const lines = w.length > 1 ? `${w.slice(0, cut).join(' ')}\n${w.slice(cut).join(' ')}` : name;
