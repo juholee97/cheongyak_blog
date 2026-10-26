@@ -292,7 +292,8 @@
   "happy-house": [
     "integrated-rental",
     "lh-purchase-rental",
-    "starter"
+    "starter",
+    "private-rental-decree-2026"
   ],
   "national-rental": [
     "permanent-rental",
@@ -322,7 +323,8 @@
   "lh-purchase-rental": [
     "happy-house",
     "beotimmok-2026",
-    "newlyweds"
+    "newlyweds",
+    "private-rental-decree-2026"
   ],
   "multi-child": [
     "special-once",
@@ -428,5 +430,10 @@
     "homeless-2026",
     "acquisition-tax-2026",
     "glossary"
+  ],
+  "private-rental-decree-2026": [
+    "lh-purchase-rental",
+    "happy-house",
+    "jeonse-loan-guarantee"
   ]
 }

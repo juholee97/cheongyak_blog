@@ -17,7 +17,9 @@ const queue = arg('--queue');
 const pad0 = (n) => String(n).padStart(2, '0');
 const later = new Date(Date.now() + 3600e3), tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1); tomorrow.setHours(0, 0, 0, 0);
 const from = later > tomorrow ? later : tomorrow; // 대기열은 내일부터(오늘 편수는 이미 정해져 있음), 적어도 1시간 뒤
-const start = arg('--start') || (queue ? `${from.getFullYear()}-${pad0(from.getMonth() + 1)}-${pad0(from.getDate())} ${pad0(from.getHours())}:00` : null);
+// --soon: 오늘이라도 1시간 뒤부터(정책 소식처럼 빨리 나가야 하는 글 — data/priority_queue.txt, 2026-10-27)
+const soon = process.argv.includes('--soon') ? `${later.getFullYear()}-${pad0(later.getMonth() + 1)}-${pad0(later.getDate())} ${pad0(later.getHours())}:00` : null;
+const start = arg('--start') || soon || (queue ? `${from.getFullYear()}-${pad0(from.getMonth() + 1)}-${pad0(from.getDate())} ${pad0(from.getHours())}:00` : null);
 const times = (arg('--times') || '08:00,12:00,19:00').split(',');
 const gap = +(arg('--gap') ?? (queue ? 180 : 0));
 const max = +(arg('--max') ?? (queue ? 6 : Infinity)); // 한 번에 예약할 최대 편수(대기열은 하루 6편 — 하루 3편씩 나가니 앞으로 쌓이는 양이 늘 2주쯤 앞서 있다) // 글 사이 쉬는 초(짧은 시간에 저장이 몰리면 보안 확인이 뜬다 — 2026-10-24)
