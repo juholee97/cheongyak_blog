@@ -8,7 +8,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { join, basename } from 'node:path';
 import { launch, ensureLogin, NEWPOST, ROOT, BLOG, GUARD } from './common.mjs';
 import { checkDraft } from '../posts/check.mjs';
-import { checkAnalysis } from '../posts/analysis_post.mjs';
+import { checkAnalysis, areaOf } from '../posts/analysis_post.mjs';
 import { checkGuide } from '../posts/guide.mjs';
 import { IMG_RE } from '../posts/weekly.mjs';
 
@@ -79,7 +79,9 @@ async function main() {
   const draft = JSON.parse(await readFile(path, 'utf8'));
   // 분양분석 글(type: analysis)은 facts·notes로 검수, 주간 글은 수집본 사본으로 검수
   const issues = draft.type === 'guide' ? await checkGuide(draft) : draft.type === 'analysis' ? checkAnalysis(draft) : checkDraft(draft, JSON.parse(await readFile(path.replace(/\.json$/, '.data.json'), 'utf8')));
-  if (draft.title.startsWith('[')) issues.push('제목 앞 [말머리] 금지 — 검색어를 제목 맨 앞에');
+  // 말머리 금지. 단 분양분석 글의 지역 꼬리표([판교]·[인천 청라] — 주소에서 뽑은 검색어, 2026-10-26 사용자 지시)는 허용
+  const areaTag = draft.type === 'analysis' && draft.facts?.item ? `[${areaOf(draft.facts.item)}] ` : null;
+  if (draft.title.startsWith('[') && !(areaTag && draft.title.startsWith(areaTag))) issues.push('제목 앞 [말머리] 금지 — 검색어를 제목 맨 앞에');
   if (issues.length) { issues.forEach((i) => log('✗ ' + i)); log('검수 실패 — 저장하지 않습니다.'); return 4; }
   for (const im of draft.images || []) await readFile(join(ROOT, im.file)).catch(() => { throw new Error(`그림 파일 없음: ${im.file} (posts/images.mjs 먼저)`); });
 

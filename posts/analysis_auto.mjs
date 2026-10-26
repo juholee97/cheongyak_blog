@@ -55,7 +55,8 @@ async function main() {
     const no = it.id.split('-')[0];
     // 이미 예약·발행된 글(제목으로) 또는 임시저장·예약 기록이 있으면 건너뛴다 — 다시 수집하면 손으로 고친 초안을 덮어쓰므로
     const title = titleOf({ item: it });
-    if (sched[title] || pub[title] || pub[`[분양분석] ${it.name.replace(/\(.*?\)/g, '').trim()} — 분양가·주변 실거래·교통·학군·대출 정리`]) continue;
+    const plain = title.replace(/^\[[^\]]*\] /, ''); // 지역 꼬리표 붙기 전(2026-10-26 이전) 제목으로 올린 글
+    if (sched[title] || pub[title] || sched[plain] || pub[plain] || pub[`[분양분석]${it.name.replace(/\(.*?\)/g, '').trim()} — 분양가·주변 실거래·교통·학군·대출 정리`]) continue;
     const prev = await json(`drafts/analysis_${no}.save.json`);
     if (prev?.ok && ['save', 'schedule'].includes(prev.mode)) continue;
     const receipt = it.phases.filter((p) => ['sp', 'p1'].includes(p.k)).map((p) => p.date).sort()[0];

@@ -8,9 +8,14 @@ title cheongyak
 rem Tistory shows reCAPTCHA to headless browsers, so the browser window is shown (2026-10-24)
 set TISTORY_HEADED=1
 cd /d "%~dp0"
-if /i "%~1"=="check" (
-  node posts\analysis_auto.mjs --dry-run %2 %3
-) else (
-  node posts\analysis_auto.mjs %*
-)
+if /i "%~1"=="check" goto check
+node posts\analysis_auto.mjs %*
+set RC=%ERRORLEVEL%
+rem Then fix up to 3 already-published analysis posts (new card, region tag in title). Queue: data\analysis_retrofit.txt (2026-10-26)
+if not exist data\logs mkdir data\logs
+echo ===== %DATE% %TIME% >> data\logs\analysis_retrofit.log
+node posts\retrofit_analysis.mjs --max 3 >> data\logs\analysis_retrofit.log 2>&1
+exit /b %RC%
+:check
+node posts\analysis_auto.mjs --dry-run %2 %3
 exit /b %ERRORLEVEL%

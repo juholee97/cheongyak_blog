@@ -70,7 +70,7 @@ export function itemHtml(it, w) {
   <span style="width:34px;height:34px;border-radius:17px;background:${hot ? s.ph.c : '#fff'};border:4px solid ${s.ph.c};z-index:1"></span>
   <span style="font-size:22px;font-weight:900;color:${s.ph.c};white-space:nowrap">${lab(s)}</span>
   <span style="font-size:22px;font-weight:${hot ? 900 : 500};color:${hot ? T.ink : T.muted};white-space:nowrap">${s.p.end ? `${s.p.date.slice(5).replace('-', '.')}~${s.p.end.slice(5).replace('-', '.')}` : md(s.p.date)}</span>
-  ${hot ? `<span style="font-size:17px;font-weight:700;color:#fff;background:${T.brand};border-radius:999px;padding:3px 12px">이번 주</span>` : '<span style="height:27px"></span>'}
+  ${hot ? `<span style="font-size:17px;font-weight:700;color:#fff;background:${T.brand};border-radius:999px;padding:3px 12px">${w.badge || '이번 주'}</span>` : '<span style="height:27px"></span>'}
 </div>`;
   }).join('');
   return `${BASE}<div class="card">

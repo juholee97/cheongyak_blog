@@ -249,8 +249,29 @@ function plans(f, images) {
 // 괄호 설명((공공분양)·(본청약))은 빼되 블록 번호((AC4BL)·(S-1BL))는 남긴다 — 같은 단지 이름의 블록 두 곳이 같은 제목이 됐었다(2026-10-26 계양 카이브 유보라 AC3BL·AC4BL)
 export const shortName = (name) => name.replace(/\((.*?)\)/g, (m, x) => (/^[A-Z]{0,3}-?\d+[A-Z]?\s*(BL|블록)$/i.test(x.trim()) ? ` ${x.trim()}` : '')).replace(/\s+/g, ' ').trim();
 
+// 제목 앞 지역 꼬리표: 검색에서 많이 찾는 생활권 이름(판교·동탄·청라…)을 우선, 없으면 「시·도 시·군·구」(2026-10-26 사용자 지시: 상급지 키워드 강조).
+// 사실만: 공고 주소(법정동·지구 이름)에 그 이름이 있을 때만 붙인다 — 단지 이름의 마케팅 표현(예: 트리븐「센텀」, 반여동)은 근거로 쓰지 않는다. 위에서부터 먼저 맞는 것.
+const AREAS = [
+  [/판교|분당구 (백현|삼평|운중|하산운)동/, '판교'], [/분당구/, '분당'], [/광교/, '광교'], [/위례/, '위례'], [/동탄/, '동탄'], [/과천시/, '과천'],
+  [/송도/, '인천 송도'], [/청라/, '인천 청라'], [/검단/, '인천 검단'],
+  [/고덕강일/, '서울 고덕강일'], [/평택고덕|평택시 고덕/, '평택 고덕'],
+  [/용산구 한남/, '용산 한남'], [/용산구/, '용산'], [/서초구 반포/, '반포'], [/압구정/, '압구정'], [/강남구/, '강남'], [/서초구/, '서초'],
+  [/송파구 (잠실|신천)/, '잠실'], [/송파구/, '송파'], [/성동구 성수/, '성수'], [/여의도/, '여의도'], [/양천구 목동/, '목동'], [/마곡/, '마곡'],
+  [/운정/, '파주 운정'], [/일산/, '고양 일산'], [/미사/, '하남 미사'], [/다산/, '남양주 다산'],
+  [/에코델타/, '부산 에코델타시티'], [/해운대구 (우|재송)동/, '부산 센텀시티'], [/해운대구/, '부산 해운대'],
+  [/수성구 범어/, '대구 범어'], [/대구광역시 수성구/, '대구 수성'], [/세종특별자치시/, '세종'], [/광주.*첨단/, '광주 첨단'],
+];
+export function areaOf(it) {
+  const hit = AREAS.find(([re]) => re.test(it.address || ''));
+  if (hit) return hit[1];
+  // 「해운대구」→「해운대」, 「화성특례시」→「화성」(한 글자가 남는 「북구」「중구」는 그대로). 행정구역 이름이 아니거나 시·도와 같으면 시·도만
+  const d0 = (it.district || '').split(' ')[0];
+  const d = /(특례시|시|군|구)$/.test(d0) && !/지구$/.test(d0) ? d0.replace(/(특례시|시|군|구)$/, (m) => (d0.length - m.length >= 2 ? '' : m)) : '';
+  return [it.region, d !== it.region ? d : ''].filter(Boolean).join(' ');
+}
+
 export function titleOf(f) {
-  return `${shortName(f.item.name)} 분양가·청약 분석 — 주변 실거래·교통·학군·대출`;
+  return `[${areaOf(f.item)}] ${shortName(f.item.name)} 분양가·청약 분석 — 주변 실거래·교통·학군·대출`;
 }
 
 export function draftOf(f, notes = {}, images = []) {
@@ -290,7 +311,7 @@ export async function images(f, out) {
   const it = f.item, rec = it.phases.find((p) => ['sp', 'p1', 'p2'].includes(p.k)) || it.phases[0];
   const mon = new Date(rec.date + 'T00:00:00Z'); mon.setUTCDate(mon.getUTCDate() - ((mon.getUTCDay() + 6) % 7));
   const start = mon.toISOString().slice(0, 10), end = new Date(mon.getTime() + 6 * 864e5).toISOString().slice(0, 10);
-  const pages = [{ name: 'thumb', html: thumbOf(f) }, { name: 'card', html: itemHtml(it, { start, end }) }];
+  const pages = [{ name: 'thumb', html: thumbOf(f) }, { name: 'card', html: itemHtml(it, { start, end, badge: '접수 주' }) }];
   const m = await mapHtml(it, await keyOf());
   if (!m.skip) pages.push({ name: 'map', html: m.html });
   const files = await renderPngs(pages, out);
