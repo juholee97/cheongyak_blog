@@ -9,6 +9,10 @@ rem Tistory shows reCAPTCHA to headless browsers, so the browser window is shown
 set TISTORY_HEADED=1
 cd /d "%~dp0"
 if /i "%~1"=="check" goto check
+if not exist data\logs mkdir data\logs
+rem Policy news candidates (official press releases and legislative notices), list only: data\policy_candidates.md (2026-10-27)
+echo ===== %DATE% %TIME% >> data\logs\policy_watch.log
+node posts\policy_watch.mjs >> data\logs\policy_watch.log 2>&1
 node posts\analysis_auto.mjs %*
 set RC=%ERRORLEVEL%
 if not exist data\logs mkdir data\logs
