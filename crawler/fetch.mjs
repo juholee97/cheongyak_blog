@@ -4,6 +4,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { fetchYouth } from './youth.mjs';
+import { fetchLH } from './lh.mjs';
 
 const BASE = 'https://api.odcloud.kr/api/ApplyhomeInfoDetailSvc/v1/';
 const SOURCES = [
@@ -174,6 +175,16 @@ async function main() {
     console.log(`청년안심주택: ${youth.length}건 중 ${kept}건${youth.some((i) => !i.phases.length) ? ` (일정 못 읽음 ${youth.filter((i) => !i.phases.length).length}건 — 본문 형식 확인)` : ''}`);
   } catch (e) {
     console.warn(`청년안심주택 수집 실패: ${e.message}`);
+  }
+  // LH 임대주택(행복주택·국민임대 등). 실패해도 나머지는 그대로 배포한다
+  try {
+    const lh = await fetchLH(key, noticeFrom);
+    let kept = 0;
+    const kinds = {};
+    for (const it of lh) if (it.region && it.phases.some((p) => p.date >= from && p.date <= to)) { items.set(it.id, it); kept++; kinds[it.kind] = (kinds[it.kind] || 0) + 1; }
+    console.log(`LH 임대공고: ${lh.length}건 중 ${kept}건 ${JSON.stringify(kinds)}`);
+  } catch (e) {
+    console.warn(`LH 임대공고 수집 실패: ${e.message}`);
   }
   if (!items.size) throw new Error('수집 결과 0건 — 빈 달력을 배포하지 않도록 중단합니다.');
 

@@ -57,7 +57,7 @@ export function weeklyHtml(w) {
 export function itemHtml(it, w) {
   const inWeek = (p) => p.date <= w.end && (p.end || p.date) >= w.start;
   const steps = PH.map((ph) => ({ ph, p: it.phases.find((x) => x.k === ph.k) })).filter((s) => s.p);
-  const lab = (s) => (s.ph.k === 'p1' && it.kind !== 'APT' ? '접수' : s.ph.k === 'win' && it.kind === '청년안심주택' ? '발표' : s.ph.label);
+  const lab = (s) => (s.ph.k === 'p1' && it.source === 'lh' ? '접수 마감' : s.ph.k === 'p1' && it.kind !== 'APT' ? '접수' : s.ph.k === 'win' && it.kind === '청년안심주택' ? '발표' : s.ph.label);
   const facts = [
     ['공급', it.units ? `${it.units.toLocaleString()}세대` : '-'],
     it.pricePerPyeong ? ['분양가(3.3㎡)', `${it.pricePerPyeong.toLocaleString()}만원`] : null,

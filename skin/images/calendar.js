@@ -122,6 +122,7 @@
   // APT 말고는 순위가 없으니 p1을 "접수"로. 청년안심주택 발표는 서류심사 대상자·당첨자 발표라 "발표"로
   var phaseOf = function (item, k) {
     var p = PHK[k];
+    if (k === 'p1' && item.source === 'lh') return Object.assign({}, p, { label: '마감', full: '접수 마감' }); // LH 임대는 마감일만 안다
     if (k === 'p1' && item.kind !== 'APT') return Object.assign({}, p, { label: '접수', full: '접수' });
     return k === 'win' && item.kind === '청년안심주택' ? Object.assign({}, p, { label: '발표', full: '발표' }) : p;
   };
@@ -329,7 +330,7 @@
       '<div class="modal-name">' + esc(it.name) + '</div></div>' +
       '<button type="button" class="modal-close" data-act="close" aria-label="닫기">✕</button></div>' +
       '<div class="modal-body"><div class="mtable">' + rows + '</div>' +
-      '<div class="modal-btns">' + (go ? '<a class="go" href="' + esc(go) + '" target="_blank" rel="noopener">' + (youth ? '청년안심주택 공고' : '청약홈 바로가기') + '</a>' : '') +
+      '<div class="modal-btns">' + (go ? '<a class="go" href="' + esc(go) + '" target="_blank" rel="noopener">' + (youth ? '청년안심주택 공고' : it.source === 'lh' ? 'LH청약플러스 공고' : '청약홈 바로가기') + '</a>' : '') +
       (home ? '<a href="' + esc(home) + '" target="_blank" rel="noopener">' + (youth ? '청약신청 페이지' : '분양 홈페이지') + '</a>' : '') + '</div></div></div></div>';
   }
 

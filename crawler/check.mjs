@@ -91,4 +91,18 @@ assert.equal(sh.name, '2026년 2차 청년안심주택 (공공임대)');
 assert.equal(sh.district, null); // 여러 구를 한 공고로
 assert.deepEqual(sh.phases, [{ k: 'p1', date: '2026-08-11', end: '2026-08-13' }, { k: 'win', date: '2026-12-11' }]);
 
+// LH 임대공고(lh.mjs): 응답 모양에 기대지 않고 PAN_ID 행을 모으고, 마감일을 「접수 마감」(p1)으로
+const { rowsOf, toLhItem, dot } = await import('./lh.mjs');
+assert.equal(dot('2026.10.23'), '2026-10-23');
+assert.equal(dot('20261023'), '2026-10-23');
+const lhRows = rowsOf([{ dsSch: [{ PAN_NT_ST_DT: '2026.09.01' }] }, { dsList: [{ PAN_ID: '0000059133', PAN_NM: '서울 강남 행복주택 입주자 모집', AIS_TP_CD_NM: '행복주택', CNP_CD_NM: '서울특별시', PAN_NT_ST_DT: '2026.10.20', CLSG_DT: '2026.11.03', DTL_URL: 'https://apply.lh.or.kr/x' }], resHeader: [{ SS_CODE: 'Y' }] }]);
+assert.equal(lhRows.length, 1);
+const lh = toLhItem(lhRows[0]);
+assert.equal(lh.id, 'lh-0000059133');
+assert.equal(lh.kind, '행복주택');
+assert.equal(lh.region, '서울');
+assert.equal(lh.noticeDate, '2026-10-20');
+assert.deepEqual(lh.phases, [{ k: 'p1', date: '2026-11-03' }]);
+assert.equal(toLhItem({ PAN_ID: '1', CNP_CD_NM: '전국', CLSG_DT: '2026.11.03' }).region, null); // 전국 공고는 시·도 필터에 못 걸어 뺀다
+
 console.log('crawler check OK');
