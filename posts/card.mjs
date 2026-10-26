@@ -28,7 +28,7 @@ const BASE = `<!doctype html><html lang="ko"><head><meta charset="utf-8">
 *{box-sizing:border-box}body{margin:0;width:1200px;height:630px;font-family:'Noto Sans KR',sans-serif;color:${T.ink};-webkit-font-smoothing:antialiased}
 .card{width:1200px;height:630px;background:#fff;display:flex;flex-direction:column;position:relative;overflow:hidden}
 .brand{display:flex;align-items:center;gap:12px;font-size:21px;font-weight:700}
-.mark{width:36px;height:36px;display:inline-flex;flex:none}.mark svg{width:100%;height:100%};color:#fff;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:900}
+.mark{width:36px;height:36px;display:inline-flex;flex:none}.mark svg{width:100%;height:100%}
 .foot{display:flex;justify-content:space-between;align-items:center;padding:0 64px;height:64px;border-top:1px solid ${T.line};font-size:17px;color:${T.muted}}
 .foot b{color:${T.brand}}
 </style></head><body>`;
@@ -82,7 +82,7 @@ export function itemHtml(it, w) {
   <div style="font-size:${it.name.length > 18 ? 52 : 64}px;font-weight:900;letter-spacing:-0.05em;line-height:1.12;word-break:keep-all">${esc(it.name)}</div>
   <div style="display:flex;gap:14px">${facts.map(([k, v]) => `<div style="background:${T.panel};border-radius:16px;padding:12px 22px"><span style="font-size:19px;color:${T.muted};font-weight:700">${k}</span> <span style="font-size:28px;font-weight:900;margin-left:6px">${v}</span></div>`).join('')}</div>
   <div style="margin-top:auto;border-top:1px solid ${T.line};padding-top:18px">
-    <div style="font-size:19px;font-weight:700;color:${T.muted};margin-bottom:16px">청약 일정 · 채워진 점 = 이번 주(${md(w.start)}~${md(w.end)})</div>
+    <div style="font-size:19px;font-weight:700;color:${T.muted};margin-bottom:16px">청약 일정</div>
     <div style="display:flex">${timeline}</div>
   </div>
 </div>
