@@ -182,7 +182,7 @@ async function main() {
     let kept = 0;
     const kinds = {};
     for (const it of lh) if (it.region && it.phases.some((p) => p.date >= from && p.date <= to)) { items.set(it.id, it); kept++; kinds[it.kind] = (kinds[it.kind] || 0) + 1; }
-    console.log(`LH 임대공고: ${lh.length}건 중 ${kept}건 ${JSON.stringify(kinds)}`);
+    console.log(`LH 임대공고: ${lh.length}건 중 ${kept}건 ${JSON.stringify(kinds)} · 공고 번호 ${new Set(lh.map((i) => i.id)).size}가지 · 첫 행 항목 ${Object.keys(lh.raw?.[0] || {}).join(',')}`);
   } catch (e) {
     console.warn(`LH 임대공고 수집 실패: ${e.message}`);
   }

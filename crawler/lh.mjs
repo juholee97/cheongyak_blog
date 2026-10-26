@@ -49,5 +49,7 @@ export async function fetchLH(key, noticeFrom) {
     rows.push(...got);
     if (got.length < 500) break;
   }
-  return rows.map(toLhItem);
+  const items = rows.map(toLhItem).filter((it) => !/어린이집|상가|토지/.test(it.kind)); // 집이 아닌 임대(어린이집 등)는 뺀다
+  items.raw = rows.slice(0, 1); // 수집 기록에 항목 이름만 찍는 데 쓴다(값은 찍지 않음)
+  return items;
 }
