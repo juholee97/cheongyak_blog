@@ -4,7 +4,7 @@
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { join, basename } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { esc, C, TH, TD, IMG, DISCLAIMER } from './weekly.mjs';
+import { esc, C, TH, TD, IMG, DISCLAIMER, toc } from './weekly.mjs';
 import { BANNED } from './check.mjs';
 import { renderPngs, searchThumbHtml } from './card.mjs';
 import { ROOT } from '../tistory/common.mjs';
@@ -23,14 +23,16 @@ export function render(d) {
   // 한 줄 답(answer): 제목이 묻는 것에 바로 답하는 1~2문장 — 검색 AI 답변이 인용하기 쉬운 첫 문단(2026-10-25)
   if (d.answer) out.push(`<div style="border:1px solid ${C.line};border-left:4px solid #0b4fc4;border-radius:12px;padding:14px 18px;margin:16px 0;background:#f5f8fe"><p style="margin:0 0 4px;font-size:13px;font-weight:700;color:#0b4fc4">한 줄 답</p><p style="margin:0;font-weight:700">${esc(d.answer)}</p></div>`);
   if (d.intro?.length) out.push(`<p>${d.intro.map(esc).join(' ')}</p>`);
-  for (const s of d.sections) {
-    out.push(`<h2 style="font-weight:700">${esc(s.h)}</h2>`);
+  const heads = [...d.sections.map((s, i) => ({ id: `sec-${i + 1}`, t: s.h })), ...(d.faq?.length ? [{ id: 'faq', t: '자주 묻는 질문' }] : [])];
+  if (heads.length >= 3) out.push(toc(heads));
+  for (const [i, s] of d.sections.entries()) {
+    out.push(`<h2 id="sec-${i + 1}" style="font-weight:700">${esc(s.h)}</h2>`);
     (s.notes || []).forEach((n) => out.push(`<p>${esc(n)}</p>`));
     if (s.table) out.push(table(s.table));
     if (s.foot) out.push(foot(s.foot));
   }
   // 자주 묻는 질문(faq): 실제 검색 문장 같은 질문 + 1~2문장 답
-  if (d.faq?.length) out.push(`<h2 style="font-weight:700">자주 묻는 질문</h2>\n${d.faq.map((x) => `<h3 style="font-weight:700">Q. ${esc(x.q)}</h3>\n<p>${esc(x.a)}</p>`).join('\n')}`);
+  if (d.faq?.length) out.push(`<h2 id="faq" style="font-weight:700">자주 묻는 질문</h2>\n${d.faq.map((x) => `<h3 style="font-weight:700">Q. ${esc(x.q)}</h3>\n<p>${esc(x.a)}</p>`).join('\n')}`);
   if (d.related?.length) out.push(`<h2 style="font-weight:700">함께 보면 좋은 글</h2>\n<ul>${d.related.map((r) => `<li><a href="${esc(r.url)}">${esc(r.title)}</a></li>`).join('')}</ul>`);
   out.push(`<p style="font-size:13px;color:${C.muted}">출처(확인일 ${esc(d.checked)}): ${d.sources.map((x) => `<a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.name)}</a>`).join(' · ')} · 제도 요건 정리이며 대출·청약 권유가 아닙니다. 실제 대상·한도는 기관 심사로 정해집니다.</p>`);
   out.push(`<p style="font-size:13px;color:${C.muted}">※ ${DISCLAIMER}</p>`);

@@ -4,7 +4,7 @@
 // 규칙: 숫자는 facts(수집·조회 값)에서만. notes(사람/Claude가 쓰는 문장)의 숫자도 facts에 있어야 검수 통과(checkAnalysis). 투자 권유·"로또" 류 금지.
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
-import { loadData, esc, span, label, where, full, md, C, TH, TD, IMG, BLOG_URL, DISCLAIMER } from './weekly.mjs';
+import { loadData, esc, span, label, where, full, md, C, TH, TD, IMG, BLOG_URL, DISCLAIMER, toc } from './weekly.mjs';
 import { BANNED } from './check.mjs';
 import { stations } from './nearby.mjs';
 import { schoolsAt, SOURCE as SCHOOL_SOURCE } from './schools.mjs';
@@ -81,7 +81,9 @@ export async function collect(no, dataSrc) {
 }
 
 // ── 본문 ─────────────────────────────────────────
-const H2 = (t) => `<h2 style="font-weight:700">${t}</h2>`;
+const H2 = (t, id) => `<h2${id ? ` id="${id}"` : ''} style="font-weight:700">${t}</h2>`;
+// 목차에 싣는 소제목(id 고정)
+const HEADS = [['glance', '한눈에'], ['price', '분양가와 주변 실거래'], ['place', '입지 — 교통·학교'], ['rules', '자격·규제'], ['loans', '대출·자금'], ['links', '공고문·문의']];
 const note = (lines) => (lines || []).filter(Boolean).map((s) => `<p>${esc(s)}</p>`).join('\n');
 const box = (inner) => `<div style="border:1px solid ${C.line};border-radius:16px;padding:16px 20px;margin:16px 0">${inner}</div>`;
 const table = (head, rows) => `<div style="overflow-x:auto"><table style="border-collapse:collapse;width:100%;min-width:560px"><thead><tr>${head.map((h) => `<th ${TH}>${h}</th>`).join('')}</tr></thead><tbody>
@@ -175,13 +177,13 @@ export function render(f, notes = {}, images = []) {
   return [
     img('thumb'), img('card'), (notes.intro || []).filter(Boolean).length ? `<p>${notes.intro.filter(Boolean).map(esc).join(' ')}</p>` : '',
     has.has('aerial') ? `${img('aerial')}\n<p style="font-size:13px;color:${C.muted}">단지 조감도 · 출처: ${srcOf(f, images.find((i) => i.key === 'aerial'))} · 실제와 다를 수 있습니다.</p>` : '',
-    summaryBox(f),
-    H2('한눈에'), x.glance, x.types, plans(f, images),
-    H2('분양가와 주변 실거래'), x.leasehold, note(notes.price), x.trades,
-    H2('입지 — 교통·학교'), img('map'), note(notes.place), x.place, x.busRoutes,
-    H2('자격·규제'), note(notes.rules), x.rules,
-    H2('대출·자금'), note(notes.loans), x.loans,
-    H2('공고문·문의'), x.links,
+    summaryBox(f), toc(HEADS.map(([id, t]) => ({ id, t }))),
+    H2('한눈에', 'glance'), x.glance, x.types, plans(f, images),
+    H2('분양가와 주변 실거래', 'price'), x.leasehold, note(notes.price), x.trades,
+    H2('입지 — 교통·학교', 'place'), img('map'), note(notes.place), x.place, x.busRoutes,
+    H2('자격·규제', 'rules'), note(notes.rules), x.rules,
+    H2('대출·자금', 'loans'), note(notes.loans), x.loans,
+    H2('공고문·문의', 'links'), x.links,
     `<p style="font-size:13px;color:${C.muted}">기준: 청약홈(한국부동산원) 분양정보 ${f.dataUpdatedAt.slice(0, 10)} 수집 · 실거래 ${esc(f.trades.source || '')} · 이 글은 공고와 공개 자료를 정리한 것이며 청약·투자 권유가 아닙니다.</p>`,
     `<p style="font-size:13px;color:${C.muted}">※ ${DISCLAIMER}</p>`,
   ].filter(Boolean).join('\n');

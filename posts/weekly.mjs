@@ -24,6 +24,8 @@ export const full = (s) => `${s.slice(0, 4)}.${s.slice(5, 7)}.${s.slice(8, 10)} 
 // 기간 표기. 시작·끝 연도가 다르면 연도까지 쓴다("9.12 ~ 9.12"처럼 보이지 않게)
 export const span = (p, f = md) => (!p.end ? f(p.date) : p.end.slice(0, 4) !== p.date.slice(0, 4) ? `${full(p.date)} ~ ${full(p.end)}` : `${f(p.date)} ~ ${f(p.end)}`);
 export const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+// 글 머리 목차(2026-10-27): 소제목(h2 id)으로 바로 가는 링크 — 휴대폰에서 긴 글 훑기, 검색 결과의 소제목 바로가기용. 편집기가 id·#링크를 남기는 것 실측
+export const toc = (xs) => `<div style="border:1px solid ${C.line};border-radius:12px;padding:14px 18px;margin:16px 0"><p style="margin:0 0 6px;font-size:13px;font-weight:700;color:${C.muted}">이 글의 순서</p><ol style="margin:0;padding-left:20px">${xs.map((x) => `<li><a href="#${x.id}">${esc(x.t)}</a></li>`).join('')}</ol></div>`;
 export const label = (it, k) => (k === 'p1' && it.source === 'lh' ? '접수 마감' : k === 'p1' && it.kind !== 'APT' ? '접수' : k === 'win' && it.kind === '청년안심주택' ? '발표' : PH[k]);
 export const where = (it) => [it.region, it.district].filter(Boolean).join(' ');
 export const updatedLabel = (u) => (/^(\d{4})-(\d\d)-(\d\d)T(\d\d):(\d\d)/.exec(u) || []).slice(1).reduce((s, v, i) => s + ['', '.', '.', ' ', ':'][i] + v, '');
