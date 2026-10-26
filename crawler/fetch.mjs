@@ -1,6 +1,6 @@
 // 청약홈 분양정보 조회 서비스(공공데이터포털 15098547) → schedule.json
 // 사용: DATA_GO_KR_KEY=... node crawler/fetch.mjs [--out site/schedule.json]
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { fetchYouth } from './youth.mjs';
@@ -147,6 +147,10 @@ async function main() {
   const items = new Map();
   // 한 출처가 0건이거나 실패하면 지난번 배포본에서 그 출처 항목을 이어 쓴다 — 2026-10-27 00:16 청약홈 API가 전부 0건을 돌려줘 아파트가 달력에서 사라졌던 일
   const prev = await fetch(PREV_URL).then((r) => (r.ok ? r.json() : { items: [] })).catch(() => ({ items: [] }));
+  // 지난 배포본에도 없으면 저장소의 마지막 정상본(crawler/fallback-schedule.json, 2026-10-26 07:51 수집)에서
+  const seed = JSON.parse(await readFile(new URL('./fallback-schedule.json', import.meta.url), 'utf8').catch(() => '{"items":[]}'));
+  const seen = new Set((prev.items || []).map((it) => it.id));
+  prev.items = [...(prev.items || []), ...(seed.items || []).filter((it) => !seen.has(it.id))];
   const keepPrev = (label, test) => {
     const old = (prev.items || []).filter((it) => test(it) && it.phases?.some((p) => p.date >= from && p.date <= to));
     old.forEach((it) => items.set(it.id, it));
