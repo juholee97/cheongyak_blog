@@ -14,6 +14,9 @@ set RC=%ERRORLEVEL%
 if not exist data\logs mkdir data\logs
 rem Tistory daily post limit is now 5 (2026-10-27), so one run in priority order: analysis posts, then up to 3 queued guides, then retrofits.
 rem The 00:30 guide queue task is disabled; guides run here after analysis posts.
+rem Monthly refresh of published guides (new check date and month stamp, queue data\guide_refresh.txt) goes before new guides (2026-10-27)
+echo ===== %DATE% %TIME% >> data\logs\guide_refresh.log
+node posts\refresh_run.mjs --max 2 >> data\logs\guide_refresh.log 2>&1
 echo ===== %DATE% %TIME% >> data\logs\guide_queue.log
 node tistory\schedule_guides.mjs --queue data\guide_queue.txt --max 3 >> data\logs\guide_queue.log 2>&1
 rem Then fix up to 3 already-published analysis posts (new card, region tag in title). Queue: data\analysis_retrofit.txt (2026-10-26)
