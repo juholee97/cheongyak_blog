@@ -121,6 +121,7 @@ a.hero-row:hover { background: var(--tint3); text-decoration: none; color: var(-
 .filter-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 16px; flex-wrap: wrap; background: var(--foot-row); }
 .filter-summary { font-size: 13px; color: var(--sub); }
 .filter-btns { display: flex; gap: 6px; }
+.filter.folded [data-ref="groups"] { display: none; } /* PC 접기: 요약 줄과 버튼만 남긴다(휴대폰은 아래에서 되돌림) */
 
 /* 캘린더 카드 */
 .cal-body { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-start; }
@@ -289,6 +290,8 @@ a.hero-row:hover { background: var(--tint3); text-decoration: none; color: var(-
 /* ───────── 휴대폰(700px 이하): 앱형 화면 ─────────
    하단 탭 바(달력·이번 주·블로그), 지역·상세는 바텀시트, 달력은 단계 색 점 + 건수 */
 @media (max-width: 700px) {
+  .f-fold { display: none; }
+  .filter.folded [data-ref="groups"] { display: block; }
   .hero-inner { padding: 20px 16px 12px; gap: 18px; }
   .hero h2 { font-size: 34px; }
   .hero-date { font-size: 18px; }

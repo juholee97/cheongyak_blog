@@ -87,7 +87,7 @@
   var PHK = {};
   PH.forEach(function (p, i) { PHK[p.k] = Object.assign({ i: i }, p); });
   var W = '일월화수목금토';
-  var STORE = 'cheongyak-regions', STORE_GU = 'cheongyak-seoul-gu';
+  var STORE = 'cheongyak-regions', STORE_GU = 'cheongyak-seoul-gu', STORE_FOLD = 'cheongyak-filter-folded';
   // 경기 시·군(2026-10-26 사용자 요청: 서울 자치구처럼 경기도도 시별로). 일정 자료의 district(「화성특례시」「용인시」)에서 시·군을 뗀 이름
   var GG = ['가평', '고양', '과천', '광명', '광주', '구리', '군포', '김포', '남양주', '동두천', '부천', '성남', '수원', '시흥', '안산', '안성',
     '안양', '양주', '양평', '여주', '연천', '오산', '용인', '의왕', '의정부', '이천', '파주', '평택', '포천', '하남', '화성'];
@@ -140,6 +140,7 @@
   }
   var S = {
     regions: load(STORE, ALL), sub: (function () { var o = {}; SUBS.forEach(function (r) { o[r] = load(SUB[r].store, SUB[r].list); }); return o; })(), subOpen: '', filterOpen: false, // filterOpen은 휴대폰에서만 의미 있음
+    folded: (function () { try { return localStorage.getItem(STORE_FOLD) === '1'; } catch (e) { return false; } })(), // PC: 지역 칸 접기(요약 줄만, 2026-10-27)
     phases: PH.map(function (p) { return p.k; }),
     y: today.getFullYear(), m: today.getMonth(), sel: key(today),
     modal: null, saved: false, data: [], status: 'loading', updatedAt: '',
@@ -213,6 +214,9 @@
     refs.regionPill.textContent = picked.length === ALL.length && !anyPart ? '전국' : !picked.length ? '지역 선택'
       : picked.length === 1 ? first0 : first0 + ' 외 ' + (picked.length - 1);
     refs.fopen.textContent = monthIds.size + '개 단지 보기';
+    root.querySelector('.filter').classList.toggle('folded', S.folded);
+    refs.fold.textContent = S.folded ? '지역 펼치기 ▾' : '지역 접기 ▴';
+    refs.fold.setAttribute('aria-expanded', String(!S.folded));
     root.querySelector('.filter').classList.toggle('open', S.filterOpen);
     root.classList.toggle('sheet-open', S.filterOpen);
 
@@ -372,6 +376,9 @@
       case 'today': return set({ y: today.getFullYear(), m: today.getMonth(), sel: key(today) });
       case 'fopen': return set({ filterOpen: true });
       case 'fclose': return set({ filterOpen: false });
+      case 'fold':
+        try { localStorage.setItem(STORE_FOLD, S.folded ? '0' : '1'); } catch (err) { /* 저장 불가 */ }
+        return set({ folded: !S.folded });
       case 'tocal': return root.querySelector('.cal-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
       case 'sel': {
         set({ sel: d.d });
