@@ -7,6 +7,7 @@ import { fetchYouth } from './youth.mjs';
 import { fetchLH } from './lh.mjs';
 
 const BASE = 'https://api.odcloud.kr/api/ApplyhomeInfoDetailSvc/v1/';
+const PREV_URL = 'https://juholee97.github.io/cheongyak_blog/schedule.json'; // 지난번 배포본
 const SOURCES = [
   { kind: 'APT', detail: 'getAPTLttotPblancDetail', model: 'getAPTLttotPblancMdl' },
   { kind: 'URBTY', detail: 'getUrbtyOfctlLttotPblancDetail' }, // 오피스텔·도시형 (민간임대·생숙은 제외)
@@ -144,10 +145,23 @@ async function main() {
   const noticeFrom = isoDate(new Date(Date.UTC(y, m - 1, 1 - 90))); // 공고 후 계약까지 길어도 3개월 안쪽
 
   const items = new Map();
+  // 한 출처가 0건이거나 실패하면 지난번 배포본에서 그 출처 항목을 이어 쓴다 — 2026-10-27 00:16 청약홈 API가 전부 0건을 돌려줘 아파트가 달력에서 사라졌던 일
+  const prev = await fetch(PREV_URL).then((r) => (r.ok ? r.json() : { items: [] })).catch(() => ({ items: [] }));
+  const keepPrev = (label, test) => {
+    const old = (prev.items || []).filter((it) => test(it) && it.phases?.some((p) => p.date >= from && p.date <= to));
+    old.forEach((it) => items.set(it.id, it));
+    console.warn(`  ↳ ${label}: 지난 배포본 ${old.length}건을 그대로 씀`);
+  };
+  const KINDS_OF = { APT: ['APT'], URBTY: ['오피스텔', '도시형'] };
   for (const src of SOURCES) {
     const since = src.compactDate ? noticeFrom.replace(/-/g, '') : noticeFrom;
     const rows = await getAll(src.detail, { 'cond[RCRIT_PBLANC_DE::GTE]': since }, key);
-    if (!rows.length) await diagnoseEmpty(src.detail, key);
+    if (!rows.length) {
+      await diagnoseEmpty(src.detail, key);
+      const ks = KINDS_OF[src.kind] || [src.kind];
+      keepPrev(src.detail, (it) => ks.includes(it.kind) && !it.source && !String(it.id).startsWith('youth-'));
+      continue;
+    }
     let kept = 0;
     for (const row of rows) {
       const it = toItem(row, src.kind);
@@ -175,6 +189,7 @@ async function main() {
     console.log(`청년안심주택: ${youth.length}건 중 ${kept}건${youth.some((i) => !i.phases.length) ? ` (일정 못 읽음 ${youth.filter((i) => !i.phases.length).length}건 — 본문 형식 확인)` : ''}`);
   } catch (e) {
     console.warn(`청년안심주택 수집 실패: ${e.message}`);
+    keepPrev('청년안심주택', (it) => it.kind === '청년안심주택');
   }
   // LH 임대주택(행복주택·국민임대 등). 실패해도 나머지는 그대로 배포한다
   try {
@@ -185,6 +200,7 @@ async function main() {
     console.log(`LH 임대공고: ${lh.length}건 중 ${kept}건 ${JSON.stringify(kinds)} · 공고 번호 ${new Set(lh.map((i) => i.id)).size}가지 · 첫 행 항목 ${Object.keys(lh.raw?.[0] || {}).join(',')}`);
   } catch (e) {
     console.warn(`LH 임대공고 수집 실패: ${e.message}`);
+    keepPrev('LH 임대공고', (it) => it.source === 'lh');
   }
   if (!items.size) throw new Error('수집 결과 0건 — 빈 달력을 배포하지 않도록 중단합니다.');
 
