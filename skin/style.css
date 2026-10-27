@@ -198,6 +198,8 @@ a.hero-row:hover { background: var(--tint3); text-decoration: none; color: var(-
 /* 블로그 */
 .blog { max-width: 1200px; margin: 0 auto; padding: 40px 24px 64px; display: flex; flex-wrap: wrap; gap: 40px; align-items: flex-start; }
 .blog-main { display: flex; flex-direction: column; gap: 24px; flex: 999 1 600px; min-width: 0; }
+/* 사이드바와 한 줄일 때 본문 폭을 미리 고정 — 사이드바보다 먼저 읽히는 본문 위 광고가 빈 줄 전체 폭을 재서 사이드바를 덮던 문제(2026-10-27) */
+@media (min-width: 948px) { .blog-main { max-width: calc(100% - 300px); } }
 .section-head { display: flex; align-items: baseline; justify-content: space-between; border-bottom: 2px solid var(--ink); padding-bottom: 12px; }
 .section-head h2 { margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -0.02em; }
 .section-count { font-size: 13px; color: var(--sub); }

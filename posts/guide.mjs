@@ -20,8 +20,8 @@ const foot = (s) => `<p style="font-size:13px;color:${C.muted}">${esc(s)}</p>`;
 export function render(d) {
   const out = [];
   if ((d.images || []).some((i) => i.key === 'thumb')) out.push(IMG('thumb'));
-  // 한 줄 답(answer): 제목이 묻는 것에 바로 답하는 1~2문장 — 검색 AI 답변이 인용하기 쉬운 첫 문단(2026-10-25)
-  if (d.answer) out.push(`<div style="border:1px solid ${C.line};border-left:4px solid #0b4fc4;border-radius:12px;padding:14px 18px;margin:16px 0;background:#f5f8fe"><p style="margin:0 0 4px;font-size:13px;font-weight:700;color:#0b4fc4">한 줄 답</p><p style="margin:0;font-weight:700">${esc(d.answer)}</p></div>`);
+  // 한 줄 팁!(answer, 10-27까지 「한 줄 답」): 제목이 묻는 것에 바로 답하는 1~2문장 — 검색 AI 답변이 인용하기 쉬운 첫 문단(2026-10-25)
+  if (d.answer) out.push(`<div style="border:1px solid ${C.line};border-left:4px solid #0b4fc4;border-radius:12px;padding:14px 18px;margin:16px 0;background:#f5f8fe"><p style="margin:0 0 4px;font-size:13px;font-weight:700;color:#0b4fc4">한 줄 팁!</p><p style="margin:0;font-weight:700">${esc(d.answer)}</p></div>`);
   if (d.intro?.length) out.push(`<p>${d.intro.map(esc).join(' ')}</p>`);
   const heads = [...d.sections.map((s, i) => ({ id: `sec-${i + 1}`, t: s.h })), ...(d.faq?.length ? [{ id: 'faq', t: '자주 묻는 질문' }] : [])];
   if (heads.length >= 3) out.push(toc(heads));
