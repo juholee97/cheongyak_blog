@@ -55,7 +55,14 @@ export function parseItems(xml) {
   }));
 }
 
-async function month(lawd, ym, key) {
+// 한 번 실행 안에서 같은 시군구·달은 한 번만 부른다(zip/deals.mjs가 공고 여러 곳을 돌 때)
+const MONTHS = new Map();
+function month(lawd, ym, key) {
+  const k = lawd + ym;
+  if (!MONTHS.has(k)) MONTHS.set(k, fetchMonth(lawd, ym, key).catch((e) => { MONTHS.delete(k); throw e; }));
+  return MONTHS.get(k);
+}
+async function fetchMonth(lawd, ym, key) {
   const out = [];
   for (let page = 1; page <= 10; page++) {
     const u = `${RTMS}?serviceKey=${encodeURIComponent(key)}&LAWD_CD=${lawd}&DEAL_YMD=${ym}&pageNo=${page}&numOfRows=1000`;

@@ -27,7 +27,7 @@ export const LOAN = [
 ];
 const FLAGS = { SPECLT_RDN_EARTH_AT: '투기과열지구', MDAT_TRGET_AREA_SECD: '조정대상지역', PARCPRC_ULS_AT: '분양가상한제 적용', PUBLIC_HOUSE_EARTH_AT: '공공주택지구', LRSCL_BLDLND_AT: '대규모 택지개발지구', IMPRMN_BSNS_AT: '정비사업', NPLN_PRVOPR_PUBLIC_HOUSE_AT: '수도권 민영 공공주택지구' };
 
-async function odcloud(op, no, key) {
+export async function odcloud(op, no, key) {
   const u = new URL(ODCLOUD + op);
   u.searchParams.set('serviceKey', key); u.searchParams.set('returnType', 'JSON'); u.searchParams.set('page', 1); u.searchParams.set('perPage', 200);
   u.searchParams.set('cond[HOUSE_MANAGE_NO::EQ]', no);
