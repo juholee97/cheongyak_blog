@@ -72,7 +72,9 @@ async function main() {
     const base = `drafts/analysis_${p.no}.json`;
     if (await run(`수집 ${p.no}`, ['posts/analysis_post.mjs', p.no, '--auto'])) { failed.push(`${p.name}: 수집 실패`); continue; }
     const code = await run(`예약 ${p.no}`, ['tistory/draft.mjs', base, ...(dryRun ? ['--dry-run'] : []), '--approved', '--schedule', p.when]);
-    if (code) failed.push(`${p.name}: ${{ 1: '입력 오류', 2: '예약 대조 불일치', 3: '로그인 필요(tistory_login.bat)', 5: '티스토리 하루 글 한도(50개)', 6: '티스토리 보안 확인(reCAPTCHA) — 사람이 직접 확인 필요', 4: '검수 실패' }[code] || `코드 ${code}`}`);
+    // 예약이 실패하면 임시저장해 둔다(2026-10-27 사용자 결정) — 저장되면 save.json이 save·ok라 다음 실행은 이 단지를 건너뛴다(발행은 사람이)
+    const kept = code && code !== 4 && !dryRun && !(await run(`임시저장 ${p.no}`, ['tistory/draft.mjs', base, '--approved']));
+    if (code) failed.push(`${p.name}: ${{ 1: '입력 오류', 2: '예약 대조 불일치', 3: '로그인 필요(tistory_login.bat)', 5: '티스토리 하루 글 한도(5개)', 6: '티스토리 보안 확인(reCAPTCHA) — 사람이 직접 확인 필요', 4: '검수 실패' }[code] || `코드 ${code}`}${kept ? ' → 임시저장해 둠' : ''}`);
     else done.push(`${p.when} ${p.name}`);
   }
   if (plan.length > MAX) await log(`※ ${plan.length - MAX}곳은 다음 실행으로 미룸`);

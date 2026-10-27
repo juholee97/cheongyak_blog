@@ -42,6 +42,16 @@ function* slots() {
   }
 }
 
+// 예약이 실패한 글은 임시저장해 둔다(사람이 직접 발행할 수 있게, 2026-10-27 사용자 결정). 대기열엔 그대로 남아 다음에 다시 예약을 시도하고,
+// 같은 글을 두 번 임시저장하지 않게 data/drafted_fallback.txt에 적는다. 가이드 대기열의 하루 한도(코드 5)는 실패가 아니라 내일 차례라 빼고, --soon 글은 한도도 포함.
+async function toDrafts(slug, run) {
+  const file = join(ROOT, 'data/drafted_fallback.txt');
+  const had = (await readFile(file, 'utf8').catch(() => '')).split(/\s+/);
+  if (had.includes(slug)) return;
+  console.log(`예약 실패 — ${slug}를 임시저장`);
+  if (run(['tistory/draft.mjs', `drafts/guide_${slug}.json`, '--approved']) === 0) await writeFile(file, [...had.filter(Boolean), slug].join(' '));
+}
+
 const left = [...slugs];
 const gen = slots();
 let done = 0;
@@ -56,6 +66,7 @@ while (left.length && done < max) {
   const run = (args) => spawnSync(process.execPath, args, { cwd: ROOT, stdio: 'inherit' }).status;
   if (run(['posts/guide.mjs', `drafts/guide_${slug}.json`, '--at', when]) !== 0) { console.log(`검수 실패 — ${slug}에서 멈춤`); process.exit(4); }
   const code = run(['tistory/draft.mjs', `drafts/guide_${slug}.json`, '--approved', '--schedule', when]);
+  if (code && (code !== 5 || soon)) await toDrafts(slug, run);
   if (code === 6) { const m = `티스토리 보안 확인(reCAPTCHA)이 떠서 멈춤 — ${left.length}편은 대기열에 남김. 티스토리에서 직접 글을 한 번 저장해 보거나 시간이 지난 뒤 다시`; console.log(m); notify(m); process.exit(6); }
   if (code === 5) { console.log(`티스토리 하루 글 한도 — ${left.length}편은 대기열에 남겨 두고 내일 다시`); process.exit(0); }
   if (code !== 0) { const m = `예약 실패(코드 ${code}) — ${slug}에서 멈춤. 티스토리 글 목록을 확인하세요.`; console.log(m); notify(m); process.exit(code); }
