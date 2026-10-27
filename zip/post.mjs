@@ -7,7 +7,7 @@ import { ROOT } from '../tistory/common.mjs';
 import { esc, md, label, C, TH, TD, DISCLAIMER } from '../posts/weekly.mjs';
 import { areaOf, shortName } from '../posts/analysis_post.mjs';
 import { BANNED } from '../posts/check.mjs';
-import { GAP, RATE, NEW } from './deals.mjs';
+import { GAP, RATE } from './deals.mjs';
 
 export const CAT_ALL = '분양 시세비교', CAT_DEAL = '꿀분양';
 const GOLD = '#a15c00';
@@ -18,28 +18,31 @@ const table = (head, rows) => `<div style="overflow-x:auto"><table style="border
 
 export function postOf(r) {
   r = { ...r, med: Math.round(r.med), own: Math.round(r.own) };
-  const basis = r.old ? `준공 연도와 관계없이(${NEW}년 이내 단지가 2곳 미만)` : `준공 ${NEW}년 이내`, peer = r.old ? '주변' : '주변 신축';
+  const peer = '비교 단지';
   const name = shortName(r.name), area = areaOf(r), cheap = r.gap > 0, m = r.main;
   const diff = `${eok(r.gap)}(${pct(r.rate)}) ${cheap ? '낮아요' : '높아요'}`;
   const title = r.hit
-    ? `[${area}] ${name} 분양가, 주변 신축보다 전용 ${m.area}㎡ 한 채 약 ${eok(r.gap)} 낮아요 — 실거래 비교`
+    ? `[${area}] ${name} 분양가, 비교 단지 시세보다 전용 ${m.area}㎡ 한 채 약 ${eok(r.gap)} 낮아요 — 실거래 비교`
     : `[${area}] ${name} 분양가 vs ${peer} 실거래 — 전용 ${m.area}㎡ 3.3㎡당 ${Math.abs(r.med - r.own).toLocaleString()}만원 ${cheap ? '낮음' : '높음'}`;
-  const lead = `${name} 전용 ${m.area}㎡ 최고 분양가는 ${eok(m.max)}(3.3㎡당 ${r.own.toLocaleString()}만원)이에요. 반경 1.5km 안 ${basis} 단지 ${r.n}곳의 최근 12개월 실거래 중앙값(3.3㎡당 ${r.med.toLocaleString()}만원)으로 같은 면적을 환산하면 분양가가 ${diff}.${r.leasehold ? ' 다만 토지임대부라 땅값이 빠진(토지는 따로 임대료를 내는) 분양가여서 일반 아파트 거래가와 그대로 비교할 수는 없어요.' : ''}`;
-  const box = r.hit
-    ? `<div style="border:2px solid ${GOLD};border-radius:12px;padding:14px 18px;margin:16px 0;background:#fff8ec"><p style="margin:0 0 4px;font-size:13px;font-weight:800;color:${GOLD}">꿀분양 — 주변 신축보다 ${eok(GAP)} 또는 ${pct(RATE)} 이상 낮은 분양가</p><p style="margin:0;font-weight:700">${esc(lead)}</p></div>`
-    : `<div style="border:1px solid ${C.line};border-left:4px solid ${C.brand};border-radius:12px;padding:14px 18px;margin:16px 0;background:#f5f8fe"><p style="margin:0 0 4px;font-size:13px;font-weight:700;color:${C.brand}">한 줄 비교</p><p style="margin:0;font-weight:700">${esc(lead)}</p></div>`;
+  const lead = `${name} 전용 ${m.area}㎡ 최고 분양가는 ${eok(m.max)}(3.3㎡당 ${r.own.toLocaleString()}만원)이에요. 생활권·급지·브랜드를 보고 고른 비교 단지 ${r.n}곳의 최근 12개월 실거래 중앙값(3.3㎡당 ${r.med.toLocaleString()}만원)으로 같은 면적을 환산하면 분양가가 ${diff}.${r.leasehold ? ' 다만 토지임대부라 땅값이 빠진(토지는 따로 임대료를 내는) 분양가여서 일반 아파트 거래가와 그대로 비교할 수는 없어요.' : ''}`;
+  // 글머리 상자는 정말 한 줄(근거는 바로 아래 표·기준 문단에). lead는 검색 요약(excerpt)으로만 쓴다
+  const one = `전용 ${m.area}㎡ 분양가 ${eok(m.max)} · 비교 단지 시세보다 ${diff}`;
+  const sub = r.leasehold ? `<p style="margin:4px 0 0;font-size:13px;color:${C.muted}">토지임대부 — 땅값이 빠진 분양가라 일반 아파트 거래가와 그대로 비교할 수 없어요.</p>` : '';
+  const [tint, bg, tag] = r.hit ? [GOLD, '#fff8ec', '꿀분양'] : [C.brand, '#f5f8fe', '한 줄 비교'];
+  const box = `<div style="border-left:4px solid ${tint};border-radius:8px;padding:10px 14px;margin:12px 0;background:${bg}"><p style="margin:0;font-weight:700"><span style="font-size:13px;color:${tint};margin-right:8px">${tag}</span>${esc(one)}</p>${sub}</div>`;
   const when = (r.phases || []).filter((p) => p.date).map((p) => [esc(label(r, p.k) || p.k), md(p.date)]);
   const html = [
     box,
-    `<h2>분양가와 ${peer} 실거래</h2>`,
+    '<h2>분양가와 비교 단지 실거래</h2>',
     table(['구분', '전용 3.3㎡당', `전용 ${m.area}㎡ 환산`], [
       [`<b>${esc(name)}</b> 최고 분양가`, `${r.own.toLocaleString()}만원`, eok(m.max)],
       [`${peer} ${r.n}곳 중앙값`, `${r.med.toLocaleString()}만원`, eok(Math.round((r.med * m.area) / 3.3058))],
       ['차이', `${Math.abs(r.med - r.own).toLocaleString()}만원 ${cheap ? '낮음' : '높음'}`, `${eok(r.gap)} ${cheap ? '낮음' : '높음'}`],
     ]),
-    '<h3>비교한 단지</h3>',
-    table(['단지', '준공', '거리', '전용 3.3㎡당 중앙값'], r.refs.map((g) => [esc(g.apt), `${g.built}년`, g.d != null ? km(g.d) : '-', `${g.perPy.toLocaleString()}만원`])),
-    `<p style="font-size:13px;color:${C.muted}">기준: 국토교통부 아파트 매매 실거래가(${esc(r.months)}) · 반경 1.5km · ${basis} · 단지별 전용 3.3㎡당 중앙값의 중앙값. 분양가는 주력 주택형(세대수 최다)의 최고 분양가로, 발코니 확장·옵션 비용은 빠져 있어요.</p>`,
+    '<h3>비교한 단지와 고른 이유</h3>',
+    table(['단지', '준공', '거리', '전용 3.3㎡당', '고른 이유'], r.refs.map((g) => [esc(g.apt), `${g.built}년`, g.d != null ? km(g.d) : '-', `${g.perPy.toLocaleString()}만원`, esc(g.why)])),
+    ...(r.note ? [`<p>${esc(r.note)}</p>`] : []),
+    `<p style="font-size:13px;color:${C.muted}">기준: 국토교통부 아파트 매매 실거래가(${esc(r.months)}) · 같은 시·군·구에서 생활권 인식·상급지/하급지·브랜드·단지 규모를 보고 고른 단지 · 단지별 전용 3.3㎡당 중앙값의 중앙값. 고른 기준은 aulee의 판단이고, 값은 모두 실거래예요. 분양가는 주력 주택형(세대수 최다)의 최고 분양가로, 발코니 확장·옵션 비용은 빠져 있어요.</p>`,
     ...(when.length ? ['<h2>청약 일정</h2>', table(['단계', '날짜'], when)] : []),
     '<h2>확인할 조건</h2>',
     `<p>분양가가 낮은 단지일수록 전매제한·실거주 의무·재당첨 제한이 붙는 경우가 많아요. 적용 여부와 기간은 <a href="${esc(r.applyhomeUrl)}">청약홈 입주자모집공고</a>에서 확인하세요.</p>`,

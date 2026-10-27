@@ -119,7 +119,7 @@ export async function nearbyTrades(address, area, { tier = null, months = 12, ra
   if (tier && same.length < 2) { same = near(wide).filter((g) => g.tier === tier); widened = true; }
   return {
     lawd: site.lawd, months: `${yms.at(-1).slice(0, 4)}.${yms.at(-1).slice(4)}~${yms[0].slice(0, 4)}.${yms[0].slice(4)}`, area, range, wide, tier, widened, total: items.length,
-    same, others: tier ? inRange.filter((g) => g.tier !== tier) : [], source: '국토교통부 아파트 매매 실거래가(공공데이터포털)',
+    same, all: groups.filter((g) => g.d != null).sort((a, b) => a.d - b.d), others: tier ? inRange.filter((g) => g.tier !== tier) : [], source: '국토교통부 아파트 매매 실거래가(공공데이터포털)',
   };
 }
 
