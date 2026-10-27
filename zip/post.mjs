@@ -22,10 +22,11 @@ export function buzzHtml(b) {
   const ok = (t) => !BANNED.some((w) => t.includes(w));
   const rows = [];
   if (b.trend) rows.push(['네이버 검색량(상대값)', `최근 4주 평균 ${b.trend.recent} · 그 전 8주 ${b.trend.before} (가장 많았던 주 ${md(b.trend.peak)})`]);
-  if (b.news) rows.push(['네이버 뉴스', `${b.news.total.toLocaleString()}건 (최근 기사 ${b.news.items[0] ? md(b.news.items[0].date) : '-'})`]);
+  if (b.news) rows.push(['네이버 뉴스', `단지명이 본문에 언급된 기사 ${b.news.total.toLocaleString()}건 (최근 ${b.news.items[0] ? md(b.news.items[0].date) : '-'})`]);
   if (b.youtube) rows.push(['유튜브(최근 1년)', `제목에 단지명이 든 영상 ${b.youtube.count}개 · 조회수 합 ${(b.youtube.views || 0).toLocaleString()}`]);
-  const news = (b.news?.items || []).filter((x) => ok(x.title)).slice(0, 3).map((x) => `<li><a href="${esc(x.link)}" rel="nofollow noopener">${esc(x.title)}</a> <span style="color:${C.muted}">${md(x.date)}</span></li>`);
-  const vids = (b.youtube?.items || []).filter((x) => ok(x.title)).slice(0, 3).map((x) => `<li><a href="${esc(x.url)}" rel="nofollow noopener">${esc(x.title)}</a> <span style="color:${C.muted}">${esc(x.channel)} · 조회 ${x.views.toLocaleString()}</span></li>`);
+  const named = (t) => (b.q || '').split(' ').slice(0, 2).every((w) => t.replace(/\s+/g, '').includes(w)); // 제목에 단지명이 든 것만 목록에
+  const news = (b.news?.items || []).filter((x) => ok(x.title) && named(x.title)).slice(0, 3).map((x) => `<li><a href="${esc(x.link)}" rel="nofollow noopener">${esc(x.title)}</a> <span style="color:${C.muted}">${md(x.date)}</span></li>`);
+  const vids = (b.youtube?.items || []).filter((x) => ok(x.title)).slice(0, 3).map((x) => `<li><a href="${esc(x.url)}" rel="nofollow noopener">${esc(x.title)}</a> <span style="color:${C.muted}">${esc(x.channel)}${(b.q || '').split(' ').slice(0, 2).every((w) => x.channel.replace(/\s+/g, '').includes(w)) ? ' (단지 이름을 딴 채널 — 분양 홍보 영상일 수 있어요)' : ''} · 조회 ${x.views.toLocaleString()}</span></li>`);
   return ['<h2>관심도</h2>', table(['지표', '값'], rows),
     ...(news.length ? ['<p style="margin:12px 0 4px;font-weight:700">최근 기사</p>', `<ul>${news.join('')}</ul>`] : []),
     ...(vids.length ? ['<p style="margin:12px 0 4px;font-weight:700">많이 본 영상</p>', `<ul>${vids.join('')}</ul>`] : []),

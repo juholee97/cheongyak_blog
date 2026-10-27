@@ -33,7 +33,8 @@ async function naver(path, init = {}) {
   const base = legacy ? 'https://openapi.naver.com' : 'https://naverapihub.apigw.ntruss.com';
   const key = legacy ? { 'X-Naver-Client-Id': id, 'X-Naver-Client-Secret': secret } : { 'X-NCP-APIGW-API-KEY-ID': id, 'X-NCP-APIGW-API-KEY': secret };
   const headers = { ...key, ...(init.method === 'POST' ? { 'Content-Type': 'application/json' } : {}) }; // GET 검색에는 Content-Type을 붙이지 않는다
-  const r = await fetch(`${base}${path}`, { ...init, headers });
+  const real = legacy ? path : path.replace('/v1/datalab/search', '/search-trend/v1/search').replace('/v1/search/news.json', '/search/v1/news'); // HUB 경로(공식 문서): 트렌드 POST /search-trend/v1/search, 뉴스 GET /search/v1/news
+  const r = await fetch(`${base}${real}`, { ...init, headers });
   if (!r.ok) throw new Error(`네이버 ${path.split('?')[0]} HTTP ${r.status}${r.status === 429 ? '(하루 호출 한도)' : ''}`);
   return r.json();
 }
@@ -45,7 +46,7 @@ async function trend(q, now) {
 }
 
 async function news(q) {
-  const j = await naver(`/v1/search/news.json?query=${encodeURIComponent(q)}&display=20&sort=date`);
+  const j = await naver(`/v1/search/news.json?query=${encodeURIComponent(`"${q}"`)}&display=20&sort=date`); // 따옴표 = 정확히 그 말이 든 기사만(안 그러면 낱말 하나만 맞아도 잡힌다)
   if (!j) return null;
   return { total: j.total, items: (j.items || []).map((x) => ({ title: strip(x.title), link: x.originallink || x.link, date: new Date(x.pubDate).toISOString().slice(0, 10) })) };
 }
@@ -59,7 +60,7 @@ async function youtube(q, now) {
   const ids = (s.items || []).map((x) => x.id.videoId).filter(Boolean);
   if (!ids.length) return { count: 0, items: [] };
   const v = await (await fetch(`https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics&id=${ids.join(',')}&key=${key}`)).json();
-  const items = (v.items || []).filter((x) => x.snippet.title.includes(q.split(' ')[0])) // 제목에 단지 이름 첫 낱말이 있는 영상만
+  const items = (v.items || []).filter((x) => q.split(' ').slice(0, 2).every((w) => x.snippet.title.replace(/\s+/g, '').includes(w))) // 제목에 단지 이름 앞 두 낱말이 모두 든 영상만(「청라」 하나로는 안 됨)
     .map((x) => ({ title: x.snippet.title, channel: x.snippet.channelTitle, date: x.snippet.publishedAt.slice(0, 10), views: +x.statistics.viewCount || 0, url: `https://www.youtube.com/watch?v=${x.id}` }))
     .sort((a, b) => b.views - a.views);
   return { count: items.length, views: items.reduce((a, b) => a + b.views, 0), items: items.slice(0, 8) };
