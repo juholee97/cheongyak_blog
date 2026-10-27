@@ -3,7 +3,7 @@
 // node zip/wp.mjs --ping                     연결·권한만 확인
 // node zip/wp.mjs post.json                  임시글(draft)로 올림 — 같은 slug가 있으면 그 글을 고친다
 // node zip/wp.mjs post.json --at "YYYY-MM-DD HH:MM"   그 시각 예약(future). 즉시 공개(--publish)는 사용자 결정 전까지 없음
-// post.json: { slug, title, html, excerpt?, tags?[] }
+// post.json: { slug, title, html, excerpt?, tags?[], categories?[] }  (zip/post.mjs가 만든다)
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { ROOT } from '../tistory/common.mjs';
@@ -13,6 +13,7 @@ const env = async (k) => process.env[k] || (await readFile(join(ROOT, '.env'), '
 export async function wp(path, { method = 'GET', body } = {}) {
   const [url, user, pass] = [await env('WP_URL'), await env('WP_USER'), await env('WP_APP_PASSWORD')];
   if (!url || !user || !pass) throw new Error('.env에 WP_URL·WP_USER·WP_APP_PASSWORD 필요');
+  if (!url.startsWith('https://')) throw new Error('WP_URL은 https:// 로 — http로는 비밀번호가 암호화 없이 오간다');
   const r = await fetch(`${url.replace(/\/$/, '')}/wp-json/wp/v2/${path}`, {
     method, headers: { Authorization: 'Basic ' + Buffer.from(`${user}:${pass}`).toString('base64'), 'Content-Type': 'application/json' },
     body: body && JSON.stringify(body),
@@ -22,12 +23,12 @@ export async function wp(path, { method = 'GET', body } = {}) {
   return j;
 }
 
-// 태그 이름 → id(없으면 만든다)
-async function tagIds(names = []) {
+// 태그·카테고리 이름 → id(없으면 만든다). kind: 'tags' | 'categories'
+async function termIds(kind, names = []) {
   const ids = [];
   for (const name of names) {
-    const [hit] = await wp(`tags?search=${encodeURIComponent(name)}&per_page=1`);
-    ids.push(hit?.name === name ? hit.id : (await wp('tags', { method: 'POST', body: { name } })).id);
+    const hit = (await wp(`${kind}?search=${encodeURIComponent(name)}&per_page=20`)).find((t) => t.name === name);
+    ids.push(hit ? hit.id : (await wp(kind, { method: 'POST', body: { name } })).id);
   }
   return ids;
 }
@@ -35,7 +36,7 @@ async function tagIds(names = []) {
 export async function upsert(post, at) {
   const [old] = await wp(`posts?slug=${encodeURIComponent(post.slug)}&status=draft,future,publish&context=edit`);
   if (old?.status === 'publish' && !at) throw new Error(`이미 공개된 글(${old.link}) — 고치려면 --at 없이 따로 결정`);
-  const body = { slug: post.slug, title: post.title, content: post.html, excerpt: post.excerpt || '', tags: await tagIds(post.tags), status: at ? 'future' : 'draft', ...(at ? { date: at.replace(' ', 'T') + ':00' } : {}) };
+  const body = { slug: post.slug, title: post.title, content: post.html, excerpt: post.excerpt || '', tags: await termIds('tags', post.tags), categories: await termIds('categories', post.categories), status: at ? 'future' : 'draft', ...(at ? { date: at.replace(' ', 'T') + ':00' } : {}) };
   const res = await wp(old ? `posts/${old.id}` : 'posts', { method: 'POST', body });
   // 확인: 다시 불러와 제목·본문 길이·상태 대조
   const back = await wp(`posts/${res.id}?context=edit`);
