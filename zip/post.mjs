@@ -16,7 +16,32 @@ const pct = (r) => `${Math.round(Math.abs(r) * 100)}%`;
 const km = (m) => (m < 1000 ? `${m}m` : `${(m / 1000).toFixed(1)}km`);
 const table = (head, rows) => `<div style="overflow-x:auto"><table style="border-collapse:collapse;width:100%;min-width:480px"><thead><tr>${head.map((h) => `<th ${TH}>${h}</th>`).join('')}</tr></thead><tbody>${rows.map((r) => `<tr>${r.map((c) => `<td ${TD}>${c}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
 
-export function postOf(r) {
+// 관심도(화제성) — 공식 API로 센 숫자만. 사실 근거가 아니라고 글에 적는다. 금지 표현이 든 남의 제목은 싣지 않고 수만 센다
+export function buzzHtml(b) {
+  if (!b || (!b.trend && !b.news && !b.youtube)) return [];
+  const ok = (t) => !BANNED.some((w) => t.includes(w));
+  const rows = [];
+  if (b.trend) rows.push(['네이버 검색량(상대값)', `최근 4주 평균 ${b.trend.recent} · 그 전 8주 ${b.trend.before} (가장 많았던 주 ${md(b.trend.peak)})`]);
+  if (b.news) rows.push(['네이버 뉴스', `${b.news.total.toLocaleString()}건 (최근 기사 ${b.news.items[0] ? md(b.news.items[0].date) : '-'})`]);
+  if (b.youtube) rows.push(['유튜브(최근 1년)', `제목에 단지명이 든 영상 ${b.youtube.count}개 · 조회수 합 ${(b.youtube.views || 0).toLocaleString()}`]);
+  const news = (b.news?.items || []).filter((x) => ok(x.title)).slice(0, 3).map((x) => `<li><a href="${esc(x.link)}" rel="nofollow noopener">${esc(x.title)}</a> <span style="color:${C.muted}">${md(x.date)}</span></li>`);
+  const vids = (b.youtube?.items || []).filter((x) => ok(x.title)).slice(0, 3).map((x) => `<li><a href="${esc(x.url)}" rel="nofollow noopener">${esc(x.title)}</a> <span style="color:${C.muted}">${esc(x.channel)} · 조회 ${x.views.toLocaleString()}</span></li>`);
+  return ['<h2>관심도</h2>', table(['지표', '값'], rows),
+    ...(news.length ? ['<p style="margin:12px 0 4px;font-weight:700">최근 기사</p>', `<ul>${news.join('')}</ul>`] : []),
+    ...(vids.length ? ['<p style="margin:12px 0 4px;font-weight:700">많이 본 영상</p>', `<ul>${vids.join('')}</ul>`] : []),
+    `<p style="font-size:13px;color:${C.muted}">관심도는 화제성일 뿐 정보의 정확성이나 단지의 가치를 뜻하지 않아요. 기사·영상 내용은 aulee가 확인한 사실이 아니에요. 기준: 네이버 데이터랩·뉴스 검색, YouTube Data API(${esc((b.at || '').slice(0, 10))} 수집).</p>`];
+}
+
+// 자주 나오는 이야기 확인표(data/zip_claims.json — 세션에서 공식 자료로 대조해 적는다): { claim, status: 확인|다름|공식 자료 없음, fact, source: { name, url } }
+export function claimsHtml(cs) {
+  if (!cs?.length) return [];
+  const mark = { 확인: '✔ 확인', 다름: '✖ 공식 자료와 다름', '공식 자료 없음': '? 공식 자료 없음' };
+  return ['<h2>자주 나오는 이야기, 공식 자료로 확인</h2>',
+    table(['이야기', '확인 결과', '공식 자료'], cs.map((c) => [esc(c.claim), `<b>${mark[c.status] || esc(c.status)}</b>${c.fact ? `<br><span style="font-size:13px">${esc(c.fact)}</span>` : ''}`, c.source?.url ? `<a href="${esc(c.source.url)}">${esc(c.source.name)}</a>` : '-'])),
+    `<p style="font-size:13px;color:${C.muted}">기사·영상에서 자주 나온 이야기를 정부·지자체·사업주체 공식 자료와 맞춰 본 결과예요. 공식 자료가 없는 이야기는 사실이 아니라는 뜻이 아니라 확인되지 않았다는 뜻이에요.</p>`];
+}
+
+export function postOf(r, buzz, claims) {
   r = { ...r, med: Math.round(r.med), own: Math.round(r.own) };
   const peer = '비교 단지';
   const name = shortName(r.name), area = areaOf(r), cheap = r.gap > 0, m = r.main;
@@ -44,6 +69,8 @@ export function postOf(r) {
     ...(r.note ? [`<p>${esc(r.note)}</p>`] : []),
     `<p style="font-size:13px;color:${C.muted}">기준: 국토교통부 아파트 매매·분양권 전매·오피스텔 매매 실거래가(${esc(r.months)}) · 같은 시·군·구와 생활권이 이어지는 옆 시·군·구에서 생활권 인식·상급지/하급지·브랜드·단지 규모를 보고 고른 단지 · 단지별 전용 3.3㎡당 중앙값의 중앙값. 고른 기준은 aulee의 판단이고, 값은 모두 실거래예요. 분양가는 주력 주택형(세대수 최다)의 최고 분양가로, 발코니 확장·옵션 비용은 빠져 있어요.</p>`,
     ...(when.length ? ['<h2>청약 일정</h2>', table(['단계', '날짜'], when)] : []),
+    ...claimsHtml(claims),
+    ...buzzHtml(buzz),
     '<h2>확인할 조건</h2>',
     `<p>분양가가 낮은 단지일수록 전매제한·실거주 의무·재당첨 제한이 붙는 경우가 많아요. 적용 여부와 기간은 ${(r.links || [r.applyhomeUrl]).map((u, i, a) => `<a href="${esc(u)}">청약홈 입주자모집공고${a.length > 1 ? ` ${i + 1}` : ''}</a>`).join(' · ')}에서 확인하세요.</p>`,
     `<p style="font-size:13px;color:${C.muted}">이 글은 공고와 공개 실거래 자료를 비교한 것이며 청약·투자 권유가 아닙니다. ${esc(DISCLAIMER)}</p>`,
@@ -60,6 +87,7 @@ export function checkPost(p) {
 
 if (process.argv[1]?.endsWith('post.mjs')) {
   const { items } = JSON.parse(await readFile(join(ROOT, 'data/deals.json'), 'utf8'));
+  const buzz = JSON.parse(await readFile(join(ROOT, 'data/buzz.json'), 'utf8').catch(() => '{}')), claims = JSON.parse(await readFile(join(ROOT, 'data/zip_claims.json'), 'utf8').catch(() => '{}'));
   const dir = join(ROOT, 'data/zip_posts');
   await mkdir(dir, { recursive: true });
   const posts = [];
@@ -71,7 +99,7 @@ if (process.argv[1]?.endsWith('post.mjs')) {
     seen.set(k, Object.assign(r, { links: [r.applyhomeUrl] }));
   }
   for (const r of seen.values()) {
-    const p = postOf(r), issues = checkPost(p);
+    const p = postOf(r, buzz[r.no], claims[r.no]), issues = checkPost(p);
     if (issues.length) { console.log(`✗ ${r.name}: ${issues.join(', ')}`); continue; }
     await writeFile(join(dir, `${r.no}.json`), JSON.stringify(p, null, 2));
     posts.push(p);

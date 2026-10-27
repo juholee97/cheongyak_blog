@@ -1,0 +1,87 @@
+// 「aulee의 집」 관심도: 공고 단지마다 공식 API로 화제성만 센다 — 사실 근거로는 쓰지 않는다(2026-10-28 사용자 결정)
+// node zip/buzz.mjs            → data/buzz.json { 공고번호: { trend, news, youtube } }
+// node zip/buzz.mjs --check    → 계산 점검(네트워크 없음)
+// .env: NAVER_CLIENT_ID·NAVER_CLIENT_SECRET(데이터랩 검색어트렌드·검색), YOUTUBE_API_KEY(YouTube Data API v3) — 값은 로그·파일에 남기지 않는다.
+// 남의 글·영상 본문은 가져오지 않는다: 뉴스는 제목·링크·날짜, 유튜브는 제목·채널·조회수·날짜(메타데이터)만. 자막·영상 내려받기 없음(약관).
+import { readFile, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
+import { ROOT } from '../tistory/common.mjs';
+import { shortName } from '../posts/analysis_post.mjs';
+
+const env = async (k) => process.env[k] || (await readFile(join(ROOT, '.env'), 'utf8').catch(() => '')).match(new RegExp(`^${k}=(.+)$`, 'm'))?.[1]?.trim();
+const strip = (s) => String(s || '').replace(/<[^>]+>/g, '').replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&#39;/g, "'").trim();
+const iso = (d) => d.toISOString().slice(0, 10);
+
+// 검색어: 단지 이름에서 괄호(회차·블록)와 「(본청약)」 같은 꼬리를 뺀 것
+export const queryOf = (name) => shortName(name).replace(/\s*\d+단지$/, '').replace(/\s+/g, ' ').trim();
+
+// 데이터랩 비율(0~100) → 최근 4주 평균 vs 그 앞 8주 평균
+export function trendOf(points) {
+  const r = points.map((p) => p.ratio);
+  if (r.length < 6) return null;
+  const avg = (xs) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0);
+  const recent = avg(r.slice(-4)), before = avg(r.slice(-12, -4));
+  return { recent: Math.round(recent * 10) / 10, before: Math.round(before * 10) / 10, peak: points.reduce((a, b) => (b.ratio > a.ratio ? b : a)).period, weeks: r.length };
+}
+
+async function naver(path, init = {}) {
+  const [id, secret] = [await env('NAVER_CLIENT_ID'), await env('NAVER_CLIENT_SECRET')];
+  if (!id || !secret) return null;
+  const r = await fetch(`https://openapi.naver.com${path}`, { ...init, headers: { 'X-Naver-Client-Id': id, 'X-Naver-Client-Secret': secret, 'Content-Type': 'application/json', ...(init.headers || {}) } });
+  if (!r.ok) throw new Error(`네이버 ${path.split('?')[0]} HTTP ${r.status}`);
+  return r.json();
+}
+
+async function trend(q, now) {
+  const start = new Date(now); start.setDate(start.getDate() - 7 * 26);
+  const j = await naver('/v1/datalab/search', { method: 'POST', body: JSON.stringify({ startDate: iso(start), endDate: iso(now), timeUnit: 'week', keywordGroups: [{ groupName: q, keywords: [q] }] }) });
+  return j ? trendOf(j.results?.[0]?.data || []) : null;
+}
+
+async function news(q) {
+  const j = await naver(`/v1/search/news.json?query=${encodeURIComponent(q)}&display=20&sort=date`);
+  if (!j) return null;
+  return { total: j.total, items: (j.items || []).map((x) => ({ title: strip(x.title), link: x.originallink || x.link, date: new Date(x.pubDate).toISOString().slice(0, 10) })) };
+}
+
+async function youtube(q, now) {
+  const key = await env('YOUTUBE_API_KEY');
+  if (!key) return null;
+  const after = new Date(now); after.setFullYear(after.getFullYear() - 1);
+  const s = await (await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=20&order=relevance&regionCode=KR&relevanceLanguage=ko&publishedAfter=${after.toISOString()}&q=${encodeURIComponent(q)}&key=${key}`)).json();
+  if (s.error) throw new Error(`유튜브 검색 ${s.error.code} ${s.error.status || ''}`); // URL엔 키가 있어 찍지 않는다
+  const ids = (s.items || []).map((x) => x.id.videoId).filter(Boolean);
+  if (!ids.length) return { count: 0, items: [] };
+  const v = await (await fetch(`https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics&id=${ids.join(',')}&key=${key}`)).json();
+  const items = (v.items || []).filter((x) => x.snippet.title.includes(q.split(' ')[0])) // 제목에 단지 이름 첫 낱말이 있는 영상만
+    .map((x) => ({ title: x.snippet.title, channel: x.snippet.channelTitle, date: x.snippet.publishedAt.slice(0, 10), views: +x.statistics.viewCount || 0, url: `https://www.youtube.com/watch?v=${x.id}` }))
+    .sort((a, b) => b.views - a.views);
+  return { count: items.length, views: items.reduce((a, b) => a + b.views, 0), items: items.slice(0, 8) };
+}
+
+async function main() {
+  const { items } = JSON.parse(await readFile(join(ROOT, 'data/deals.json'), 'utf8'));
+  const out = JSON.parse(await readFile(join(ROOT, 'data/buzz.json'), 'utf8').catch(() => '{}')), now = new Date();
+  const missing = [!(await env('NAVER_CLIENT_ID')) && '네이버', !(await env('YOUTUBE_API_KEY')) && '유튜브'].filter(Boolean);
+  if (missing.length) console.log(`키 없음: ${missing.join('·')} — 그 부분은 건너뜀`);
+  for (const r of items.filter((x) => !x.skip)) {
+    const q = queryOf(r.name);
+    try {
+      out[r.no] = { q, at: now.toISOString(), trend: await trend(q, now), news: await news(q), youtube: await youtube(q, now) };
+      const b = out[r.no];
+      console.log(`${q} · 검색 최근 ${b.trend?.recent ?? '-'} (전 ${b.trend?.before ?? '-'}) · 뉴스 ${b.news?.total ?? '-'} · 영상 ${b.youtube?.count ?? '-'}곳 조회 ${b.youtube?.views?.toLocaleString() ?? '-'}`);
+    } catch (e) { console.log(`✗ ${q}: ${e.message}`); }
+  }
+  await writeFile(join(ROOT, 'data/buzz.json'), JSON.stringify(out, null, 2));
+}
+
+if (process.argv.includes('--check')) {
+  const assert = (await import('node:assert/strict')).default;
+  assert.equal(queryOf('트리븐센텀 2단지'), '트리븐센텀');
+  assert.equal(queryOf('충정로역자이르네(2차)'), '충정로역자이르네');
+  const pts = Array.from({ length: 12 }, (_, i) => ({ period: `2026-0${(i % 9) + 1}-01`, ratio: i < 8 ? 10 : 40 }));
+  const t = trendOf(pts);
+  assert.equal(t.recent, 40); assert.equal(t.before, 10);
+  assert.equal(trendOf(pts.slice(0, 3)), null); // 몇 주 안 되면 판단 안 함
+  console.log('buzz 점검 통과');
+} else if (process.argv[1]?.endsWith('buzz.mjs')) await main();
