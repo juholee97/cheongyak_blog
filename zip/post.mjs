@@ -45,7 +45,7 @@ export function postOf(r) {
     `<p style="font-size:13px;color:${C.muted}">기준: 국토교통부 아파트 매매·분양권 전매·오피스텔 매매 실거래가(${esc(r.months)}) · 같은 시·군·구와 생활권이 이어지는 옆 시·군·구에서 생활권 인식·상급지/하급지·브랜드·단지 규모를 보고 고른 단지 · 단지별 전용 3.3㎡당 중앙값의 중앙값. 고른 기준은 aulee의 판단이고, 값은 모두 실거래예요. 분양가는 주력 주택형(세대수 최다)의 최고 분양가로, 발코니 확장·옵션 비용은 빠져 있어요.</p>`,
     ...(when.length ? ['<h2>청약 일정</h2>', table(['단계', '날짜'], when)] : []),
     '<h2>확인할 조건</h2>',
-    `<p>분양가가 낮은 단지일수록 전매제한·실거주 의무·재당첨 제한이 붙는 경우가 많아요. 적용 여부와 기간은 <a href="${esc(r.applyhomeUrl)}">청약홈 입주자모집공고</a>에서 확인하세요.</p>`,
+    `<p>분양가가 낮은 단지일수록 전매제한·실거주 의무·재당첨 제한이 붙는 경우가 많아요. 적용 여부와 기간은 ${(r.links || [r.applyhomeUrl]).map((u, i, a) => `<a href="${esc(u)}">청약홈 입주자모집공고${a.length > 1 ? ` ${i + 1}` : ''}</a>`).join(' · ')}에서 확인하세요.</p>`,
     `<p style="font-size:13px;color:${C.muted}">이 글은 공고와 공개 실거래 자료를 비교한 것이며 청약·투자 권유가 아닙니다. ${esc(DISCLAIMER)}</p>`,
   ].join('\n');
   const excerpt = lead;
@@ -63,7 +63,14 @@ if (process.argv[1]?.endsWith('post.mjs')) {
   const dir = join(ROOT, 'data/zip_posts');
   await mkdir(dir, { recursive: true });
   const posts = [];
+  // 같은 단지·같은 분양가·같은 일정으로 공고가 둘 이상(무순위 회차 등)이면 글 하나로 — 청약홈 공고 링크만 모은다
+  const seen = new Map();
   for (const r of items.filter((x) => !x.skip)) {
+    const k = `${shortName(r.name)}|${r.main.max}|${JSON.stringify(r.phases)}`;
+    if (seen.has(k)) { seen.get(k).links.push(r.applyhomeUrl); continue; }
+    seen.set(k, Object.assign(r, { links: [r.applyhomeUrl] }));
+  }
+  for (const r of seen.values()) {
     const p = postOf(r), issues = checkPost(p);
     if (issues.length) { console.log(`✗ ${r.name}: ${issues.join(', ')}`); continue; }
     await writeFile(join(dir, `${r.no}.json`), JSON.stringify(p, null, 2));
