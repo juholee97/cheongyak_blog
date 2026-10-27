@@ -1,7 +1,7 @@
 // 「aulee의 집」 관심도: 공고 단지마다 공식 API로 화제성만 센다 — 사실 근거로는 쓰지 않는다(2026-10-28 사용자 결정)
 // node zip/buzz.mjs            → data/buzz.json { 공고번호: { trend, news, youtube } }
 // node zip/buzz.mjs --check    → 계산 점검(네트워크 없음)
-// .env: NAVER_CLIENT_ID·NAVER_CLIENT_SECRET(데이터랩 검색어트렌드·검색), YOUTUBE_API_KEY(YouTube Data API v3) — 값은 로그·파일에 남기지 않는다.
+// .env: NAVER_CLIENT_ID·NAVER_CLIENT_SECRET(NAVER API HUB의 검색·Search Trend), YOUTUBE_API_KEY(YouTube Data API v3) — 값은 로그·파일에 남기지 않는다.
 // 남의 글·영상 본문은 가져오지 않는다: 뉴스는 제목·링크·날짜, 유튜브는 제목·채널·조회수·날짜(메타데이터)만. 자막·영상 내려받기 없음(약관).
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -24,11 +24,17 @@ export function trendOf(points) {
   return { recent: Math.round(recent * 10) / 10, before: Math.round(before * 10) / 10, peak: points.reduce((a, b) => (b.ratio > a.ratio ? b : a)).period, weeks: r.length };
 }
 
+// 2026-07-31부터 네이버 개발자센터는 검색·데이터랩 신규 신청을 막았다 — 신규 키는 NCP의 NAVER API HUB(Application 등록 → 인증 정보)
+// 헤더는 X-NCP-APIGW-API-KEY-ID / X-NCP-APIGW-API-KEY. 옛 개발자센터 키(X-Naver-Client-*)는 NAVER_LEGACY=1로 지금처럼 쓸 수 있다
 async function naver(path, init = {}) {
   const [id, secret] = [await env('NAVER_CLIENT_ID'), await env('NAVER_CLIENT_SECRET')];
   if (!id || !secret) return null;
-  const r = await fetch(`https://openapi.naver.com${path}`, { ...init, headers: { 'X-Naver-Client-Id': id, 'X-Naver-Client-Secret': secret, 'Content-Type': 'application/json', ...(init.headers || {}) } });
-  if (!r.ok) throw new Error(`네이버 ${path.split('?')[0]} HTTP ${r.status}`);
+  const legacy = (await env('NAVER_LEGACY')) === '1';
+  const base = legacy ? 'https://openapi.naver.com' : 'https://naverapihub.apigw.ntruss.com';
+  const key = legacy ? { 'X-Naver-Client-Id': id, 'X-Naver-Client-Secret': secret } : { 'X-NCP-APIGW-API-KEY-ID': id, 'X-NCP-APIGW-API-KEY': secret };
+  const headers = { ...key, ...(init.method === 'POST' ? { 'Content-Type': 'application/json' } : {}) }; // GET 검색에는 Content-Type을 붙이지 않는다
+  const r = await fetch(`${base}${path}`, { ...init, headers });
+  if (!r.ok) throw new Error(`네이버 ${path.split('?')[0]} HTTP ${r.status}${r.status === 429 ? '(하루 호출 한도)' : ''}`);
   return r.json();
 }
 
