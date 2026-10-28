@@ -45,7 +45,7 @@ export function shPost(notice, units) {
   const conds = [...new Set(units.map((u) => u.cond).filter(Boolean))];
   const when = (notice.phases || []).filter((p) => p.date).map((p) => [esc(p.k === 'p1' ? '접수' : '당첨자 발표'), p.end ? `${md(p.date)} ~ ${md(p.end)}` : md(p.date)]);
   const rc = receiptOf(notice.phases);
-  const kind = units.some((u) => /다세대|연립/.test(u.type || '')) ? '연립다세대' : '아파트';
+  const kind = units.some((u) => /다가구|단독/.test(u.type || '')) ? '단독다가구' : units.some((u) => /다세대|연립/.test(u.type || '')) ? '연립다세대' : '아파트';
   const html = [
     closed ? banner(OPEN_URL) : '',
     keyBox([`${esc(one)}.`, `같은 구에서 최근 6개월 안에 새로 계약한, 면적·층·보증금이 비슷한 월세 거래와 견줬어요.`, ...conds.slice(0, 1).map(esc)]),

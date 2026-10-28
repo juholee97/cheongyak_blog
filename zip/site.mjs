@@ -40,7 +40,7 @@ const footer = `<!-- wp:group {"className":"az-footer","layout":{"type":"default
 <div class="wp-block-group az-footer"><!-- wp:html -->
 <div class="az-footer-in"><div class="az-foot-cols"><div><p class="az-foot-name">${LOGO}</p><p>청약 공고의 분양가·임대료를 주변 실거래와 나란히 놓고 봐요. auleezip.com</p></div>
 <nav class="az-foot-nav" aria-label="사이트 안내"><a href="${SITE}/">현재 열린 공고</a><a href="${SITE}/method/">비교 기준</a><a href="${SITE}/about/">소개</a><a href="${SITE}/privacy/">개인정보처리방침</a><a href="https://aulee.tistory.com">우리의 청약달력</a></nav></div>
-<p class="az-foot-note">aulee가 개인으로 운영하는 사이트예요. 분양 홍보를 하지 않고, 청약·투자를 권하지 않아요. 숫자는 공고문과 국토교통부 실거래 자료로 맞춰 보지만, 신청 전에는 반드시 입주자모집공고 원문을 확인하세요.</p></div>
+<p class="az-foot-note">분석은 aulee가 직접 해요. 청약 공고문과 국토교통부 실거래 자료를 하나하나 맞춰 보고, 비교 단지를 고른 이유와 계산 방법을 글마다 밝혀요. 신청 전에는 반드시 입주자모집공고 원문을 확인하세요.</p></div>
 <!-- /wp:html --></div>
 <!-- /wp:group -->`;
 

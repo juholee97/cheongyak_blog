@@ -4,28 +4,28 @@
 // node zip/sh_rent.mjs                  data/sh_units.json 전부 → data/sh_rent.json
 // node zip/sh_rent.mjs --probe 종로구 59 [다세대 층 건축년도]   그 구·면적의 최근 3개월 전월세 시세만 보기(API 점검)
 // node zip/sh_rent.mjs --check
-// 아파트와 연립다세대("type":"다세대")를 본다. 다가구·단독·오피스텔은 비교 대상이 아니다(다가구 API는 아직 미승인).
+// unit.type으로 비교할 거래를 고른다: 아파트 · 다세대/연립(연립다세대) · 오피스텔 · 다가구/단독(단독다가구 — 2026-10-29 활용신청 승인, 층 정보가 없어 층대는 못 맞추고 면적은 계약면적).
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { dataKey } from '../posts/trades.mjs';
 import { useApi } from './guard.mjs';
 import { ROOT } from '../tistory/common.mjs';
 
-// apt 아파트, rh 연립다세대(2026-10-28 활용신청 승인). 단독/다가구(RTMSDataSvcSHRent)는 아직 403이라 넣지 않았다
-const API = { apt: 'https://apis.data.go.kr/1613000/RTMSDataSvcAptRent/getRTMSDataSvcAptRent', rh: 'https://apis.data.go.kr/1613000/RTMSDataSvcRHRent/getRTMSDataSvcRHRent', offi: 'https://apis.data.go.kr/1613000/RTMSDataSvcOffiRent/getRTMSDataSvcOffiRent' };
+// apt 아파트, rh 연립다세대(2026-10-28 활용신청 승인), offi 오피스텔, sh 단독/다가구(2026-10-29 승인)
+const API = { apt: 'https://apis.data.go.kr/1613000/RTMSDataSvcAptRent/getRTMSDataSvcAptRent', rh: 'https://apis.data.go.kr/1613000/RTMSDataSvcRHRent/getRTMSDataSvcRHRent', offi: 'https://apis.data.go.kr/1613000/RTMSDataSvcOffiRent/getRTMSDataSvcOffiRent', sh: 'https://apis.data.go.kr/1613000/RTMSDataSvcSHRent/getRTMSDataSvcSHRent' };
 export const GU = { 종로구: '11110', 중구: '11140', 용산구: '11170', 성동구: '11200', 광진구: '11215', 동대문구: '11230', 중랑구: '11260', 성북구: '11290', 강북구: '11305', 도봉구: '11320', 노원구: '11350', 은평구: '11380', 서대문구: '11410', 마포구: '11440', 양천구: '11470', 강서구: '11500', 구로구: '11530', 금천구: '11545', 영등포구: '11560', 동작구: '11590', 관악구: '11620', 서초구: '11650', 강남구: '11680', 송파구: '11710', 강동구: '11740' };
 
 const tag = (x, t) => (x.match(new RegExp(`<${t}>([^<]*)</${t}>`)) || [])[1]?.trim() ?? '';
 const num = (s) => +String(s).replace(/,/g, '') || 0;
 export const parseRent = (xml) => [...xml.matchAll(/<item>([\s\S]*?)<\/item>/g)].map(([, x]) => ({
-  apt: tag(x, 'aptNm') || tag(x, 'mhouseNm') || tag(x, 'offiNm'), umd: tag(x, 'umdNm'), ar: +tag(x, 'excluUseAr'), deposit: num(tag(x, 'deposit')), rent: num(tag(x, 'monthlyRent')),
+  apt: tag(x, 'aptNm') || tag(x, 'mhouseNm') || tag(x, 'offiNm'), umd: tag(x, 'umdNm'), ar: +tag(x, 'excluUseAr') || +tag(x, 'totalFloorAr'), deposit: num(tag(x, 'deposit')), rent: num(tag(x, 'monthlyRent')), // 단독/다가구는 건물 이름·층이 없고 면적은 계약면적(totalFloorAr)
   floor: tag(x, 'floor') === '' ? null : +tag(x, 'floor'), built: +tag(x, 'buildYear') || null,
   ym: `${tag(x, 'dealYear')}-${tag(x, 'dealMonth').padStart(2, '0')}`, renewal: tag(x, 'contractType') === '갱신', // 갱신계약은 5% 상한 때문에 시세보다 낮아 뺀다
 }));
 
 // 시군구·달 → 거래 목록. 지난 달은 파일에 저장해 다시 받지 않는다(일일 호출 한도)
 async function month(lawd, ym, key, kind) {
-  const f = join(ROOT, 'data/rtms_cache', `${{ rh: 'rentrh', offi: 'rentoffi' }[kind] || 'rent'}_${lawd}_${ym}.json`), nowYm = new Date().toISOString().slice(0, 7).replace('-', ''), today = new Date().toISOString().slice(0, 10);
+  const f = join(ROOT, 'data/rtms_cache', `${{ rh: 'rentrh', offi: 'rentoffi', sh: 'rentsh' }[kind] || 'rent'}_${lawd}_${ym}.json`), nowYm = new Date().toISOString().slice(0, 7).replace('-', ''), today = new Date().toISOString().slice(0, 10);
   const hit = JSON.parse(await readFile(f, 'utf8').catch(() => 'null'));
   if (hit?.v === 2 && (ym < nowYm || hit.at === today)) return hit.items;
   const out = [];
@@ -79,13 +79,13 @@ export function compare(u, m) {
   return m.nWolse >= 3 ? { type: '월세', ratio: u.rent / m.wolse, gap: u.rent - m.wolse, market: m.wolse, marketDeposit: m.wolseDeposit, n: m.nWolse } : { type: '월세', insufficient: true, n: m.nWolse };
 }
 
-// unit.type: '다세대'·'연립'이면 연립다세대, '오피스텔'이면 오피스텔, 아니면 아파트
+// unit.type: '다가구'·'단독'이면 단독다가구, '다세대'·'연립'이면 연립다세대, '오피스텔'이면 오피스텔, 아니면 아파트
 export async function tradesFor(gu, unit, { months = 6, now = new Date() } = {}) {
   const lawd = GU[gu];
   if (!lawd) throw new Error(`서울 25개 구가 아님: ${gu}`);
   const key = await dataKey();
   if (!key) throw new Error('DATA_GO_KR_KEY 없음');
-  const trades = [], kind = /다세대|연립|빌라/.test(unit.type || '') ? 'rh' : /오피스텔/.test(unit.type || '') ? 'offi' : 'apt';
+  const trades = [], kind = /다가구|단독/.test(unit.type || '') ? 'sh' : /다세대|연립|빌라/.test(unit.type || '') ? 'rh' : /오피스텔/.test(unit.type || '') ? 'offi' : 'apt';
   for (let i = 1; i <= months; i++) { // 이번 달은 거래가 덜 쌓여 있어 지난달부터 거슬러 올라간다
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
     trades.push(...(await month(lawd, `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}`, key, kind)));
@@ -125,6 +125,7 @@ if (process.argv.includes('--check')) {
   assert.equal(floorBand(0), '반지하·지하'); assert.equal(ageBand(1990, 2026), '30년 초과');
   assert.equal(compare({ deposit: 1, rent: 0 }, { nJeonse: 2 }).insufficient, true);
   assert.equal(round100(28650), 28700);
+  assert.deepEqual(parseRent('<item><houseType>다가구</houseType><umdNm>수유동</umdNm><totalFloorAr>18</totalFloorAr><deposit>3,000</deposit><monthlyRent>25</monthlyRent><dealYear>2026</dealYear><dealMonth>9</dealMonth><buildYear>1993</buildYear></item>')[0], { apt: '', umd: '수유동', ar: 18, deposit: 3000, rent: 25, floor: null, built: 1993, ym: '2026-09', renewal: false }); // 단독/다가구는 계약면적, 층 없음
   assert.equal(parseRent('<item><aptNm>가</aptNm><umdNm>나</umdNm><excluUseAr>59.9</excluUseAr><deposit>15,000</deposit><monthlyRent>0</monthlyRent><dealYear>2026</dealYear><dealMonth>9</dealMonth><contractType>갱신</contractType></item>')[0].renewal, true);
   console.log('sh_rent 점검 통과');
 } else if (process.argv.includes('--probe')) {
