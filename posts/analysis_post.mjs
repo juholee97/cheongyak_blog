@@ -123,7 +123,7 @@ export function renderFacts(f) {
   const row = (g) => [two(`${esc(g.apt)}${g.leasehold ? ' (토지임대부)' : ''}`, `${(g.d / 1000).toFixed(1)}km · ${g.built ? `${g.built}년 준공` : '준공 연도 없음'}`), g.near ? two(eok(g.near.amount), `전용 ${g.near.ar}㎡ · ${g.near.count}건 · 최근 ${g.near.last.replace('-', '.')}`) : `<span style="color:${C.muted}">비교 면적 거래 없음</span>`, two(man(Math.round(g.perPy)), `${g.count}건`)];
   out.trades = t.skip ? `<p>실거래를 불러오지 못했습니다(${esc(t.skip)}).</p>` : `${table([two('단지', '거리 · 준공'), two('비슷한 면적 거래가', `전용 ${t.area}±15㎡ 중앙값`), two('3.3㎡당', '전용 기준 중앙값')], t.same.map(row))}
 <p style="font-size:13px;color:${C.muted}">같은 등급(${esc(t.tier)}) · 반경 ${(t.widened ? t.wide : t.range) / 1000}km${t.widened ? '(넓힘)' : ''} · ${t.months} · 해제·직거래 제외 · ${esc(it.district || '같은 시군구')} 안 거래만</p>
-${t.others.length ? `<p style="font-size:13px;color:${C.muted}">참고(다른 등급): ${t.others.map((g) => `${esc(g.apt)}(${g.tier}, ${g.built}년, 3.3㎡당 ${man(Math.round(g.perPy))})`).join(', ')}</p>` : ''}`;
+${t.others.length ? `<p style="font-size:13px;color:${C.muted}">같은 등급이 아닌 단지 ${t.others.length}곳은 위 표에서 뺐어요(단지 목록은 생략).</p>` : ''}`; // 다른 등급 단지를 한 줄씩 나열하던 긴 목록은 뺐다(2026-10-28 사용자 지시: 불필요한 설명)
   out.leasehold = f.leasehold ? box(`<p style="margin:0"><span style="font-weight:700">토지임대부 분양주택</span>: 분양가에 토지값이 들어 있지 않고, 토지는 사업주체에 매달 임대료를 냅니다(금액은 입주자모집공고 확인). 그래서 토지 소유권이 있는 주변 아파트와 분양가를 그대로 비교할 수 없습니다. 관련 법령상 전매제한 10년·거주의무 5년입니다(주택법 시행령 별표3·제60조의2, 공고문으로 최종 확인).</p>`) : '';
   // 학교: 학구도(배정) 기준. 중·고는 학교군 안 가까운 3곳, 초등은 통학구역(지정 전이면 인접 구역). 지원·선발 학교는 따로
   const sc = n.schools || {}, list = (xs, k = 3) => xs.slice(0, k).map((s) => `${esc(s.name)} ${dist(s.d)}`).join(', ');
