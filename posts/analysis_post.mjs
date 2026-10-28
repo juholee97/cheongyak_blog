@@ -78,7 +78,7 @@ export async function collect(no, dataSrc, { v2 = false } = {}) {
   const near = site ? { stations: await stations(site.lon, site.lat), bus: await busNear(site.lon, site.lat, it.region), schools: await schoolsAt(site.lon, site.lat) } : { skip: '위치 못 찾음' };
   // 핵심 버스 노선마다 갈아타지 않고 닿는 역(정거장 수)
   if (site && near.bus?.routes) for (const r of near.bus.routes.filter(isCore).slice(0, 8)) r.reach = await routeReach(r, site.lon, site.lat, key);
-  const trades = await nearbyTrades(it.address, main.area, { tier });
+  const trades = v2 ? { skip: '시세 비교는 우리의 집 글에서' } : await nearbyTrades(it.address, main.area, { tier }); // v2는 시세 절이 없다(2026-10-29)
   const f = {
     item: it, dataUpdatedAt: data.updatedAt,
     detail: {
@@ -88,6 +88,7 @@ export async function collect(no, dataSrc, { v2 = false } = {}) {
     },
     tier, leasehold, types, mainArea: main.area, nearby: near, trades,
   };
+  if (v2) f.titleV = 2; // 새 제목(공개된 글은 enrich해도 옛 제목 유지)
   return v2 ? addV2(f, d, models) : f;
 }
 
@@ -286,7 +287,13 @@ export function summaryOf(f) {
   }
   return `전용 ${main.area}㎡ 최고 분양가는 ${eok(main.max)}이고, ${cmp}${rec ? ` 첫 접수는 ${label(it, rec.k)} ${md(rec.date)}예요.` : ''}`;
 }
-const summaryBox = (f) => `<div style="border:1px solid ${C.line};border-left:4px solid #4a3fa0;border-radius:12px;padding:14px 18px;margin:16px 0;background:#f6f5fc"><p style="margin:0 0 4px;font-size:13px;font-weight:700;color:#4a3fa0">한 줄 요약</p><p style="margin:0;font-weight:700">${esc(summaryOf(f))}</p></div>`;
+const summaryBox = (f, text = summaryOf(f)) => `<div style="border:1px solid ${C.line};border-left:4px solid #4a3fa0;border-radius:12px;padding:14px 18px;margin:16px 0;background:#f6f5fc"><p style="margin:0 0 4px;font-size:13px;font-weight:700;color:#4a3fa0">한 줄 요약</p><p style="margin:0;font-weight:700">${esc(text)}</p></div>`;
+// v2 한 줄 요약: 시세 비교 대신 최고 분양가 · 입주 때 자기 돈(가정 계산) · 첫 접수일(2026-10-29 시세 절 뺌)
+function summaryV2(f, m) {
+  const it = f.item, rec = it.phases.filter((p) => ['sp', 'p1'].includes(p.k)).sort((a, b) => (a.date < b.date ? -1 : 1))[0];
+  const c = m.byType.find((x) => x.area === m.main.area)?.base;
+  return `전용 ${m.main.area}㎡ 최고 분양가는 ${W(m.main.price)}이고${c ? `, ${c.name} 기준으로 입주 때까지 자기 돈 ${W(c.cash)}이 필요해요(가정 계산)` : '요'}.${rec ? ` 첫 접수는 ${label(it, rec.k)} ${md(rec.date)}예요.` : ''}`;
+}
 
 // 평면도·조감도(posts/floorplan.mjs): 주택형마다 한 장 + 그림마다 출처
 // origin 'home' = 사업주체 분양 홈페이지, 'notice:15' = 청약홈 입주자모집공고문 15쪽
@@ -324,6 +331,7 @@ export function areaOf(it) {
 }
 
 export function titleOf(f) {
+  if (f.titleV === 2) return `[${areaOf(f.item)}] ${shortName(f.item.name)} 분양가·청약 분석 — 필요 현금·월 상환·교통·학군`; // 2026-10-29 시세 절 뺌
   return `[${areaOf(f.item)}] ${shortName(f.item.name)} 분양가·청약 분석 — 주변 실거래·교통·학군·대출`;
 }
 
@@ -338,6 +346,7 @@ export function checkAnalysis(draft) {
   const factsText = render(draft.facts, {}, []).replace(/<[^>]+>/g, ' ').replace(/,/g, '');
   const nums = new Set(factsText.match(/\d+(\.\d+)?/g));
   for (const [k, lines] of Object.entries(draft.notes || {})) for (const line of lines || []) {
+    if (k === 'price' && (draft.facts.terms || draft.facts.supply)) continue; // v2는 시세 절이 없어 notes.price를 그리지 않는다
     let rest = line; [draft.facts.item.name].forEach((nm) => { rest = rest.split(nm).join(' '); });
     for (const m of rest.replace(/,/g, '').match(/\d+(\.\d+)?/g) || []) if (!nums.has(m)) issues.push(`notes.${k}의 숫자 "${m}"가 수집·조회 값에 없습니다: ${line}`);
   }
@@ -388,7 +397,7 @@ const foldNote = (label, s) => fold(label, small(s));
 // v1과 같이 쓰는 표의 작은 글씨 설명(renderFacts)도 v2에서만 접는다 — renderFacts 자체는 그대로라 옛 초안 모양은 안 바뀐다
 const foldSmalls = (html, label) => html.replace(new RegExp(`<p style="font-size:13px;color:${C.muted}">[\\s\\S]*?</p>`, 'g'), (m) => fold(label, m));
 const card = (title, sub, main, foot) => `<div style="border-top:1px solid ${C.line};padding:10px 0"><p style="margin:0">${B(title)}${sub ? ` <span style="font-size:13px;color:${C.muted}">${sub}</span>` : ''}</p><p style="margin:4px 0 0">${main}</p>${foot ? `<p style="margin:2px 0 0;font-size:13px;color:${C.muted}">${foot}</p>` : ''}</div>`;
-const V2_HEADS = [['glance', '한눈에'], ['price', '분양가, 주변 시세와 견주면?'], ['money', '얼마 있어야 하고, 매달 얼마 낼까?'], ['household', '우리 집은 어느 공급으로 넣을까?'], ['types', '주택형마다 무엇이 다를까?'], ['place', '출퇴근·학교는 어떨까?'], ['rules', '언제 팔 수 있고, 꼭 살아야 할까?'], ['check', '청약 전 따져 볼 점'], ['links', '공고문·문의']];
+const V2_HEADS = [['glance', '한눈에'],['money', '얼마 있어야 하고, 매달 얼마 낼까?'], ['household', '우리 집은 어느 공급으로 넣을까?'], ['types', '주택형마다 무엇이 다를까?'], ['place', '출퇴근·학교는 어떨까?'], ['rules', '언제 팔 수 있고, 꼭 살아야 할까?'], ['check', '청약 전 따져 볼 점'], ['links', '공고문·문의']];
 
 // 한눈에 표: 분양가는 공고문 동·층별 공급금액의 최저~최고(읽은 주택형만, 최고가는 청약홈 값과 맞춘 것)
 function typesV2(f) {
@@ -481,8 +490,7 @@ function rulesV2(f) {
 // 따져 볼 점(2026-10-29 사용자 지시: 시선이 흩어짐): 문장 대신 「항목 · 답 하나 · 짧은 설명」 줄, 강조는 줄마다 답 하나만
 function checklist(f, m) {
   const t = f.terms || {}, s = f.supply, rows = [];
-  const b = m.byType.find((x) => x.area === m.main.area), c = b?.base, sum = summaryOf(f);
-  rows.push(['시세', esc(sum.slice(sum.indexOf(', ') + 2).replace(/ 첫 접수는.*$/, '')), '']);
+  const b = m.byType.find((x) => x.area === m.main.area), c = b?.base;
   if (c) rows.push(['필요한 현금', `입주 때 자기 돈 ${HL(W(c.cash))}`, `${m.pay ? `계약할 때 계약금 ${W(m.pay.downWon)} · ` : ''}${esc(c.name)} 기준 가정 계산`]);
   if (c) rows.push(['매달 내는 돈', HL(`월 ${span2(b.total[0], b.total[1], M)}`), m.rent ? `원리금 월 ${span2(c.pay[0], c.pay[1], M)} + 토지임대료 월 ${R(m.rent.won)}` : `원리금 · ${c.years}년 원리금균등`]);
   const mid = m.dsr?.rows.find((r) => r.pct === 100);
@@ -513,17 +521,17 @@ function renderV2(f, notes = {}, images = []) {
     img('thumb'), img('card'), (notes.intro || []).filter(Boolean).length ? `<p>${notes.intro.filter(Boolean).map(esc).join(' ')}</p>` : '',
     `<p style="font-weight:700">${esc(question)} 공고문 조건과 공개 자료로 계산해 봤어요.</p>`,
     has.has('aerial') ? `${img('aerial')}\n<p style="font-size:13px;color:${C.muted}">단지 조감도 · 출처: ${srcOf(f, images.find((i) => i.key === 'aerial'))} · 실제와 다를 수 있습니다.</p>` : '',
-    summaryBox(f), keyBand(f, m), toc(heads.map(([id, t2]) => ({ id, t: t2 }))),
-    H('glance'), x.glance, typesV2(f), plans(f, images),
-    H('price'), x.leasehold, note(notes.price), foldSmalls(x.trades, '비교 기준'),
+    summaryBox(f, summaryV2(f, m)), keyBand(f, m), toc(heads.map(([id, t2]) => ({ id, t: t2 }))),
+    H('glance'), x.glance, typesV2(f), x.leasehold, plans(f, images), zipLink(f),
+    // 「분양가, 주변 시세와 견주면?」 절은 뺐다(2026-10-29 사용자 결정: 반경 안 실거래 비교는 의미가 약하고, 시세 분석은 우리의 집이 맡음)
     H('money'), note(notes.loans), moneyHtml(f, m, x),
     H('household'), householdHtml(f),
     ...(f.types.length > 1 ? [H('types'), typesCompare(f, m)] : []),
     H('place'), img('map'), note(notes.place), foldSmalls(x.place, '자료 기준'), foldSmalls(x.busRoutes, '추정 방법'),
     H('rules'), note(notes.rules), rulesV2(f), t.periods ? x.rulesTable : x.rules,
     H('check'), checklist(f, m),
-    H('links'), x.links, zipLink(f),
-    foldNote('출처·기준일', `기준: 청약홈(한국부동산원) 분양정보 ${f.dataUpdatedAt.slice(0, 10)} 수집 · 입주자모집공고문(청약홈 PDF${t.fetched ? `, ${t.fetched} 읽음` : ''}) · 실거래 ${esc(f.trades.source || '')} · 대출·세금·소득 기준 확인일 ${MONEY_CHECKED}(주택도시기금·한국주택금융공사·금융위원회·지방세법·주택공급에 관한 규칙)${f.bank ? ` · ${bankLabel(f.bank)}` : ''}`),
+    H('links'), x.links,
+    foldNote('출처·기준일', `기준: 청약홈(한국부동산원) 분양정보 ${f.dataUpdatedAt.slice(0, 10)} 수집 · 입주자모집공고문(청약홈 PDF${t.fetched ? `, ${t.fetched} 읽음` : ''}) · 대출·세금·소득 기준 확인일 ${MONEY_CHECKED}(주택도시기금·한국주택금융공사·금융위원회·지방세법·주택공급에 관한 규칙)${f.bank ? ` · ${bankLabel(f.bank)}` : ''}`),
     `<p style="font-size:13px;color:${C.muted}">이 글은 공고와 공개 자료를 정리한 것이며 청약·투자 권유가 아닙니다.</p>`,
     `<p style="font-size:13px;color:${C.muted}">※ ${DISCLAIMER}</p>`,
   ].filter(Boolean).join('\n');
@@ -535,6 +543,7 @@ function autoNotesV2(f) {
   const c = m.byType.find((b) => b.area === m.main.area)?.base;
   return {
     ...v1,
+    price: [], // 시세 절 없음
     rules: p ? [`공고문 기준 ${[['재당첨 제한', p.rewin], ['전매 제한', p.resale], ['거주 의무', p.residence]].map(([n, v]) => `${n} ${per(v)}`).join(', ')}이에요.`] : v1.rules,
     loans: c ? [`전용 ${m.main.area}㎡ 최고가에 ${eul(c.name)} 받는다고 가정하면 대출 ${W(c.loan)}, 입주 때 자기 돈 ${W(c.cash)}, 월 상환 ${span2(c.pay[0], c.pay[1], M)}이에요.`, '실제 한도는 소득과 심사로 정해집니다.'] : v1.loans,
   };
