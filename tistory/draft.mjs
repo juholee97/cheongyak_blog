@@ -296,6 +296,8 @@ async function main() {
         const cap = dialogs.find((m) => /하루에 작성할 수 있는 글은 최대\s*\d+\s*개/.test(m));
         if (cap) { step(`티스토리 하루 글 한도(${cap.match(/최대\s*(\d+)/)[1]}개) — 내일 다시`, false); return 5; }
         report.shot = await shot('scheduled');
+        // --no-verify: 저장 뒤 대조를 건너뛴다 — 여러 편을 고칠 때 다 고친 뒤 --verify-scheduled로 한꺼번에(2026-10-29 사용자 지시)
+        if (process.argv.includes('--no-verify')) { step('저장 뒤 대조는 나중에 한꺼번에(--no-verify)', true); report.ok = true; return 0; }
         return await verifyScheduled();
       }
       await page.click(SEL.draft.save);

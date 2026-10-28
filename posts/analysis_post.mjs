@@ -277,7 +277,8 @@ export function summaryOf(f) {
   const km = (t.widened ? t.wide : t.range) / 1000;
   let cmp;
   if (f.leasehold) cmp = '토지임대부라 땅값이 빠진 분양가여서 주변 거래가와 바로 비교하기 어려워요.';
-  else if (t.skip || !near.length) cmp = `반경 ${km}km 안에 같은 ${t.tier} 등급 단지의 비슷한 면적 거래가 없어요.`;
+  else if (t.skip) cmp = '주변 실거래를 불러오지 못해 시세와 비교하지 못했어요.'; // 위치를 못 찾으면 반경·등급 값이 없다(2026-10-29 「반경 NaNkm·undefined 등급」)
+  else if (!near.length) cmp = `반경 ${km}km 안에 같은 ${t.tier} 등급 단지의 비슷한 면적 거래가 없어요.`;
   else {
     const lo = Math.min(...near), hi = Math.max(...near);
     const pos = main.max < lo ? '보다 낮아요' : main.max > hi ? '보다 높아요' : ' 범위 안이에요';
