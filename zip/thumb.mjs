@@ -20,7 +20,9 @@ if (process.argv[1]?.endsWith('thumb.mjs')) {
   const out = join(ROOT, 'data/zip_posts/img');
   await mkdir(out, { recursive: true });
   const seen = new Set(), pages = [];
-  for (const r of items.filter((x) => !x.skip)) { const k = shortName(r.name); if (seen.has(k)) continue; seen.add(k); pages.push({ name: r.no, html: thumbHtml(r) }); }
+  const { access } = await import('node:fs/promises');
+  for (const r of items.filter((x) => !x.skip)) { const k = shortName(r.name); if (seen.has(k)) continue; seen.add(k); if (!process.argv.includes('--force') && await access(join(out, `${r.no}.png`)).then(() => true, () => false)) continue; pages.push({ name: r.no, html: thumbHtml(r) }); } // 이미 있는 그림은 다시 그리지 않는다(디자인을 바꿀 때만 --force)
+  if (!pages.length) { console.log('새로 그릴 그림 없음'); process.exit(0); }
   const files = await renderPngs(pages, out);
   console.log(`${files.length}장 → data/zip_posts/img`);
 }

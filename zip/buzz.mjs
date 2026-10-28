@@ -7,6 +7,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { ROOT } from '../tistory/common.mjs';
 import { shortName } from '../posts/analysis_post.mjs';
+import { useApi, isBudgetError } from './guard.mjs';
 
 const env = async (k) => process.env[k] || (await readFile(join(ROOT, '.env'), 'utf8').catch(() => '')).match(new RegExp(`^${k}=(.+)$`, 'm'))?.[1]?.trim();
 const strip = (s) => String(s || '').replace(/<[^>]+>/g, '').replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&#39;/g, "'").trim();
@@ -29,6 +30,7 @@ export function trendOf(points) {
 async function naver(path, init = {}) {
   const [id, secret] = [await env('NAVER_CLIENT_ID'), await env('NAVER_CLIENT_SECRET')];
   if (!id || !secret) return null;
+  useApi('naver_hub'); // 호출 한도 가드 — 유료 전환 위험 서비스라 하루 60·한 달 600번까지(zip/guard.mjs)
   const legacy = (await env('NAVER_LEGACY')) === '1';
   const base = legacy ? 'https://openapi.naver.com' : 'https://naverapihub.apigw.ntruss.com';
   const key = legacy ? { 'X-Naver-Client-Id': id, 'X-Naver-Client-Secret': secret } : { 'X-NCP-APIGW-API-KEY-ID': id, 'X-NCP-APIGW-API-KEY': secret };
@@ -55,10 +57,12 @@ async function youtube(q, now) {
   const key = await env('YOUTUBE_API_KEY');
   if (!key) return null;
   const after = new Date(now); after.setFullYear(after.getFullYear() - 1);
+  useApi('youtube', 100); // 검색 1번 = 100단위
   const s = await (await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=20&order=relevance&regionCode=KR&relevanceLanguage=ko&publishedAfter=${after.toISOString()}&q=${encodeURIComponent(q)}&key=${key}`)).json();
   if (s.error) throw new Error(`유튜브 검색 ${s.error.code} ${s.error.status || ''}`); // URL엔 키가 있어 찍지 않는다
   const ids = (s.items || []).map((x) => x.id.videoId).filter(Boolean);
   if (!ids.length) return { count: 0, items: [] };
+  useApi('youtube', 1);
   const v = await (await fetch(`https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics&id=${ids.join(',')}&key=${key}`)).json();
   const items = (v.items || []).filter((x) => q.split(' ').slice(0, 2).every((w) => x.snippet.title.replace(/\s+/g, '').includes(w))) // 제목에 단지 이름 앞 두 낱말이 모두 든 영상만(「청라」 하나로는 안 됨)
     .map((x) => ({ title: x.snippet.title, channel: x.snippet.channelTitle, date: x.snippet.publishedAt.slice(0, 10), views: +x.statistics.viewCount || 0, url: `https://www.youtube.com/watch?v=${x.id}` }))
@@ -74,11 +78,12 @@ async function main() {
   const oi = process.argv.indexOf('--only'), only = oi > 0 ? process.argv[oi + 1].split(',') : null; // --only 공고번호,공고번호: 그 공고만(비교 단지를 아직 안 골라 skip 표시인 공고도 포함)
   for (const r of items.filter((x) => (only ? only.includes(x.no) : !x.skip))) {
     const q = queryOf(r.name);
+    if (!process.argv.includes('--force') && out[r.no]?.at && Date.now() - Date.parse(out[r.no].at) < 12 * 3600e3) { console.log(`건너뜀(12시간 안에 모음) ${q}`); continue; } // 같은 공고를 하루에 여러 번 부르지 않는다(유튜브 검색 한도)
     try {
       out[r.no] = { q, at: now.toISOString(), trend: await trend(q, now), news: await news(q), youtube: await youtube(q, now) };
       const b = out[r.no];
       console.log(`${q} · 검색 최근 ${b.trend?.recent ?? '-'} (전 ${b.trend?.before ?? '-'}) · 뉴스 ${b.news?.total ?? '-'} · 영상 ${b.youtube?.count ?? '-'}곳 조회 ${b.youtube?.views?.toLocaleString() ?? '-'}`);
-    } catch (e) { console.log(`✗ ${q}: ${e.message}`); }
+    } catch (e) { console.log(`✗ ${q}: ${e.message}`); if (isBudgetError(e)) { console.log('호출 한도에 도달 — 여기서 멈춥니다'); break; } }
   }
   await writeFile(join(ROOT, 'data/buzz.json'), JSON.stringify(out, null, 2));
 }

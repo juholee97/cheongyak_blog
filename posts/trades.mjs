@@ -7,6 +7,7 @@ import { pathToFileURL } from 'node:url';
 import { keyOf, cleanAddress, addressVariants } from './map.mjs';
 import { meters } from './nearby.mjs';
 import { ROOT } from '../tistory/common.mjs';
+import { useApi } from '../zip/guard.mjs';
 
 const RTMS = 'https://apis.data.go.kr/1613000/RTMSDataSvcAptTradeDev/getRTMSDataSvcAptTradeDev';
 export const PY = 3.3058; // ㎡ → 평
@@ -55,7 +56,10 @@ async function locateOnce(address, vkey) {
   for (const a of addressVariants(cleanAddress(address))) {
     for (const type of ['PARCEL', 'ROAD']) {
       const u = `https://api.vworld.kr/req/address?service=address&request=getCoord&version=2.0&crs=EPSG:4326&format=json&type=${type}&refine=true&simple=false&key=${vkey}&address=${encodeURIComponent(a)}`;
+      useApi('vworld'); // 호출 한도 가드(zip/guard.mjs)
       const j = await getJson(u);
+      // 일일 사용량 한도를 넘으면 나머지 주소·종류를 계속 두드려 봐야 전부 실패다 — 바로 알리고 멈춘다(실행 쪽이 이 오류를 보고 멈춘다)
+      if (/사용량|일일 제한/.test(j?.response?.error?.text || '')) throw new Error('VWORLD_QUOTA: 브이월드 일일 사용량 한도 초과');
       const p = j?.response?.result?.point, code = j?.response?.refined?.structure?.level4LC;
       if (j?.response?.status === 'OK' && p) return { lon: +p.x, lat: +p.y, lawd: code ? code.slice(0, 5) : null };
     }
@@ -94,6 +98,7 @@ async function fetchMonth(lawd, ym, key, kind) {
 async function fetchMonthRaw(lawd, ym, key, kind) {
   const out = [];
   for (let page = 1; page <= 10; page++) {
+    useApi('datago'); // 호출 한도 가드(zip/guard.mjs)
     const u = `${RTMS_OF[kind]}?serviceKey=${encodeURIComponent(key)}&LAWD_CD=${lawd}&DEAL_YMD=${ym}&pageNo=${page}&numOfRows=1000`;
     const r = await fetch(u);
     const xml = await r.text();

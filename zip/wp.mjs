@@ -52,7 +52,17 @@ async function termIds(kind, names = []) {
   return ids;
 }
 
+// 마지막으로 보낸 내용의 지문을 저장해, 같으면 다시 보내지 않는다(불필요한 호출·「수정됨」 날짜 갱신 방지). ZIP_FORCE=1이면 무조건 보낸다
+async function unchanged(key, sig) {
+  const { createHash } = await import('node:crypto');
+  const file = join(ROOT, 'data/zip_wp_state.json'), st = JSON.parse(await readFile(file, 'utf8').catch(() => '{}'));
+  const hash = createHash('sha1').update(JSON.stringify(sig)).digest('hex');
+  return { hit: !process.env.ZIP_FORCE && st[key]?.hash === hash ? st[key] : null, save: async (v) => { st[key] = { hash, ...v }; await (await import('node:fs/promises')).writeFile(file, JSON.stringify(st, null, 1)); } };
+}
+
 export async function upsert(post, at, now = false) {
+  const u = await unchanged(`post:${post.slug}`, [post.title, post.html, post.excerpt, post.tags, post.categories, post.featured, at, now]);
+  if (u.hit) return { id: u.hit.id, link: u.hit.link, status: u.hit.status, ok: true, skipped: true };
   const [old] = await wp(`posts?slug=${encodeURIComponent(post.slug)}&status=draft,future,publish&context=edit`);
   if (old?.status === 'publish' && !at && !now) throw new Error(`이미 공개된 글(${old.link}) — 고치려면 --at 없이 따로 결정`);
   const body = { slug: post.slug, title: post.title, content: post.html, excerpt: post.excerpt || '', tags: await termIds('tags', post.tags), categories: await termIds('categories', post.categories), ...(post.featured ? { featured_media: post.featured } : {}), status: at ? 'future' : now ? 'publish' : 'draft', ...(at ? { date: at.replace(' ', 'T') + ':00' } : {}) };
@@ -60,15 +70,20 @@ export async function upsert(post, at, now = false) {
   // 확인: 다시 불러와 제목·본문 길이·상태 대조
   const back = await wp(`posts/${res.id}?context=edit`);
   const ok = back.title.raw === post.title && back.content.raw === post.html && back.status === body.status;
+  if (ok) await u.save({ id: res.id, link: back.link, status: back.status });
   return { id: res.id, link: back.link, status: back.status, ok };
 }
 
 // 고정 페이지(소개·열린 공고 등): slug로 찾아 고치거나 만든다. 공개 상태로 둔다
 export async function upsertPage({ slug, title, html }) {
+  const u = await unchanged(`page:${slug}`, [title, html]);
+  if (u.hit) return { id: u.hit.id, link: u.hit.link, ok: true, skipped: true };
   const [old] = await wp(`pages?slug=${encodeURIComponent(slug)}&status=draft,publish,future&context=edit`);
   const res = await wp(old ? `pages/${old.id}` : 'pages', { method: 'POST', body: { slug, title, content: html, status: 'publish' } });
   const back = await wp(`pages/${res.id}?context=edit`);
-  return { id: res.id, link: back.link, ok: back.content.raw === html && back.status === 'publish' };
+  const ok = back.content.raw === html && back.status === 'publish';
+  if (ok) await u.save({ id: res.id, link: back.link });
+  return { id: res.id, link: back.link, ok };
 }
 
 if (process.argv[1]?.endsWith('wp.mjs')) {

@@ -77,7 +77,10 @@ async function main() {
       const chosen = peersOf[no] ? await withDistances(pick(pool, peersOf[no].peers), t.site, distanceOf) : [];
       const d = dealOf(m, chosen);
       out.push({ ...row, main: m, site: t.site, months: t.months, pool, refs: chosen, note: peersOf[no]?.note || '', ...(d ? { ...d, hit: d.hit && !row.leasehold } : { skip: peersOf[no] ? '고른 비교 단지가 풀에 2곳 미만' : '비교 단지 아직 안 고름' }) }); // 토지임대부는 땅값이 빠져 꿀분양에서 뺀다
-    } catch (e) { out.push({ ...row, skip: e.message }); }
+    } catch (e) {
+      out.push({ ...row, skip: e.message });
+      if (/VWORLD_QUOTA|API_BUDGET/.test(e.message)) { console.log('호출 한도 도달 — 남은 공고는 건너뛰고 멈춥니다(내일 다시):', e.message.slice(0, 80)); break; } // 같은 호출을 공고마다 되풀이하지 않는다
+    }
     const r = out.at(-1);
     await writeFile(join(ROOT, 'data/deals.json'), JSON.stringify({ at: new Date().toISOString(), rule: { GAP, RATE }, partial: true, items: carry(out) }, null, 2)); // 중간에 끊겨도 한 곳씩 남는다
     console.log(`${r.hit ? '★' : ' '} ${it.kind} ${it.name} ${r.skip || `3.3㎡당 ${r.own} vs ${r.med} → ${r.gap}만 (${Math.round(r.rate * 100)}%)`} · 풀 ${r.pool?.length ?? 0}곳`);
