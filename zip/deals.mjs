@@ -46,6 +46,9 @@ async function main() {
   if (!key) throw new Error('.env에 DATA_GO_KR_KEY 필요');
   const peersOf = JSON.parse(await readFile(join(ROOT, 'data/zip_peers.json'), 'utf8').catch(() => '{}'));
   const neighbors = JSON.parse(await readFile(join(ROOT, 'data/zip_neighbors.json'), 'utf8').catch(() => '{}'));
+  // 접수가 끝나 이번 수집에서 빠진 공고도 글이 계속 열려 있으니 지난 자료(풀·고른 단지·비교값)를 이어 둔다 — 시작할 때 읽어 둔다
+  const prev = JSON.parse(await readFile(join(ROOT, 'data/deals.json'), 'utf8').catch(() => '{"items":[]}')).items.filter((r) => r.pool && !r.skip);
+  const carry = (out) => [...out, ...prev.filter((r) => !out.some((o) => o.no === r.no))];
   const data = await loadData(), today = new Date().toISOString().slice(0, 10);
   const items = data.items.filter((it) => MODEL[it.kind] && (it.phases || []).some((p) => ['sp', 'p1'].includes(p.k) && p.date >= today));
   const out = [];
@@ -67,7 +70,7 @@ async function main() {
       out.push({ ...row, main: m, months: t.months, pool, refs: chosen, note: peersOf[no]?.note || '', ...(d ? { ...d, hit: d.hit && !row.leasehold } : { skip: peersOf[no] ? '고른 비교 단지가 풀에 2곳 미만' : '비교 단지 아직 안 고름' }) }); // 토지임대부는 땅값이 빠져 꿀분양에서 뺀다
     } catch (e) { out.push({ ...row, skip: e.message }); }
     const r = out.at(-1);
-    await writeFile(join(ROOT, 'data/deals.json'), JSON.stringify({ at: new Date().toISOString(), rule: { GAP, RATE }, partial: true, items: out }, null, 2)); // 중간에 끊겨도 한 곳씩 남는다
+    await writeFile(join(ROOT, 'data/deals.json'), JSON.stringify({ at: new Date().toISOString(), rule: { GAP, RATE }, partial: true, items: carry(out) }, null, 2)); // 중간에 끊겨도 한 곳씩 남는다
     console.log(`${r.hit ? '★' : ' '} ${it.kind} ${it.name} ${r.skip || `3.3㎡당 ${r.own} vs ${r.med} → ${r.gap}만 (${Math.round(r.rate * 100)}%)`} · 풀 ${r.pool?.length ?? 0}곳`);
   }
   await writeFile(join(ROOT, 'data/deals.json'), JSON.stringify({ at: new Date().toISOString(), rule: { GAP, RATE }, items: out }, null, 2));

@@ -12,6 +12,8 @@ import { GAP, RATE } from './deals.mjs';
 export const CAT_ALL = '분양 시세비교', CAT_DEAL = '꿀분양';
 const GOLD = '#a15c00';
 const eok = (n) => { const a = Math.abs(n), s = a >= 10000 ? `${Math.floor(a / 10000)}억${a % 10000 ? ' ' + (a % 10000).toLocaleString() + '만' : ''}원` : `${a.toLocaleString()}만원`; return s; };
+// 「약 …」으로 쓰는 금액은 백만원 단위로 반올림(10만원 자리에서)
+const about = (n) => `약 ${eok(Math.round(Math.abs(n) / 100) * 100)}`;
 const pct = (r) => `${Math.round(Math.abs(r) * 100)}%`;
 const km = (m) => (m < 1000 ? `${m}m` : `${(m / 1000).toFixed(1)}km`);
 const table = (head, rows) => `<div style="overflow-x:auto"><table style="border-collapse:collapse;width:100%;min-width:480px"><thead><tr>${head.map((h) => `<th ${TH}>${h}</th>`).join('')}</tr></thead><tbody>${rows.map((r) => `<tr>${r.map((c) => `<td ${TD}>${c}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
@@ -42,14 +44,25 @@ export function claimsHtml(cs) {
     `<p style="font-size:13px;color:${C.muted}">기사·영상에서 자주 나온 이야기를 정부·지자체·사업주체 공식 자료와 맞춰 본 결과예요. 공식 자료가 없는 이야기는 사실이 아니라는 뜻이 아니라 확인되지 않았다는 뜻이에요.</p>`];
 }
 
-export function postOf(r, buzz, claims) {
+export const OPEN_URL = 'https://auleezip.com/open-notices/', CAL_URL = 'https://aulee.tistory.com/category/청약일정';
+// 접수 마감 여부: 접수(특별공급·1순위 등) 날짜가 모두 지났으면 마감
+export function closedOf(phases, today) {
+  const ds = (phases || []).filter((p) => ['sp', 'p1', 'p2'].includes(p.k) && p.date).map((p) => p.date).sort();
+  return ds.length > 0 && ds.at(-1) < today;
+}
+
+export function postOf(r, buzz, claims, ctx = {}) {
   r = { ...r, med: Math.round(r.med), own: Math.round(r.own) };
   const peer = '비교 단지';
   const name = shortName(r.name), area = areaOf(r), cheap = r.gap > 0, m = r.main;
-  const diff = `${eok(r.gap)}(${pct(r.rate)}) ${cheap ? '낮아요' : '높아요'}`;
-  const title = r.hit
-    ? `[${area}] ${name} 분양가, 비교 단지 시세보다 전용 ${m.area}㎡ 한 채 약 ${eok(r.gap)} 낮아요 — 실거래 비교`
-    : `[${area}] ${name} 분양가 vs ${peer} 실거래 — 전용 ${m.area}㎡ 3.3㎡당 ${Math.abs(r.med - r.own).toLocaleString()}만원 ${cheap ? '낮음' : '높음'}`;
+  const diff = `${about(r.gap)}(${pct(r.rate)}) ${cheap ? '낮아요' : '높아요'}`;
+  // 제목은 결과(싸다/비싸다·금액)를 드러내지 않는다 — 의문형·주제형으로 돌려 쓴다(2026-10-28 사용자 지시)
+  const head = `[${area}] ${name}`;
+  const forms = r.kind === '무순위'
+    ? [`${head} 무순위 — 다시 찾아온 기회일까? 주변 시세 비교`, `${head} 무순위, 주변 단지와 시세 전격 비교`]
+    : [`${head} 분양가 — 주변 단지와 시세 전격 비교`, `${head} 분양가, 주변 단지 평균 시세는?`, `${head} 분양가, 적정 시세일까?`];
+  let title = forms[(+r.no.slice(-2) || 0) % forms.length];
+  if (title.length > 44) title = `${head} 분양가, 주변 시세는?`; // 너무 길면 짧은 형태로
   const lead = `${name} 전용 ${m.area}㎡ 최고 분양가는 ${eok(m.max)}(3.3㎡당 ${r.own.toLocaleString()}만원)이에요. 생활권·급지·브랜드를 보고 고른 비교 단지 ${r.n}곳의 최근 12개월 실거래 중앙값(3.3㎡당 ${r.med.toLocaleString()}만원)으로 같은 면적을 환산하면 분양가가 ${diff}.${r.leasehold ? ' 다만 토지임대부라 땅값이 빠진(토지는 따로 임대료를 내는) 분양가여서 일반 아파트 거래가와 그대로 비교할 수는 없어요.' : ''}`;
   // 글머리 상자는 정말 한 줄(근거는 바로 아래 표·기준 문단에). lead는 검색 요약(excerpt)으로만 쓴다
   const one = `전용 ${m.area}㎡ 분양가 ${eok(m.max)} · 비교 단지 시세보다 ${diff}`;
@@ -57,7 +70,9 @@ export function postOf(r, buzz, claims) {
   const [tint, bg, tag] = r.hit ? [GOLD, '#fff8ec', '꿀분양'] : [C.brand, '#f5f8fe', '한 줄 비교'];
   const box = `<div style="border-left:4px solid ${tint};border-radius:8px;padding:10px 14px;margin:12px 0;background:${bg}"><p style="margin:0;font-weight:700"><span style="font-size:13px;color:${tint};margin-right:8px">${tag}</span>${esc(one)}</p>${sub}</div>`;
   const when = (r.phases || []).filter((p) => p.date).map((p) => [esc(label(r, p.k) || p.k), md(p.date)]);
+  const banner = ctx.closed ? `<div style="border:2px solid ${C.announce};border-radius:12px;padding:14px 18px;margin:12px 0;background:#fff4f2"><p style="margin:0;font-size:26px;font-weight:900;color:${C.announce}">접수 마감</p><p style="margin:4px 0 0">이 글은 접수가 끝난 공고의 시세 비교예요. 지금 접수 중이거나 앞으로 열리는 공고는 <a href="${OPEN_URL}"><b>현재 열린 공고 보기</b></a>에서 확인하세요.</p></div>` : '';
   const html = [
+    banner,
     box,
     '<h2>분양가와 비교 단지 실거래</h2>',
     table(['구분', '전용 3.3㎡당', `전용 ${m.area}㎡ 환산`], [
@@ -75,11 +90,12 @@ export function postOf(r, buzz, claims) {
     ...((r.links || []).length > 1 ? [`<p style="font-size:13px;color:${C.muted}">청약홈에 같은 단지 공고가 ${r.links.length}건 따로 올라와 있어 글 하나로 묶었어요. 공고마다 구분(불법행위 재공급·무순위)과 세대수가 달라서 아래 공식 자료 확인표와 각 공고 링크를 함께 보세요.</p>`] : []),
     '<h2>확인할 조건</h2>',
     `<p>분양가가 낮은 단지일수록 전매제한·실거주 의무·재당첨 제한이 붙는 경우가 많아요. 적용 여부와 기간은 ${(r.links || [r.applyhomeUrl]).map((u, i, a) => `<a href="${esc(u)}">청약홈 입주자모집공고${a.length > 1 ? ` ${i + 1}` : ''}</a>`).join(' · ')}에서 확인하세요.</p>`,
+    ...(ctx.more?.length ? ['<h2>함께 보면 좋은 글</h2>', `<ul>${ctx.more.map((x) => `<li><a href="${esc(x.url)}">${esc(x.label)}</a></li>`).join('')}</ul>`] : []),
     `<p style="font-size:13px;color:${C.muted}">이 글은 공고와 공개 실거래 자료를 비교한 것이며 청약·투자 권유가 아닙니다. ${esc(DISCLAIMER)}</p>`,
   ].join('\n');
   const excerpt = lead;
   const tags = [area, r.district, r.kind === '무순위' ? '무순위 청약' : '아파트 분양', ...(r.hit ? ['꿀분양'] : [])].filter(Boolean);
-  return { slug: `apt-${r.no}`, title, html, excerpt, tags, categories: r.hit ? [CAT_ALL, CAT_DEAL] : [CAT_ALL] };
+  return { slug: `apt-${r.no}`, title, html, excerpt, closed: !!ctx.closed, tags, categories: r.hit ? [CAT_ALL, CAT_DEAL] : [CAT_ALL] };
 }
 
 export function checkPost(p) {
@@ -100,12 +116,23 @@ if (process.argv[1]?.endsWith('post.mjs')) {
     if (seen.has(k)) { seen.get(k).links.push(r.applyhomeUrl); continue; }
     seen.set(k, Object.assign(r, { links: [r.applyhomeUrl] }));
   }
-  for (const r of seen.values()) {
-    const p = postOf(r, buzz[r.no], claims[r.no]), issues = checkPost(p);
+  const today = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
+  const pub = JSON.parse(await readFile(join(ROOT, 'posts/published.json'), 'utf8').catch(() => '{}'));
+  const list = [...seen.values()];
+  for (const r of list) {
+    const closed = closedOf(r.phases, today);
+    const more = [];
+    // 티스토리에 같은 단지 분양분석 글이 있으면 서로 연결
+    const ad = JSON.parse(await readFile(join(ROOT, 'drafts', `analysis_${r.no}.json`), 'utf8').catch(() => 'null'));
+    if (ad?.title && pub[ad.title]) more.push({ url: pub[ad.title], label: `${shortName(r.name)} 분양 분석 — 교통·학군·대출까지 (우리의 청약달력)` });
+    // 같은 지역의 다른 시세 비교 글 최대 2편(열린 공고 먼저)
+    for (const o of list.filter((x) => x.no !== r.no && x.region === r.region).sort((a, b) => closedOf(a.phases, today) - closedOf(b.phases, today)).slice(0, 2)) more.push({ url: `https://auleezip.com/apt-${o.no}/`, label: `${shortName(o.name)} 시세 비교` });
+    more.push({ url: OPEN_URL, label: '현재 열린 공고 보기' }, { url: CAL_URL, label: '청약 일정 달력 (우리의 청약달력)' });
+    const p = postOf(r, buzz[r.no], claims[r.no], { closed, more }), issues = checkPost(p);
     if (issues.length) { console.log(`✗ ${r.name}: ${issues.join(', ')}`); continue; }
     await writeFile(join(dir, `${r.no}.json`), JSON.stringify(p, null, 2));
     posts.push(p);
-    console.log(`${r.hit ? '★' : ' '} ${p.title}`);
+    console.log(`${r.hit ? '★' : ' '}${closed ? '[마감]' : '      '} ${p.title}`);
   }
   await writeFile(join(dir, 'preview.html'), `<!doctype html><meta charset="utf-8"><body style="max-width:760px;margin:24px auto;padding:0 16px;font:16px/1.7 sans-serif;color:${C.ink}">${posts.map((p) => `<article style="border-bottom:3px solid #ccc;padding-bottom:32px;margin-bottom:32px"><p style="color:${C.muted};font-size:13px">${p.categories.join(' · ')}</p><h1 style="font-size:24px">${esc(p.title)}</h1>${p.html}</article>`).join('')}</body>`);
   console.log(`\n글 ${posts.length}편 → data/zip_posts/ (미리보기 preview.html)`);

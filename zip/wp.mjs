@@ -24,6 +24,24 @@ export async function wp(path, { method = 'GET', body } = {}) {
   return j;
 }
 
+// 이미지 올리기(미디어 라이브러리) → id. 같은 파일 이름·내용이면 다시 올리지 않는다(data/zip_media.json)
+export async function uploadMedia(file, name, alt = '') {
+  const { createHash } = await import('node:crypto');
+  const { writeFile } = await import('node:fs/promises');
+  const buf = await readFile(file), hash = createHash('sha1').update(buf).digest('hex');
+  const cacheFile = join(ROOT, 'data/zip_media.json'), cache = JSON.parse(await readFile(cacheFile, 'utf8').catch(() => '{}'));
+  if (cache[name]?.hash === hash) return cache[name].id;
+  const [url, user, pass] = [await env('WP_URL'), await env('WP_USER'), await env('WP_APP_PASSWORD')];
+  const type = /\.svg$/.test(name) ? 'image/svg+xml' : /\.png$/.test(name) ? 'image/png' : 'image/jpeg';
+  const r = await fetch(`${url.replace(/\/$/, '')}/wp-json/wp/v2/media`, { method: 'POST', headers: { Authorization: 'Basic ' + Buffer.from(`${user}:${pass}`).toString('base64'), 'Content-Type': type, 'Content-Disposition': `attachment; filename="${name}"` }, body: buf });
+  const j = await r.json().catch(() => null);
+  if (!r.ok) throw new Error(`이미지 올리기 HTTP ${r.status} ${j?.code || ''}`);
+  if (alt) await wp(`media/${j.id}`, { method: 'POST', body: { alt_text: alt, title: alt } });
+  cache[name] = { id: j.id, hash };
+  await writeFile(cacheFile, JSON.stringify(cache, null, 1));
+  return j.id;
+}
+
 // 태그·카테고리 이름 → id(없으면 만든다). kind: 'tags' | 'categories'
 async function termIds(kind, names = []) {
   const ids = [];
@@ -37,12 +55,20 @@ async function termIds(kind, names = []) {
 export async function upsert(post, at, now = false) {
   const [old] = await wp(`posts?slug=${encodeURIComponent(post.slug)}&status=draft,future,publish&context=edit`);
   if (old?.status === 'publish' && !at && !now) throw new Error(`이미 공개된 글(${old.link}) — 고치려면 --at 없이 따로 결정`);
-  const body = { slug: post.slug, title: post.title, content: post.html, excerpt: post.excerpt || '', tags: await termIds('tags', post.tags), categories: await termIds('categories', post.categories), status: at ? 'future' : now ? 'publish' : 'draft', ...(at ? { date: at.replace(' ', 'T') + ':00' } : {}) };
+  const body = { slug: post.slug, title: post.title, content: post.html, excerpt: post.excerpt || '', tags: await termIds('tags', post.tags), categories: await termIds('categories', post.categories), ...(post.featured ? { featured_media: post.featured } : {}), status: at ? 'future' : now ? 'publish' : 'draft', ...(at ? { date: at.replace(' ', 'T') + ':00' } : {}) };
   const res = await wp(old ? `posts/${old.id}` : 'posts', { method: 'POST', body });
   // 확인: 다시 불러와 제목·본문 길이·상태 대조
   const back = await wp(`posts/${res.id}?context=edit`);
   const ok = back.title.raw === post.title && back.content.raw === post.html && back.status === body.status;
   return { id: res.id, link: back.link, status: back.status, ok };
+}
+
+// 고정 페이지(소개·열린 공고 등): slug로 찾아 고치거나 만든다. 공개 상태로 둔다
+export async function upsertPage({ slug, title, html }) {
+  const [old] = await wp(`pages?slug=${encodeURIComponent(slug)}&status=draft,publish,future&context=edit`);
+  const res = await wp(old ? `pages/${old.id}` : 'pages', { method: 'POST', body: { slug, title, content: html, status: 'publish' } });
+  const back = await wp(`pages/${res.id}?context=edit`);
+  return { id: res.id, link: back.link, ok: back.content.raw === html && back.status === 'publish' };
 }
 
 if (process.argv[1]?.endsWith('wp.mjs')) {
