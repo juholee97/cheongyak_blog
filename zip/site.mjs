@@ -10,7 +10,7 @@ import { wp } from './wp.mjs';
 
 const THEME = 'twentytwentyfive', SITE = 'https://auleezip.com';
 // url은 구조화 데이터의 sameAs로 나간다(호스팅 기본 주소 juholee97.mycafe24.com이 나가던 것) — 같은 사람이 쓰는 티스토리로
-export const AUTHOR = { name: 'aulee', nickname: 'aulee', slug: 'aulee', url: 'https://aulee.tistory.com/', description: '청약 공고의 분양가·임대료를 주변 실거래와 맞춰 보는 「우리의 집」과 청약 일정을 정리하는 「우리의 청약달력」을 운영해요.' };
+export const AUTHOR = { name: 'aulee', nickname: 'aulee', slug: 'aulee', url: 'https://aulee.tistory.com/', description: '청약 공고의 분양가·임대료를 주변 실거래와 맞춰 보는 「우리의 집」과 청약 일정을 정리하는 「우리의 청약달력」을 운영합니다.' };
 // 한글 글꼴: 구글 글꼴 조각(쓰인 글자만 받음). 사이트 서버에 두면 188조각 @font-face가 모든 페이지에 붙어 오히려 무거워진다
 const FONT = '<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;600&amp;display=swap">';
 // 로고 「우리의 집」: 우리 위에 aulee, 집 위에 zip(루비) — 주소 auleezip.com을 그대로 읽게 한다(2026-10-29 사용자: 이름은 우리의 집, aulee는 디자인으로)
@@ -38,9 +38,9 @@ ${NAV.map(([label, url]) => `<!-- wp:navigation-link {"label":"${label}","url":"
 
 const footer = `<!-- wp:group {"className":"az-footer","layout":{"type":"default"}} -->
 <div class="wp-block-group az-footer"><!-- wp:html -->
-<div class="az-footer-in"><div class="az-foot-cols"><div><p class="az-foot-name">${LOGO}</p><p>청약 공고의 분양가·임대료를 주변 실거래와 나란히 놓고 봐요. auleezip.com</p></div>
+<div class="az-footer-in"><div class="az-foot-cols"><div><p class="az-foot-name">${LOGO}</p><p>청약 공고의 분양가·임대료를 주변 실거래와 나란히 놓고 봅니다. auleezip.com</p></div>
 <nav class="az-foot-nav" aria-label="사이트 안내"><a href="${SITE}/">현재 열린 공고</a><a href="${SITE}/method/">비교 기준</a><a href="${SITE}/about/">소개</a><a href="${SITE}/privacy/">개인정보처리방침</a><a href="https://aulee.tistory.com">우리의 청약달력</a></nav></div>
-<p class="az-foot-note">분석은 aulee가 직접 해요. 청약 공고문과 국토교통부 실거래 자료를 하나하나 맞춰 보고, 비교 단지를 고른 이유와 계산 방법을 글마다 밝혀요. 신청 전에는 반드시 입주자모집공고 원문을 확인하세요.</p></div>
+<p class="az-foot-note">분석은 aulee가 직접 합니다. 청약 공고문과 국토교통부 실거래 자료를 하나하나 맞춰 보고, 비교 단지를 고른 이유와 계산 방법을 글마다 밝힙니다. 신청 전에는 반드시 입주자모집공고 원문을 확인하시기 바랍니다.</p></div>
 <!-- /wp:html --></div>
 <!-- /wp:group -->`;
 
@@ -95,7 +95,7 @@ const archive = `${part('header')}
 <!-- /wp:query-pagination -->
 <!-- wp:query-no-results -->
 <!-- wp:paragraph -->
-<p>아직 글이 없어요.</p>
+<p>아직 글이 없습니다.</p>
 <!-- /wp:paragraph -->
 <!-- /wp:query-no-results --></div>
 <!-- /wp:query --></div>

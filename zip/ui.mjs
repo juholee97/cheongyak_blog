@@ -68,7 +68,7 @@ export const keepUnits = (html) => html.split(/(<[^>]+>)/).map((part) => (part.s
 export const src = (t) => `<p class="az-src">${t}</p>`;
 export const note = (t) => `<p class="az-note">${t}</p>`;
 export const chip = (status) => ({ 확인: '<span class="az-chip ok">확인</span>', 다름: '<span class="az-chip no">공식 자료와 다름</span>', '공식 자료 없음': '<span class="az-chip na">공식 자료 없음</span>' })[status] || `<span class="az-chip na">${esc(status)}</span>`;
-export const banner = (openUrl) => `<div class="az-banner"><p class="az-banner-t">접수 마감</p><p>이 글은 접수가 끝난 공고의 시세 비교예요. 지금 접수 중이거나 앞으로 열리는 공고는 <a href="${openUrl}">현재 열린 공고</a>에서 확인하세요.</p></div>`;
+export const banner = (openUrl) => `<div class="az-banner"><p class="az-banner-t">접수 마감</p><p>이 글은 접수가 끝난 공고의 시세 비교입니다. 지금 접수 중이거나 앞으로 열리는 공고는 <a href="${openUrl}">현재 열린 공고</a>에서 확인하시기 바랍니다.</p></div>`;
 export const links = (items) => `<ul class="az-links">${items.map((x) => `<li><a href="${esc(x.url)}">${esc(x.label)}</a></li>`).join('')}</ul>`;
 
 // 첫 화면 「분양가와 주변 시세」 막대: d% (+ 높음, − 낮음), ±40%까지 그리고 넘으면 끝에 붙인다

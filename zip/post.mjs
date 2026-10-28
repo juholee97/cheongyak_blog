@@ -8,6 +8,7 @@ import { ROOT } from '../tistory/common.mjs';
 import { esc, md, label, DISCLAIMER } from '../posts/weekly.mjs';
 import { areaOf, shortName } from '../posts/analysis_post.mjs';
 import { BANNED } from '../posts/check.mjs';
+const formalDisclaimer = DISCLAIMER.replace('확인하세요.', '확인하시기 바랍니다.'); // 공용 면책 문구는 티스토리와 같이 써서 우리의 집(합쇼체)에서만 끝맺음을 바꾼다
 import { table, verdict, keyBox, rail, dotPlot, src, note, chip, banner, links, num, keepUnits, LOG_MARK } from './ui.mjs';
 
 export const CAT_ALL = '분양 시세비교', CAT_DEAL = '꿀분양';
@@ -34,11 +35,11 @@ export function buzzHtml(b) {
   if (b.youtube) rows.push(['유튜브(최근 1년)', `제목에 단지명이 든 영상 ${b.youtube.count}개 · 조회수 합 ${(b.youtube.views || 0).toLocaleString()}`]);
   const named = (t) => (b.q || '').split(' ').slice(0, 2).every((w) => t.replace(/\s+/g, '').includes(w)); // 제목에 단지명이 든 것만 목록에
   const news = (b.news?.items || []).filter((x) => ok(x.title) && named(x.title)).slice(0, 3).map((x) => `<li><a href="${esc(x.link)}" rel="nofollow noopener">${esc(x.title)}</a> <span class="az-s">${md(x.date)}</span></li>`);
-  const vids = (b.youtube?.items || []).filter((x) => ok(x.title)).slice(0, 3).map((x) => `<li><a href="${esc(x.url)}" rel="nofollow noopener">${esc(x.title)}</a> <span class="az-s">${esc(x.channel)}${(b.q || '').split(' ').slice(0, 2).every((w) => x.channel.replace(/\s+/g, '').includes(w)) ? ' (단지 이름을 딴 채널 — 분양 홍보 영상일 수 있어요)' : ''} · 조회 ${x.views.toLocaleString()}</span></li>`);
+  const vids = (b.youtube?.items || []).filter((x) => ok(x.title)).slice(0, 3).map((x) => `<li><a href="${esc(x.url)}" rel="nofollow noopener">${esc(x.title)}</a> <span class="az-s">${esc(x.channel)}${(b.q || '').split(' ').slice(0, 2).every((w) => x.channel.replace(/\s+/g, '').includes(w)) ? ' (단지 이름을 딴 채널 — 분양 홍보 영상일 수 있습니다)' : ''} · 조회 ${x.views.toLocaleString()}</span></li>`);
   return ['<h2>관심도</h2>', table(['지표', '값'], rows, { stack: false }),
     ...(news.length ? ['<h3>최근 기사</h3>', `<ul>${news.join('')}</ul>`] : []),
     ...(vids.length ? ['<h3>많이 본 영상</h3>', `<ul>${vids.join('')}</ul>`] : []),
-    src(`관심도는 화제성일 뿐 정보의 정확성이나 단지의 가치를 뜻하지 않아요. 기사·영상 내용은 aulee가 확인한 사실이 아니에요. 기준: 네이버 데이터랩·뉴스 검색, YouTube Data API(${esc((b.at || '').slice(0, 10))} 수집).`)];
+    src(`관심도는 화제성일 뿐 정보의 정확성이나 단지의 가치를 뜻하지 않습니다. 기사·영상 내용은 aulee가 확인한 사실이 아닙니다. 기준: 네이버 데이터랩·뉴스 검색, YouTube Data API(${esc((b.at || '').slice(0, 10))} 수집).`)];
 }
 
 // 자주 나오는 이야기 확인표(data/zip_claims.json — 세션에서 공식 자료로 대조해 적는다): { claim, status: 확인|다름|공식 자료 없음, fact, source: { name, url } }
@@ -46,7 +47,7 @@ export function claimsHtml(cs) {
   if (!cs?.length) return [];
   return ['<h2>자주 나오는 이야기, 공식 자료로 확인</h2>',
     table(['이야기', '확인 결과', '공식 자료'], cs.map((c) => [esc(c.claim), `${chip(c.status)}${c.fact ? `<small>${esc(c.fact)}</small>` : ''}`, c.source?.url ? `<a href="${esc(c.source.url)}">${esc(c.source.name)}</a>` : '-'])),
-    src('기사·영상에서 자주 나온 이야기를 정부·지자체·사업주체 공식 자료와 맞춰 본 결과예요. 공식 자료가 없는 이야기는 사실이 아니라는 뜻이 아니라 확인되지 않았다는 뜻이에요.')];
+    src('기사·영상에서 자주 나온 이야기를 정부·지자체·사업주체 공식 자료와 맞춰 본 결과입니다. 공식 자료가 없는 이야기는 사실이 아니라는 뜻이 아니라 확인되지 않았다는 뜻입니다.')];
 }
 
 // 접수 마감 여부: 접수(특별공급·1순위 등) 날짜가 모두 지났으면 마감
@@ -61,7 +62,7 @@ export const analysisHtml = (secs) => (secs || []).flatMap((x) => [`<h2>${esc(x.
 export function postOf(r, buzz, claims, ctx = {}) {
   r = { ...r, med: Math.round(r.med), own: Math.round(r.own) };
   const name = shortName(r.name), area = areaOf(r), cheap = r.gap > 0, m = r.main;
-  const diff = `${about(r.gap)}(${pct(r.rate)}) ${cheap ? '낮아요' : '높아요'}`;
+  const diff = `${about(r.gap)}(${pct(r.rate)}) ${cheap ? '낮습니다' : '높습니다'}`;
   // 제목은 결과(싸다/비싸다·금액)를 드러내지 않는다 — 의문형·주제형으로 돌려 쓴다(2026-10-28 사용자 지시)
   const head = `[${area}] ${name}`;
   const forms = r.kind === '무순위'
@@ -69,19 +70,19 @@ export function postOf(r, buzz, claims, ctx = {}) {
     : [`${head} 분양가 — 주변 단지와 시세 전격 비교`, `${head} 분양가, 주변 단지 평균 시세는?`, `${head} 분양가, 적정 시세일까?`];
   let title = forms[(+r.no.slice(-2) || 0) % forms.length];
   if (title.length > 44) title = `${head} 분양가, 주변 시세는?`; // 너무 길면 짧은 형태로
-  const leaseNote = '토지임대부라 땅값이 빠진(토지는 따로 임대료를 내는) 분양가여서 일반 아파트 거래가와 그대로 비교할 수 없어요.';
-  const lead = `${name} 전용 ${m.area}㎡ 최고 분양가는 ${eok(m.max)}(3.3㎡당 ${r.own.toLocaleString()}만원)이에요. 생활권·급지·브랜드를 보고 고른 비교 단지 ${r.n}곳의 최근 12개월 실거래 중앙값(3.3㎡당 ${r.med.toLocaleString()}만원)으로 같은 면적을 환산하면 분양가가 ${diff}.${r.leasehold ? ` 다만 ${leaseNote}` : ''}`;
+  const leaseNote = '토지임대부라 땅값이 빠진(토지는 따로 임대료를 내는) 분양가여서 일반 아파트 거래가와 그대로 비교할 수 없습니다.';
+  const lead = `${name} 전용 ${m.area}㎡ 최고 분양가는 ${eok(m.max)}(3.3㎡당 ${r.own.toLocaleString()}만원)입니다. 생활권·급지·브랜드를 보고 고른 비교 단지 ${r.n}곳의 최근 12개월 실거래 중앙값(3.3㎡당 ${r.med.toLocaleString()}만원)으로 같은 면적을 환산하면 분양가가 ${diff}.${r.leasehold ? ` 다만 ${leaseNote}` : ''}`;
   const conv = Math.round((r.med * m.area) / 3.3058);
   // B 비교 결과 눈금(토지임대부는 그대로 견줄 수 없어 그리지 않는다). d: 분양가가 비교 시세보다 높으면 +
   const d = -r.rate * 100, rounded = Math.round(Math.abs(d));
   const verdictHtml = r.leasehold ? '' : verdict(d, {
-    title: rounded === 0 ? '주변 시세와 같은 수준이에요' : `주변 시세보다 <strong>${pct(r.rate)} ${cheap ? '낮아요' : '높아요'}</strong>`,
+    title: rounded === 0 ? '주변 시세와 같은 수준입니다' : `주변 시세보다 <strong>${pct(r.rate)} ${cheap ? '낮습니다' : '높습니다'}</strong>`,
     rows: [[`분양가 (전용 ${m.area}㎡ 최고)`, eok(m.max)], [`비교 단지 ${r.n}곳 시세로 환산`, eok(conv)], ['차이', `${cheap ? '−' : '+'}${eok(Math.abs(r.gap))}`]],
-    note: r.hit ? '「꿀분양」 기준(비교 단지 시세보다 2억원 이상 또는 20% 이상 낮음)을 넘었어요.' : '',
+    note: r.hit ? '「꿀분양」 기준(비교 단지 시세보다 2억원 이상 또는 20% 이상 낮음)을 넘었습니다.' : '',
   });
   const keys = [
-    `전용 ${m.area}㎡ 최고 분양가는 <b>${eok(m.max)}</b>, 전용 3.3㎡당 ${num(r.own)}만원이에요.`,
-    `생활권·급지·브랜드로 고른 비교 단지 ${r.n}곳의 3.3㎡당 실거래 중앙값은 <b>${num(r.med)}만원</b>이에요.`,
+    `전용 ${m.area}㎡ 최고 분양가는 <b>${eok(m.max)}</b>, 전용 3.3㎡당 ${num(r.own)}만원입니다.`,
+    `생활권·급지·브랜드로 고른 비교 단지 ${r.n}곳의 3.3㎡당 실거래 중앙값은 <b>${num(r.med)}만원</b>입니다.`,
     `같은 면적으로 환산하면 분양가가 <b>${diff}</b>.`,
     ...(r.leasehold ? [leaseNote] : []),
   ];
@@ -96,7 +97,7 @@ export function postOf(r, buzz, claims, ctx = {}) {
   const refs = [...r.refs].sort((a, b) => b.perPy - a.perPy);
   const plot = dotPlot([{ label: `${esc(name)}<small>분양가</small>`, v: r.own, me: true }, ...refs.map((g) => ({ label: esc(g.apt), v: g.perPy }))], {
     med: r.med, medLabel: `${r.n}곳 중앙값`,
-    caption: `단위 만원. 자료: 국토교통부 실거래(${esc(r.months)}), 단지별 전용 3.3㎡당 중앙값. 분양가는 주력 주택형(전용 ${m.area}㎡) 최고가이며 확장비·옵션은 빠져 있어요.`,
+    caption: `단위 만원. 자료: 국토교통부 실거래(${esc(r.months)}), 단지별 전용 3.3㎡당 중앙값. 분양가는 주력 주택형(전용 ${m.area}㎡) 최고가이며 확장비·옵션은 빠져 있습니다.`,
   });
   const out = (g) => (g.sgg && !(r.district || '').includes(g.sgg.split(' ')[1]) ? `${esc(g.sgg.split(' ').slice(1).join(' '))} · ` : '');
   const peers = table(['단지', { t: '준공', n: true }, { t: '거리', n: true }, { t: '전용 3.3㎡당', n: true }],
@@ -113,17 +114,17 @@ export function postOf(r, buzz, claims, ctx = {}) {
     '<h2>비교한 단지와 고른 이유</h2>',
     peers,
     ...(r.note ? [note(esc(r.note))] : []),
-    src(`기준: 국토교통부 아파트 매매·분양권 전매·오피스텔 매매 실거래가(${esc(r.months)}) · 같은 시·군·구와 생활권이 이어지는 옆 시·군·구에서 생활권 인식·상급지/하급지·브랜드·단지 규모를 보고 고른 단지 · 단지별 전용 3.3㎡당 중앙값의 중앙값. 고른 기준은 aulee의 판단이고, 값은 모두 실거래예요. 분양가는 주력 주택형(세대수 최다)의 최고 분양가로, 발코니 확장·옵션 비용은 빠져 있어요.`),
+    src(`기준: 국토교통부 아파트 매매·분양권 전매·오피스텔 매매 실거래가(${esc(r.months)}) · 같은 시·군·구와 생활권이 이어지는 옆 시·군·구에서 생활권 인식·상급지/하급지·브랜드·단지 규모를 보고 고른 단지 · 단지별 전용 3.3㎡당 중앙값의 중앙값. 고른 기준은 aulee의 판단이고, 값은 모두 실거래입니다. 분양가는 주력 주택형(세대수 최다)의 최고 분양가로, 발코니 확장·옵션 비용은 빠져 있습니다.`),
     ...analysisHtml(ctx.analysis),
     ...(when.length ? ['<h2>청약 일정</h2>', table(['단계', { t: '날짜', n: true }], when, { stack: false })] : []),
     ...claimsHtml(claims),
     ...buzzHtml(buzz),
-    ...((r.links || []).length > 1 ? [note(`청약홈에 같은 단지 공고가 ${r.links.length}건 따로 올라와 있어 글 하나로 묶었어요. 공고마다 구분(불법행위 재공급·무순위)과 세대수가 달라서 위 공식 자료 확인표와 각 공고 링크를 함께 보세요.`)] : []),
+    ...((r.links || []).length > 1 ? [note(`청약홈에 같은 단지 공고가 ${r.links.length}건 따로 올라와 있어 글 하나로 묶었습니다. 공고마다 구분(불법행위 재공급·무순위)과 세대수가 달라서 위 공식 자료 확인표와 각 공고 링크를 함께 보시기 바랍니다.`)] : []),
     '<h2>확인할 조건</h2>',
-    `<p>분양가가 낮은 단지일수록 전매제한·실거주 의무·재당첨 제한이 붙는 경우가 많아요. 적용 여부와 기간은 ${notices}에서 확인하세요.</p>`,
+    `<p>분양가가 낮은 단지일수록 전매제한·실거주 의무·재당첨 제한이 붙는 경우가 많습니다. 적용 여부와 기간은 ${notices}에서 확인하시기 바랍니다.</p>`,
     ...(ctx.more?.length ? ['<h2>함께 보면 좋은 글</h2>', links(ctx.more)] : []),
     LOG_MARK,
-    note(`이 글은 공고와 공개 실거래 자료를 비교한 것이며 청약·투자 권유가 아닙니다. ${esc(DISCLAIMER)}`),
+    note(`이 글은 공고와 공개 실거래 자료를 비교한 것이며 청약·투자 권유가 아닙니다. ${esc(formalDisclaimer)}`),
   ].filter(Boolean).join('\n');
   const tags = [area, r.district, r.kind === '무순위' ? '무순위 청약' : '아파트 분양', ...(r.hit ? ['꿀분양'] : [])].filter(Boolean);
   return { slug: `apt-${r.no}`, title, html: wrap(keepUnits(html)), excerpt: lead, closed: !!ctx.closed, tags, categories: r.hit ? [CAT_ALL, CAT_DEAL] : [CAT_ALL], snap: { months: r.months, n: r.n, own: r.own, med: r.med } };
