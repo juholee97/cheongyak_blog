@@ -2,7 +2,8 @@
 // .env: WP_URL=https://auleezip.com  WP_USER=관리자아이디  WP_APP_PASSWORD=xxxx xxxx ...  (값은 로그·파일에 남기지 않는다)
 // node zip/wp.mjs --ping                     연결·권한만 확인
 // node zip/wp.mjs post.json                  임시글(draft)로 올림 — 같은 slug가 있으면 그 글을 고친다
-// node zip/wp.mjs post.json --at "YYYY-MM-DD HH:MM"   그 시각 예약(future). 즉시 공개(--publish)는 사용자 결정 전까지 없음
+// node zip/wp.mjs post.json --at "YYYY-MM-DD HH:MM"   그 시각 예약(future)
+// 즉시 공개(--now)는 zip/publish.mjs가 사용자 승인 뒤에만 쓴다(2026-10-28: 접수 1주일 전 예약 글 말고는 즉시 발행)
 // post.json: { slug, title, html, excerpt?, tags?[], categories?[] }  (zip/post.mjs가 만든다)
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -33,10 +34,10 @@ async function termIds(kind, names = []) {
   return ids;
 }
 
-export async function upsert(post, at) {
+export async function upsert(post, at, now = false) {
   const [old] = await wp(`posts?slug=${encodeURIComponent(post.slug)}&status=draft,future,publish&context=edit`);
-  if (old?.status === 'publish' && !at) throw new Error(`이미 공개된 글(${old.link}) — 고치려면 --at 없이 따로 결정`);
-  const body = { slug: post.slug, title: post.title, content: post.html, excerpt: post.excerpt || '', tags: await termIds('tags', post.tags), categories: await termIds('categories', post.categories), status: at ? 'future' : 'draft', ...(at ? { date: at.replace(' ', 'T') + ':00' } : {}) };
+  if (old?.status === 'publish' && !at && !now) throw new Error(`이미 공개된 글(${old.link}) — 고치려면 --at 없이 따로 결정`);
+  const body = { slug: post.slug, title: post.title, content: post.html, excerpt: post.excerpt || '', tags: await termIds('tags', post.tags), categories: await termIds('categories', post.categories), status: at ? 'future' : now ? 'publish' : 'draft', ...(at ? { date: at.replace(' ', 'T') + ':00' } : {}) };
   const res = await wp(old ? `posts/${old.id}` : 'posts', { method: 'POST', body });
   // 확인: 다시 불러와 제목·본문 길이·상태 대조
   const back = await wp(`posts/${res.id}?context=edit`);
@@ -49,9 +50,9 @@ if (process.argv[1]?.endsWith('wp.mjs')) {
     const me = await wp('users/me?context=edit');
     console.log(`연결됨: ${me.name} (${(me.roles || []).join(',')})`);
   } else {
-    const file = process.argv[2], ai = process.argv.indexOf('--at');
+    const file = process.argv[2], ai = process.argv.indexOf('--at'), nowFlag = process.argv.includes('--now');
     if (!file) { console.log('사용: node zip/wp.mjs post.json [--at "YYYY-MM-DD HH:MM"] | --ping'); process.exit(4); }
-    const r = await upsert(JSON.parse(await readFile(file, 'utf8')), ai > 0 ? process.argv[ai + 1] : null);
+    const r = await upsert(JSON.parse(await readFile(file, 'utf8')), ai > 0 ? process.argv[ai + 1] : null, nowFlag);
     console.log(`${r.ok ? '✓' : '✗'} ${r.status} ${r.link}`);
     process.exitCode = r.ok ? 0 : 2;
   }
