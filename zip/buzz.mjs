@@ -1,4 +1,4 @@
-// 「aulee의 집」 관심도: 공고 단지마다 공식 API로 화제성만 센다 — 사실 근거로는 쓰지 않는다(2026-10-28 사용자 결정)
+// 「우리의 집」 관심도: 공고 단지마다 공식 API로 화제성만 센다 — 사실 근거로는 쓰지 않는다(2026-10-28 사용자 결정)
 // node zip/buzz.mjs            → data/buzz.json { 공고번호: { trend, news, youtube } }
 // node zip/buzz.mjs --check    → 계산 점검(네트워크 없음)
 // .env: NAVER_CLIENT_ID·NAVER_CLIENT_SECRET(NAVER API HUB의 검색·Search Trend), YOUTUBE_API_KEY(YouTube Data API v3) — 값은 로그·파일에 남기지 않는다.

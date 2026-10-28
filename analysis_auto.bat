@@ -15,6 +15,11 @@ echo ===== %DATE% %TIME% >> data\logs\policy_watch.log
 node posts\policy_watch.mjs >> data\logs\policy_watch.log 2>&1
 rem auleezip: notices open for application with no price-comparison post yet -> popup + data\zip_new.json (2026-10-28). Posts are made together with the user.
 node zip\new_notices.mjs >> data\logs\zip_new.log 2>&1
+rem auleezip daily refresh (2026-10-29 user decision): closed-notice banners, open-notices page (receipt status, D-day), revision log, cache purge.
+rem Only existing data is re-rendered (no new notices are added here) and held drafts are not touched (--live = already published only).
+node zip\post.mjs >> data\logs\zip_daily.log 2>&1
+node zip\sh_write.mjs --publish --live >> data\logs\zip_daily.log 2>&1
+node zip\publish.mjs --go >> data\logs\zip_daily.log 2>&1
 rem SH notices whose schedule is only in attachments: read the viewer page images with OCR (tools\ocr_venv) -> crawler\sh_attach.json (commit it to reach the calendar) (2026-10-28)
 node crawler\sh_attach.mjs >> data\logs\sh_attach.log 2>&1
 call crawler\push_attach.bat

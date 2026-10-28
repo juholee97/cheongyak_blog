@@ -1,4 +1,4 @@
-// 「aulee의 집」(auleezip.com) 비교: 접수 전 분양 공고마다 주력 주택형 분양가 vs 직접 고른 비교 단지 실거래
+// 「우리의 집」(auleezip.com) 비교: 접수 전 분양 공고마다 주력 주택형 분양가 vs 직접 고른 비교 단지 실거래
 // node zip/deals.mjs           → data/deals.json: 공고마다 후보 단지 풀(같은 시군구 최근 12개월 거래 단지) + 고른 단지로 계산한 차이
 // node zip/deals.mjs --only 2026910275,2026000435   그 공고만(다른 공고 자료는 그대로 이어 둔다)
 // --include-past: 접수가 끝난 공고도 다시 계산(--only와 함께)
