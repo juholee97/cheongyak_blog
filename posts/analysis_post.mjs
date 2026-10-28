@@ -15,6 +15,8 @@ import { nearbyTrades, dataKey, tierOf, locate, PY } from './trades.mjs';
 import { keyOf, mapHtml } from './map.mjs';
 import { itemHtml, renderPngs, searchThumbHtml } from './card.mjs';
 import { plansFor } from './floorplan.mjs';
+import { noticeText, termsOf } from './notice_terms.mjs';
+import { moneyOf, checkMoney, bankRate, BANK, POLICY_YEARS, INCOME, incomeAt, PRIVATE_RULES, PRIVATE_ASSET, MONEY_CHECKED } from './money.mjs';
 
 const ODCLOUD = 'https://api.odcloud.kr/api/ApplyhomeInfoDetailSvc/v1/';
 const LOANS_CHECKED = '2026-10-23';
@@ -51,7 +53,7 @@ export function coreOf(t) {
 }
 export const dist = (m) => (m < 100 ? `${m}m` : `약 ${(Math.floor(m / 100) / 10).toFixed(1)}km`);
 
-export async function collect(no, dataSrc) {
+export async function collect(no, dataSrc, { v2 = false } = {}) {
   const key = await dataKey(), vkey = await keyOf();
   if (!key || !vkey) throw new Error('.env에 DATA_GO_KR_KEY·VWORLD_KEY 필요');
   const data = await loadData(dataSrc);
@@ -77,7 +79,7 @@ export async function collect(no, dataSrc) {
   // 핵심 버스 노선마다 갈아타지 않고 닿는 역(정거장 수)
   if (site && near.bus?.routes) for (const r of near.bus.routes.filter(isCore).slice(0, 8)) r.reach = await routeReach(r, site.lon, site.lat, key);
   const trades = await nearbyTrades(it.address, main.area, { tier });
-  return {
+  const f = {
     item: it, dataUpdatedAt: data.updatedAt,
     detail: {
       no, name: d.HOUSE_NM, kind: d.HOUSE_DTL_SECD_NM, rent: d.RENT_SECD_NM, units: d.TOT_SUPLY_HSHLDCO, developer: d.BSNS_MBY_NM, builder: d.CNSTRCT_ENTRPS_NM,
@@ -86,6 +88,38 @@ export async function collect(no, dataSrc) {
     },
     tier, leasehold, types, mainArea: main.area, nearby: near, trades,
   };
+  return v2 ? addV2(f, d, models) : f;
+}
+
+// v2 자료(2026-10-29): 공급 유형별 세대·공고문 조건·은행 금리. 이 값이 있는 초안만 새 절(필요 현금·가구별·주택형 비교·따져 볼 점)을 그린다 —
+// 옛 초안은 지금 모양 그대로(재수정 대기열이 공개 글을 다시 그리므로). 샘플 승인 전까지 자동 실행(analysis_auto)은 --v2를 넘기지 않는다.
+async function addV2(f, d, models) {
+  const doc = await noticeText(f.detail.no).catch((e) => ({ skip: e.message }));
+  f.detail.publicLaw = d.PUBLIC_HOUSE_SPCLW_APPLC_AT === 'Y'; // 공공주택 특별법 적용(공공분양 소득·자산 기준)
+  f.supply = supplyOf(models);
+  f.terms = doc.skip ? { skip: doc.skip } : termsOf(doc, models);
+  const saved = await bankRate(); // 한국은행 금리는 월 1회 발표 — 저장값이 20일 넘었으면 다시 받는다(ECOS_KEY 없으면 저장값)
+  f.bank = !saved || Date.now() - Date.parse(saved.fetched) > 20 * 864e5 ? await bankRate({ refresh: true }) : saved;
+  return f;
+}
+export async function enrich(f) {
+  const key = await dataKey();
+  const [d] = await odcloud('getAPTLttotPblancDetail', f.detail.no, key);
+  return addV2(f, d || {}, await odcloud('getAPTLttotPblancMdl', f.detail.no, key));
+}
+
+// 특별공급 유형별 세대(청약홈 주택형 자료): 주택형(전용)별로 묶고, 유형 합이 특별공급 수와 맞는지 검산
+const SP = [['NWBB_HSHLDCO', '신생아'], ['NWWDS_HSHLDCO', '신혼부부'], ['LFE_FRST_HSHLDCO', '생애최초'], ['YGMN_HSHLDCO', '청년'], ['MNYCH_HSHLDCO', '다자녀'], ['OLD_PARNTS_SUPORT_HSHLDCO', '노부모부양'], ['INSTT_RECOMEND_HSHLDCO', '기관추천'], ['TRANSR_INSTT_ENFSN_HSHLDCO', '이전기관'], ['ETC_HSHLDCO', '그 밖']];
+export function supplyOf(models) {
+  const by = new Map();
+  for (const m of models) {
+    const a = ar(m.HOUSE_TY), g = by.get(a) || { area: a, general: 0, special: 0, sp: Object.fromEntries(SP.map(([k]) => [k, 0])) };
+    g.general += +m.SUPLY_HSHLDCO || 0; g.special += +m.SPSPLY_HSHLDCO || 0;
+    for (const [k] of SP) g.sp[k] += +m[k] || 0;
+    by.set(a, g);
+  }
+  const rows = [...by.values()].sort((x, y) => x.area - y.area);
+  return { rows, ok: rows.every((g) => Object.values(g.sp).reduce((s, v) => s + v, 0) === g.special) };
 }
 
 // ── 본문 ─────────────────────────────────────────
@@ -168,11 +202,12 @@ ${t.others.length ? `<p style="font-size:13px;color:${C.muted}">같은 등급이
     [two('지원·선발 학교', `반경 ${SCHOOL_SELECT_KM}km`), sel],
   ]) + `<p style="font-size:13px;color:${C.muted}">학구도 2026.09 기준, 중·고는 학교군 안 추첨 · 배정은 교육지원청 확인 · 역 © OpenStreetMap</p>`;
   const flags = d.flags.length ? d.flags.join(' · ') : '해당 표시 없음';
-  out.rules = table(['항목', '내용'], [
+  out.rulesTable = table(['항목', '내용'], [
     ['규제·지구 (청약홈 공고 정보)', esc(flags)],
     ['청약 지역 구분', esc(d.area || '-')],
     ['공급 유형', `${esc(d.kind)} · ${esc(d.rent)}`],
-  ]) + `<p style="font-size:14px;color:${C.muted}">전매제한·실거주 의무 기간은 공고문에 적힌 내용이 기준입니다. 분양가상한제 수도권 주택은 법령상 실거주 의무가 있습니다.</p>`;
+  ]);
+  out.rules = out.rulesTable + `<p style="font-size:14px;color:${C.muted}">전매제한·실거주 의무 기간은 공고문에 적힌 내용이 기준입니다. 분양가상한제 수도권 주택은 법령상 실거주 의무가 있습니다.</p>`; // v2는 공고문 기간 표가 있어 이 문장 없이 rulesTable만
   const ok = '<span style="font-weight:700;color:#0a7a5c;white-space:nowrap">요건 안</span>', no = `<span style="color:${C.muted};white-space:nowrap">요건 밖</span>`;
   const loanRows = types.map((g) => [two(`전용 ${g.area}㎡`, `최고 ${eok(g.max)}`), ...LOAN.map((l) => (g.max <= l.max && (!l.area || g.area <= l.area) ? ok : no))]);
   out.loans = table([two('주택형', '최고 분양가'), ...LOAN.map((l) => two(l.name, `${eok(l.max)} 이하${l.area ? `·전용 ${l.area}㎡ 이하` : ''}`))], loanRows) + `<p style="font-size:13px;color:${C.muted}">가격·면적 요건만 · 실제 한도는 소득·심사로 결정${d.flags.includes('투기과열지구') || d.flags.includes('조정대상지역') ? ' · 규제지역 LTV 40%(생애최초 70%), 수도권 주담대 한도 6억원' : ''} · <a href="${LOAN[0].src}" target="_blank" rel="noopener">주택도시기금</a>·<a href="${LOAN[2].src}" target="_blank" rel="noopener">주택금융공사</a>·금융위원회, 확인일 ${LOANS_CHECKED}</p>`;
@@ -185,6 +220,7 @@ const ZIP_INDEX = JSON.parse(await readFile(new URL('../data/zip_posts/index.jso
 const zipLink = (f) => { const slug = ZIP_INDEX[String(f.item.id).split('-')[0]]; return slug ? `<p>이 단지의 분양가를 주변 단지 실거래와 맞춰 본 글은 <a href="https://auleezip.com/${slug}/">aulee의 집</a>에서 볼 수 있어요.</p>` : ''; };
 
 export function render(f, notes = {}, images = []) {
+  if (f.terms || f.supply) return renderV2(f, notes, images);
   const x = renderFacts(f), has = new Set(images.map((i) => i.key));
   const img = (k) => (has.has(k) ? IMG(k) : '');
   return [
@@ -204,6 +240,7 @@ export function render(f, notes = {}, images = []) {
 
 // 자동 설명(분석 글 자동 예약용, 2026-10-23 사용자 결정): facts 값만으로 짧은 문장. 숫자는 renderFacts와 같은 형식이라 검수를 통과한다.
 export function autoNotes(f) {
+  if (f.terms || f.supply) return autoNotesV2(f);
   const { item: it, detail: d, types, trades: t, nearby: n } = f;
   const main = types.find((g) => g.area === f.mainArea) || types[0];
   const ph = it.phases.filter((p) => ['sp', 'p1', 'win'].includes(p.k)).map((p) => `${label(it, p.k)} ${span(p, md)}`);
@@ -307,7 +344,172 @@ export function checkAnalysis(draft) {
   BANNED.forEach((b) => { if (text.includes(b)) issues.push(`금지 표현 "${b}"`); });
   if (!draft.html.includes(DISCLAIMER)) issues.push('면책 문구 없음');
   if (!Object.values(draft.notes || {}).flat().length) issues.push('notes가 비어 있습니다(intro·price·place·rules·loans).');
+  // v2: 가정 계산을 다른 방법으로 다시 계산해 대조, 새로 자동으로 쓰는 문장에도 금지 표현 검사
+  if (draft.facts.terms || draft.facts.supply) {
+    issues.push(...checkMoney(draft.facts, draft.html, { pay: M, amt: W }));
+    const body = render(draft.facts, {}, []).replace(/<[^>]+>/g, ' ').split(draft.facts.item.name).join(' ').split('기관추천').join(' '); // 「기관추천」은 특별공급 이름
+    BANNED.forEach((b) => { if (body.includes(b)) issues.push(`금지 표현 "${b}"(자동 문장)`); });
+  }
   return issues;
+}
+
+// ── v2 본문(2026-10-29 사용자 지시: 첫 분석 글처럼 필요한 돈·월 지출·가구별 분석) ─────────────────────────
+// 숫자는 facts(청약홈·공고문·공개 자료)와 money.mjs 계산에서만. 계산은 「가정 계산」 상자에 가정·기준일·출처와 함께.
+const W = (won) => eok(Math.round(won / 10000)); // 원 → 「3억 1,240만원」(만원 반올림)
+const M = (won) => `${Math.round(won / 10000).toLocaleString()}만원`; // 월 금액(만원 반올림)
+const R = (won) => (won >= 1e8 ? W(won) : won % 10000 ? `${won >= 1e4 ? `${Math.floor(won / 10000).toLocaleString()}만 ` : ''}${(won % 10000).toLocaleString()}원` : man(won / 10000)); // 원 단위까지
+const span2 = (a, b, f) => (f(a) === f(b) ? f(a) : `${f(a)}~${f(b)}`);
+const rt = (v) => (Number.isInteger(v) ? v.toFixed(1) : String(v)); // 금리 3 → 「3.0」
+// 조사: 끝 글자 받침으로 을/를·이/가(괄호 설명은 빼고 앞말 기준, 숫자는 읽는 소리 기준)
+const batchim = (w) => { const c = [...String(w).replace(/\s*\([^)]*\)\s*$/, '').replace(/[^가-힣0-9]+$/, '')].pop() || ''; if (/\d/.test(c)) return /[013678]/.test(c); const k = c.charCodeAt(0) - 0xac00; return k >= 0 && k <= 11171 && k % 28 !== 0; };
+const eul = (w) => `${w}${batchim(w) ? '을' : '를'}`, iga = (w) => `${w}${batchim(w) ? '이' : '가'}`;
+const pct = (a, b) => (b ? Math.round((a / b) * 100) : 0);
+const small = (s) => `<p style="font-size:13px;color:${C.muted}">${s}</p>`;
+const pg = (p) => (p ? `공고문 ${p}쪽` : '공고문');
+const calcBox = (title, inner) => `<div style="border:1px solid #c9c3ea;border-radius:16px;padding:16px 20px;margin:16px 0;background:#faf9ff"><p style="margin:0 0 8px;font-weight:700;color:#4a3fa0">가정 계산 · ${title}</p>${inner}</div>`;
+const bankLabel = (b) => { const [y, mo] = b.month.split('-'); return `한국은행 ${y}년 ${+mo}월 예금은행 주택담보대출 평균 금리(신규취급액) 연 ${b.rate}%`; };
+// 휴대폰에서 가로 스크롤 없이 읽히게: 열이 적은 표는 최소 폭 없이, 대출·소득별 줄은 세로 카드로
+const tableN = (head, rows, min = 0) => `<div style="overflow-x:auto"><table style="border-collapse:collapse;width:100%${min ? `;min-width:${min}px` : ''}"><thead><tr>${head.map((h) => `<th ${TH}>${h}</th>`).join('')}</tr></thead><tbody>
+${rows.map((r) => `<tr>${r.map((c) => `<td ${TD}>${c}</td>`).join('')}</tr>`).join('\n')}
+</tbody></table></div>`;
+const B = (s) => `<span style="font-weight:700">${s}</span>`;
+const card = (title, sub, main, foot) => `<div style="border-top:1px solid ${C.line};padding:10px 0"><p style="margin:0">${B(title)}${sub ? ` <span style="font-size:13px;color:${C.muted}">${sub}</span>` : ''}</p><p style="margin:4px 0 0">${main}</p>${foot ? `<p style="margin:2px 0 0;font-size:13px;color:${C.muted}">${foot}</p>` : ''}</div>`;
+const V2_HEADS = [['glance', '한눈에'], ['price', '분양가, 주변 시세와 견주면?'], ['money', '얼마 있어야 하고, 매달 얼마 낼까?'], ['household', '우리 집은 어느 공급으로 넣을까?'], ['types', '주택형마다 무엇이 다를까?'], ['place', '출퇴근·학교는 어떨까?'], ['rules', '언제 팔 수 있고, 꼭 살아야 할까?'], ['check', '청약 전 따져 볼 점'], ['links', '공고문·문의']];
+
+// 한눈에 표: 분양가는 공고문 동·층별 공급금액의 최저~최고(읽은 주택형만, 최고가는 청약홈 값과 맞춘 것)
+function typesV2(f) {
+  const pr = f.terms?.prices?.byArea || {}, any = Object.keys(pr).length;
+  return table([two('주택형', '공급면적(평균)'), '세대(일반+특별)', two('분양가', any ? `동·층별 최저~최고(${pg(f.terms.prices.pages[0])})` : '최고가 기준'), two('3.3㎡당', '최고가·전용면적 기준')],
+    f.types.map((g) => { const p = pr[g.area]; return [two(`전용 ${g.area}㎡`, `${g.types > 1 ? `${g.types}개 타입 · ` : ''}공급 ${g.supply}㎡`), `${g.units.toLocaleString()}세대`, p ? two(`${W(p.min)}~${W(p.max)}`) : g.min === g.max ? two(eok(g.max)) : two(eok(g.max), `가장 낮은 타입 ${eok(g.min)}`), man(g.perPy)]; }));
+}
+
+function moneyHtml(f, m, x) {
+  const t = f.terms || {}, out = [];
+  if (m.pay) {
+    out.push(`<p>${pg(m.pay.p)} 기준으로 분양대금은 계약금 ${m.pay.down}%${m.pay.mid ? `, 중도금 ${m.pay.mid}%` : ''}, 잔금 ${m.pay.bal}% 순서로 내요.${t.midLoan ? ` 중도금은 ${t.midLoan.pct ? `분양대금의 ${t.midLoan.pct}% 범위에서 ` : ''}${esc(t.midLoan.kind)} 조건으로 대출을 알선한다고 적혀 있어요(${pg(t.midLoan.p)}).` : ''}</p>`);
+    out.push(tableN([two('주택형', '최고 분양가'), two(`계약금 ${m.pay.down}%`, '계약할 때'), ...(m.pay.mid ? [two(`중도금 ${m.pay.mid}%`, '공사 기간')] : []), two(`잔금 ${m.pay.bal}%`, '입주할 때')],
+      f.types.map((g) => { const p = g.max * 10000; return [two(`전용 ${g.area}㎡`, eok(g.max)), W((p * m.pay.down) / 100), ...(m.pay.mid ? [W((p * m.pay.mid) / 100)] : []), W((p * m.pay.bal) / 100)]; })));
+  } else out.push('<p>계약금·중도금·잔금 비율은 공고문에서 읽지 못했어요. 공고문의 공급금액·납부 일정 표를 확인하세요.</p>');
+  const base = m.byType.find((b) => b.area === m.main.area);
+  if (m.cases.length) {
+    const cards = m.cases.map((c) => card(esc(c.name), esc(c.who), `월 상환 ${B(span2(c.pay[0], c.pay[1], M))} · 입주 때 자기 돈 ${B(W(c.cash))}`, `대출 ${W(c.loan)}(LTV ${c.ltv}%${c.limit ? ` · 한도 ${W(c.limit)}` : ''}) · 연 ${span2(c.rate[0], c.rate[1], rt)}% · ${c.years}년 원리금균등`)).join('');
+    const rent = m.rent && base?.base ? `<p style="margin:8px 0 0">여기에 토지임대료 ${iga(`월 ${R(m.rent.won)}`)} 따로 나가서, ${esc(base.base.name)} 기준 매달 내는 돈은 원리금과 합쳐 ${B(`월 ${span2(base.total[0], base.total[1], M)}`)}이에요.</p>` : '';
+    const src = [t.balLoan ? `${pg(t.balLoan.p)} 잔금 대출 안내` : null, `정책대출은 주택도시기금·한국주택금융공사 기준(확인일 ${MONEY_CHECKED}, ${POLICY_YEARS}년 가정)`, f.bank ? bankLabel(f.bank) : null].filter(Boolean).join(' · ');
+    out.push(calcBox(`전용 ${m.main.area}㎡(최고 ${W(m.main.price)})를 대출받아 산다면`, cards + rent
+      + small(`가정: 최고 분양가 기준, 대출액은 한도와 분양가×LTV 중 작은 값, 금리 구간의 낮은 쪽과 높은 쪽으로 각각 계산, 입주 때 자기 돈 = 분양가 − 대출. 금리: ${src}. 실제 대출 여부·금액·금리는 소득·신용·심사로 달라지고, 중도금 대출 이자·발코니 확장비·관리비는 빠져 있어요.`)));
+  }
+  if (m.rent) out.push(calcBox('토지임대료를 오래 내면', tableN([two('기간'), two('토지임대료 합계', '인상이 없다고 가정')], [['1년', R(m.rent.y1)], ['10년', R(m.rent.y10)], ['20년', R(m.rent.y20)]])
+    + small(`전용 ${m.main.area}㎡ 월 ${R(m.rent.won)}(${pg(t.landRent.p)}) × 개월 수. 토지임대료는 약정 후 2년이 지나면 지역 지가상승률 등을 고려해 법령 한도 안에서 올릴 수 있어요(주택법 시행령 제81조).`)));
+  if (m.conv) out.push(calcBox('토지임대료를 보증금으로 바꾸면', m.conv.map((r) => card(`전용 ${r.area}㎡`, `월 ${R(r.before)}의 ${r.ratio}%를 전환이율 ${r.rate}%로`, `보증금 ${B(R(r.deposit))}을 더 내면 토지임대료가 ${B(`월 ${R(r.after)}`)}`, r.total ? `기준 대출 원리금과 합친 월 부담 ${span2(r.total[0], r.total[1], M)}` : '')).join('')
+    + small(`${pg(t.conversion.p)}의 예시(실제 전환 조건은 입주 전 따로 안내). 매달 내는 돈은 줄지만 보증금만큼 현금이 더 필요하고, 그 돈을 빌리면 이자를 따로 따져야 해요.`)));
+  if (m.dsr) out.push(calcBox('소득에 따라 은행에서 빌릴 수 있는 돈(DSR)', `<p style="margin:0 0 8px">은행 주택담보대출은 1년 원리금이 소득의 ${BANK.dsr}%를 넘지 않게만 빌려줘요(DSR). 3인 이하 가구 도시근로자 월평균소득(2025년도)의 70·100·130%인 가구라면:</p>`
+    + m.dsr.rows.map((r) => card(`연 소득 ${W(r.income)}`, `월 ${R(incomeAt(3, r.pct))} · 3인 이하 ${r.pct}%`, `대출 ${B(W(r.loan))} · 월 상환 ${B(M(r.pay))} · 입주 때 자기 돈 ${B(W(r.cash))}`, `DSR로 빌릴 수 있는 최대 ${W(r.max)}${r.loan < r.max ? ` — LTV ${m.dsr.ltv}%${m.dsr.cap ? `·한도 ${W(m.dsr.cap)}` : ''}에 걸려 ${W(r.loan)}` : ''}`)).join('')
+    + small(`가정: 다른 대출 없음, 가구 소득 전부를 대출 심사 소득으로 봄, DSR은 금리 ${rt(m.dsr.rate)}%에 스트레스 금리 ${rt(m.dsr.stress)}%p(${m.reg ? '규제지역' : m.capital ? '수도권 하한' : '지방'})를 모두 더해 심사, 월 상환은 연 ${rt(m.dsr.rate)}% · ${m.dsr.years}년 원리금균등. 금리는 ${bankLabel(f.bank)} — 은행·상품마다 금리와 심사가 달라요(금융위원회 DSR·LTV 기준, 확인일 ${MONEY_CHECKED}).`)));
+  out.push(`<p>취득세 등(1주택 취득, 생애최초 감면 전)은 분양가의 ${m.tax.rate}%로 계산하면 약 ${W(m.tax.won)}이에요. 발코니 확장·옵션 금액을 더하면 늘어나요(지방세법 제11조, 확인일 ${MONEY_CHECKED}).</p>`);
+  out.push(`<p style="font-weight:700;margin:20px 0 8px">정책대출 가격·면적 요건</p>`, x.loans);
+  return out.join('\n');
+}
+
+function householdHtml(f) {
+  const s = f.supply, t = f.terms || {}, out = [];
+  if (s) {
+    const tot = (get) => s.rows.reduce((a, g) => a + get(g), 0), gen = tot((g) => g.general), spc = tot((g) => g.special), all = gen + spc;
+    const kinds = s.ok ? SP.filter(([k]) => tot((g) => g.sp[k]) > 0) : [];
+    const top = kinds.map(([k, n]) => [n, tot((g) => g.sp[k])]).sort((a, b) => b[1] - a[1])[0];
+    out.push(`<p>이번 공급 ${all.toLocaleString()}세대 중 특별공급이 ${spc.toLocaleString()}세대(${pct(spc, all)}%), 일반공급이 ${gen.toLocaleString()}세대예요.${top ? ` 특별공급에서는 ${top[0]} 몫이 ${top[1].toLocaleString()}세대로 가장 많아요.` : ''}</p>`);
+    const areas = s.rows.length <= 4 ? s.rows : [];
+    const line = (name, get) => [name, ...areas.map((g) => `${get(g).toLocaleString()}세대`), `<span style="font-weight:700">${tot(get).toLocaleString()}세대</span>`];
+    out.push(tableN(['공급', ...areas.map((g) => `전용 ${g.area}㎡`), '합계'], [line('일반공급', (g) => g.general), ...kinds.map(([k, n]) => line(`특별공급 · ${n}`, (g) => g.sp[k]))])
+      + small(`청약홈 주택형별 공급 세대${s.ok ? ' · 특별공급은 유형별 합이 특별공급 수와 같은지 맞춰 봄' : ' · 유형별 세대 합이 특별공급 수와 달라 유형은 공고문에서 확인'}`));
+  }
+  const amt = (n, p, dual) => `${incomeAt(n, p).toLocaleString()}원${dual ? `<br><span style="font-size:13px;color:${C.muted}">맞벌이 ${incomeAt(n, dual).toLocaleString()}원</span>` : ''}`;
+  if (f.detail.kind === '민영') {
+    const pcts = t.income?.pcts;
+    const rules = PRIVATE_RULES.filter((r) => (!s?.ok || s.rows.some((g) => g.sp[r.k] > 0)) && (!pcts || [r.pri, r.all, r.priDual, r.allDual].filter(Boolean).every((p) => pcts.includes(p))));
+    if (rules.length) out.push(`<p>민영주택 특별공급은 가구원수별 월평균소득 기준이 있어요. 기준을 넘어도 세대 부동산가액이 ${W(PRIVATE_ASSET)} 이하면 추첨공급에 넣을 수 있어요.</p>`
+      + tableN([two('특별공급', '월평균소득 기준'), '3인 이하', '4인', '5인'], rules.flatMap((r) => [[two(`${r.name} 우선공급`, `${r.pri}% 이하${r.priDual ? `(맞벌이 ${r.priDual}%)` : ''}`), ...[3, 4, 5].map((n) => amt(n, r.pri, r.priDual))], [two(`${r.name} 그 밖`, `${r.all}% 이하${r.allDual ? `(맞벌이 ${r.allDual}%)` : ''}`), ...[3, 4, 5].map((n) => amt(n, r.all, r.allDual))]]))
+      + small(`2025년도 도시근로자 가구원수별 월평균소득(2026년 적용) · 주택공급에 관한 규칙 제35조의3·제41조·제43조(확인일 ${MONEY_CHECKED})${pcts ? ` · 같은 금액이 ${pg(t.income.p)} 등에 있음` : ''} · 6인 이상·세부 요건은 공고문 확인`));
+  } else if (t.income) {
+    const pcts = t.income.pcts.filter((p) => [70, 100, 120, 130, 140, 150, 160, 200].includes(p));
+    out.push(`<p>공공분양은 공급 유형과 단계마다 소득 기준(%)이 달라요. 이 공고문 소득 기준 표에 나오는 비율별 금액은 아래와 같고, 어느 공급에 몇 %가 적용되는지는 ${pg(t.income.p)} 표에서 확인하세요.</p>`
+      + tableN([two('기준', '월평균소득의'), '3인 이하', '4인', '5인'], pcts.map((p) => [`${p}%`, ...[3, 4, 5].map((n) => amt(n, p))]))
+      + small(`2025년도 도시근로자 가구원수별 월평균소득(2026년 적용) — 금액이 공고문 표와 같은지 맞춰 봄${t.asset ? ` · 자산 기준: 총자산(부동산·자동차·금융자산 − 부채) ${W(t.asset.total)} 이하(${pg(t.asset.p)})` : ''}`));
+  }
+  return out.join('\n');
+}
+
+function typesCompare(f, m) {
+  if (f.types.length < 2) return '';
+  const t = f.terms || {}, pr = t.prices?.byArea || {}, s = f.supply;
+  const rows = m.byType.map((b) => {
+    const g = f.types.find((x) => x.area === b.area), sp = s?.rows.find((x) => x.area === b.area), room = t.rooms?.[b.area];
+    return [two(`전용 ${b.area}㎡`, `공급 ${g.supply}㎡${room ? ` · 침실 ${room.bed}개` : ''}`), b.base ? two(`월 ${span2(b.base.pay[0], b.base.pay[1], M)}`, esc(b.base.name)) : '-', b.base ? W(b.base.cash) : '-', pr[b.area] ? `${W(pr[b.area].min)}~${W(pr[b.area].max)}` : eok(g.max), ...(m.rent ? [b.rent ? `월 ${R(b.rent)}` : '-'] : []), `${(sp ? sp.general + sp.special : g.units).toLocaleString()}세대`];
+  });
+  const [a, b] = [m.byType[0], m.byType[m.byType.length - 1]];
+  const diff = a.base && b.base ? `<p>전용 ${a.area}㎡와 ${b.area}㎡는 최고 분양가가 ${W(b.price - a.price)} 차이 나고, 같은 대출로 계산하면 월 상환이 ${span2(b.base.pay[0] - a.base.pay[0], b.base.pay[1] - a.base.pay[1], M)}${a.rent && b.rent ? `, 토지임대료가 월 ${R(b.rent - a.rent)}` : ''} 더 들어요.</p>` : '';
+  return diff + table([two('주택형', '공급면적'), two('월 상환', '최고가·기준 대출'), two('입주 때 자기 돈', '최고가 기준'), two('분양가', Object.keys(pr).length ? '동·층별 최저~최고' : '최고'), ...(m.rent ? [two('토지임대료', '월')] : []), '이번 공급'], rows)
+    + (t.rooms ? small(`침실 수는 공고문 평면도(${Object.entries(t.rooms).map(([ar2, v]) => `${ar2}㎡ ${v.p}쪽`).join(', ')}) 대표 타입 기준 — 같은 면적이라도 타입마다 다를 수 있어요.`) : '');
+}
+
+function rulesV2(f) {
+  const t = f.terms || {}, p = t.periods, out = [];
+  if (p) {
+    const row = (name, v) => (v ? [name, v.y ? `${v.y}년` : '없음', v.y && v.from ? `${esc(v.from)}부터` : '-'] : [name, '공고문 확인', '-']);
+    out.push(tableN(['구분', '기간', '언제부터'], [row('재당첨 제한', p.rewin), row('전매 제한', p.resale), row('거주 의무', p.residence)]) + small(`${pg(p.p)}${p.resale?.note ? ` · 전매 제한: ${esc(p.resale.note)}` : ''} · 기간과 기준일은 공고문이 우선이에요.`));
+  } else out.push('<p>재당첨·전매 제한과 거주 의무 기간은 공고문에서 읽지 못했어요. 공고문 앞쪽 단지 주요정보에서 확인하세요.</p>');
+  if (f.leasehold) {
+    const ls = t.lease;
+    out.push(box(`<p style="margin:0 0 6px"><span style="font-weight:700">토지임대부라 팔 때도 다릅니다.</span> 건물(내 집 부분)은 분양받은 사람이, 토지는 사업주체가 가지고 토지는 임대차 계약으로 써요${ls ? `(기간 ${ls.years}년 이내, 소유자 ${ls.renewPct}% 이상이 갱신을 청구하면 ${ls.renewYears}년 범위에서 갱신 — ${pg(ls.p)})` : ''}.</p><p style="margin:0">거주 의무 기간 안에 이사하려면 사업주체에 집을 사 달라고 신청해야 하고, 그 값은 낸 입주금에 이자를 더한 금액이에요. 거주 의무가 끝나고 전매 제한 기간 안이면 입주금 + (감정평가액 − 입주금)의 70%예요(주택법 제57조의2·제78조의2, 시행령 제82조의2).</p>`));
+  }
+  return out.join('\n');
+}
+
+function checklist(f, m) {
+  const t = f.terms || {}, s = f.supply, lines = [summaryOf(f)];
+  const c = m.byType.find((b) => b.area === m.main.area)?.base;
+  if (c) lines.push(`전용 ${m.main.area}㎡ 최고가 기준으로 ${eul(c.name)} 받는다고 가정하면 입주 때까지 자기 돈 ${W(c.cash)}${m.pay ? `(그중 계약금 ${W(m.pay.downWon)}은 계약할 때)` : ''}이 필요하고, 월 상환은 ${span2(c.pay[0], c.pay[1], M)}${m.rent ? `에 토지임대료 ${iga(`월 ${R(m.rent.won)}`)} 더해져요` : '이에요'}.`);
+  const mid = m.dsr?.rows.find((r) => r.pct === 100);
+  if (mid) lines.push(`은행 주택담보대출만 쓴다면 연 소득 ${W(mid.income)} 가구(3인 이하 평균) 기준 ${W(mid.loan)}까지 빌릴 수 있다고 보고(DSR·LTV 가정), 자기 돈 ${W(mid.cash)}이 필요해요.`);
+  if (t.periods) { const p = t.periods; lines.push(`${p.resale?.y ? `전매 제한 ${p.resale.y}년` : '전매 제한 없음'}${p.residence?.y ? `, 거주 의무 ${p.residence.y}년` : ', 거주 의무 없음'}${p.rewin?.y ? `, 재당첨 제한 ${p.rewin.y}년` : ''}이에요.${p.resale?.y ? ' 전매 제한 기간에는 자유롭게 팔 수 없어요.' : ''}`); }
+  if (s?.ok) { const kinds = SP.map(([k, n]) => [n, s.rows.reduce((a, g) => a + g.sp[k], 0)]).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]); if (kinds.length) lines.push(`특별공급은 ${kinds.slice(0, 3).map(([n, v]) => `${n} ${v.toLocaleString()}세대`).join(', ')} 순으로 많아요 — 우리 집이 넣을 수 있는 공급과 소득 기준부터 확인하세요.`); }
+  if (m.rent) lines.push('토지임대료는 약정 2년 뒤부터 법령 한도 안에서 인상될 수 있어요.');
+  return lines.map((l) => `<p>· ${esc(l)}</p>`).join('\n');
+}
+
+function renderV2(f, notes = {}, images = []) {
+  const x = renderFacts(f), m = moneyOf(f), has = new Set(images.map((i) => i.key)), t = f.terms || {};
+  const img = (k) => (has.has(k) ? IMG(k) : '');
+  const heads = V2_HEADS.filter(([id]) => id !== 'types' || f.types.length > 1);
+  const H = (id) => H2(V2_HEADS.find(([k]) => k === id)[1], id);
+  const question = f.leasehold ? '분양가는 낮아 보여도 대출 원리금에 토지임대료까지 더하면 매달 얼마일까요?' : `전용 ${m.main.area}㎡를 분양받으려면 현금은 얼마나 있어야 하고, 대출을 받으면 매달 얼마를 갚아야 할까요?`;
+  return [
+    img('thumb'), img('card'), (notes.intro || []).filter(Boolean).length ? `<p>${notes.intro.filter(Boolean).map(esc).join(' ')}</p>` : '',
+    `<p style="font-weight:700">${esc(question)} 공고문 조건과 공개 자료로 계산해 봤어요.</p>`,
+    has.has('aerial') ? `${img('aerial')}\n<p style="font-size:13px;color:${C.muted}">단지 조감도 · 출처: ${srcOf(f, images.find((i) => i.key === 'aerial'))} · 실제와 다를 수 있습니다.</p>` : '',
+    summaryBox(f), toc(heads.map(([id, t2]) => ({ id, t: t2 }))),
+    H('glance'), x.glance, typesV2(f), plans(f, images),
+    H('price'), x.leasehold, note(notes.price), x.trades,
+    H('money'), note(notes.loans), moneyHtml(f, m, x),
+    H('household'), householdHtml(f),
+    ...(f.types.length > 1 ? [H('types'), typesCompare(f, m)] : []),
+    H('place'), img('map'), note(notes.place), x.place, x.busRoutes,
+    H('rules'), note(notes.rules), rulesV2(f), t.periods ? x.rulesTable : x.rules,
+    H('check'), checklist(f, m),
+    H('links'), x.links, zipLink(f),
+    `<p style="font-size:13px;color:${C.muted}">기준: 청약홈(한국부동산원) 분양정보 ${f.dataUpdatedAt.slice(0, 10)} 수집 · 입주자모집공고문(청약홈 PDF${t.fetched ? `, ${t.fetched} 읽음` : ''}) · 실거래 ${esc(f.trades.source || '')} · 대출·세금·소득 기준 확인일 ${MONEY_CHECKED}(주택도시기금·한국주택금융공사·금융위원회·지방세법·주택공급에 관한 규칙)${f.bank ? ` · ${bankLabel(f.bank)}` : ''} · 이 글은 공고와 공개 자료를 정리한 것이며 청약·투자 권유가 아닙니다.</p>`,
+    `<p style="font-size:13px;color:${C.muted}">※ ${DISCLAIMER}</p>`,
+  ].filter(Boolean).join('\n');
+}
+
+// v2 자동 설명: v1 문장에 규제 기간·가정 계산 한 줄을 바꿔 넣는다(숫자는 본문 표와 같은 형식)
+function autoNotesV2(f) {
+  const v1 = autoNotes({ ...f, terms: undefined, supply: undefined }), m = moneyOf(f), p = f.terms?.periods;
+  const c = m.byType.find((b) => b.area === m.main.area)?.base;
+  return {
+    ...v1,
+    rules: p ? [`공고문 기준 ${[['재당첨 제한', p.rewin], ['전매 제한', p.resale], ['거주 의무', p.residence]].map(([n, v]) => (v?.y ? `${n} ${v.y}년` : `${n} 없음`)).join(', ')}이에요.`] : v1.rules,
+    loans: c ? [`전용 ${m.main.area}㎡ 최고가에 ${eul(c.name)} 받는다고 가정하면 대출 ${W(c.loan)}, 입주 때 자기 돈 ${W(c.cash)}, 월 상환 ${span2(c.pay[0], c.pay[1], M)}이에요.`, '실제 한도는 소득과 심사로 정해집니다.'] : v1.loans,
+  };
 }
 
 // 검색용 썸네일(첫 그림 = 대표 이미지): 단지 이름 두 줄 + 3.3㎡당 분양가(없으면 첫 접수일) + 지역·접수일
@@ -336,7 +538,16 @@ export async function images(f, out) {
 
 async function main() {
   const arg = (k) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : null; };
-  const rp = arg('--render');
+  const rp = arg('--render'), ep = arg('--enrich');
+  if (ep) { // 있는 초안에 v2 자료를 더해 다시 그림(notes는 그대로, --auto면 자동 설명을 새로) → --out 파일(없으면 같은 파일)
+    const d = JSON.parse(await readFile(ep, 'utf8'));
+    const f = await enrich(d.facts), out = arg('--out') || ep;
+    await writeFile(out, JSON.stringify(draftOf(f, process.argv.includes('--auto') ? autoNotes(f) : d.notes, d.images), null, 2));
+    const issues = checkAnalysis(JSON.parse(await readFile(out, 'utf8')));
+    console.log(`${out}\n${issues.length ? issues.map((i) => '✗ ' + i).join('\n') : `검수 통과 — ${d.title}`}`);
+    process.exitCode = issues.length ? 4 : 0;
+    return;
+  }
   if (rp) {
     const d = JSON.parse(await readFile(rp, 'utf8'));
     await writeFile(rp, JSON.stringify(draftOf(d.facts, d.notes, d.images), null, 2));
@@ -347,11 +558,11 @@ async function main() {
   }
   const no = process.argv[2];
   if (!/^\d{10}$/.test(no || '')) { console.log('사용: node posts/analysis_post.mjs <공고번호10자리> [--data 수집본]'); process.exit(1); }
-  const f = await collect(no, arg('--data') || undefined);
-  const base = `drafts/analysis_${no}`;
-  const imgs = await images(f, base + '.img');
-  await writeFile(base + '.json', JSON.stringify(draftOf(f, process.argv.includes('--auto') ? autoNotes(f) : {}, imgs), null, 2)); // --auto: 자동 설명(분석 글 자동 예약)
-  console.log(`${base}.json — ${titleOf(f)}\n등급 ${f.tier} · 같은 급 비교 ${f.trades.same?.length ?? 0}곳 · 그림 ${imgs.length}장`);
+  const f = await collect(no, arg('--data') || undefined, { v2: process.argv.includes('--v2') }); // --v2: 새 절(샘플 승인 전까지 자동 실행은 안 씀)
+  const out = arg('--out') || `drafts/analysis_${no}.json`;
+  const imgs = await images(f, out.replace(/\.json$/, '') + '.img'); // --out이면 그림도 그 이름 폴더에(기존 초안 그림을 덮지 않게)
+  await writeFile(out, JSON.stringify(draftOf(f, process.argv.includes('--auto') ? autoNotes(f) : {}, imgs), null, 2)); // --auto: 자동 설명(분석 글 자동 예약)
+  console.log(`${out} — ${titleOf(f)}\n등급 ${f.tier} · 같은 급 비교 ${f.trades.same?.length ?? 0}곳 · 그림 ${imgs.length}장${f.terms ? ` · 공고문 조건 ${Object.keys(f.terms).filter((k) => f.terms[k] && !['src', 'fetched', 'pages'].includes(k)).join('·') || '없음'}` : ''}`);
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
