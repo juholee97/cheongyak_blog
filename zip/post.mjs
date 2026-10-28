@@ -47,7 +47,7 @@ export function claimsHtml(cs) {
 export const OPEN_URL = 'https://auleezip.com/open-notices/', CAL_URL = 'https://aulee.tistory.com/category/청약일정';
 // 접수 마감 여부: 접수(특별공급·1순위 등) 날짜가 모두 지났으면 마감
 export function closedOf(phases, today) {
-  const ds = (phases || []).filter((p) => ['sp', 'p1', 'p2'].includes(p.k) && p.date).map((p) => p.date).sort();
+  const ds = (phases || []).filter((p) => ['sp', 'p1', 'p2'].includes(p.k) && p.date).map((p) => p.end || p.date).sort(); // 접수 기간(date~end)은 끝나는 날이 지나야 마감
   return ds.length > 0 && ds.at(-1) < today;
 }
 

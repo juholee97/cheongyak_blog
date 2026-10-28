@@ -9,9 +9,11 @@ import { ROOT } from '../tistory/common.mjs';
 import { loadData } from './weekly.mjs';
 import { titleOf } from './analysis_post.mjs';
 import { score } from './analysis.mjs';
+import { usable, titleOf as noticeTitle } from './notice_post.mjs';
 
 const dryRun = process.argv.includes('--dry-run');
 const MAX = 8; // 한 번에 최대(공고가 몰려도 하루에 이만큼만)
+const NOTICE_MAX = 2; // 그중 아파트 분양 외 공고(청년안심주택·SH·LH 임대·무순위 등) 글은 이만큼만 — 티스토리 하루 5개 한도를 아파트 글이 먼저 쓴다
 const LOG = join(ROOT, 'data', 'logs', 'analysis_auto.log');
 await mkdir(join(ROOT, 'data', 'logs'), { recursive: true });
 const log = async (s) => { console.log(s); await appendFile(LOG, s + '\n'); };
@@ -48,13 +50,15 @@ async function main() {
   const data = await loadData();
   const sched = (await json('posts/scheduled.json')) || {}, pub = (await json('posts/published.json')) || {};
   const taken = new Set(Object.values(sched).map((v) => v.when));
-  const plan = [];
+  const plan = [], rent = (await json('data/sh_rent.json')) || [];
   for (const it of data.items) {
-    if (it.kind !== 'APT' || /임대/.test(it.name)) continue;
-    if (!(it.units >= 300 || score(it).s > 0)) continue;
-    const no = it.id.split('-')[0];
+    if (it.kind === 'APT' && /토지임대부/.test(it.name)) continue; // 토지임대부 분양은 분양분석 글로 따로(자동 대상 아님)
+    const other = it.kind !== 'APT' || /임대/.test(it.name); // 아파트 분양이 아닌 공고(2026-10-28 사용자 지시: 달력의 모든 공고를 후보로)
+    if (other && !usable(it, { rent: rent.filter((u) => u.id === it.id) })) continue;
+    if (!other && !(it.units >= 300 || score(it).s > 0)) continue;
+    const no = other ? it.id : it.id.split('-')[0];
     // 이미 예약·발행된 글(제목으로) 또는 임시저장·예약 기록이 있으면 건너뛴다 — 다시 수집하면 손으로 고친 초안을 덮어쓰므로
-    const title = titleOf({ item: it });
+    const title = other ? noticeTitle({ item: it }) : titleOf({ item: it });
     const plain = title.replace(/^\[[^\]]*\] /, ''); // 지역 꼬리표 붙기 전(2026-10-26 이전) 제목으로 올린 글
     if (sched[title] || pub[title] || sched[plain] || pub[plain] || pub[`[분양분석]${it.name.replace(/\(.*?\)/g, '').trim()} — 분양가·주변 실거래·교통·학군·대출 정리`]) continue;
     const prev = await json(`drafts/analysis_${no}.save.json`);
@@ -64,13 +68,19 @@ async function main() {
     const when = publishAt(receipt, now, taken);
     if (!when) continue;
     taken.add(when);
-    plan.push({ no, name: it.name, receipt, when });
+    plan.push({ no, name: it.name, receipt, when, other });
   }
+  // 아파트 분양 글을 먼저, 그 뒤 다른 공고 글(NOTICE_MAX개까지)
+  plan.sort((a, b) => a.other - b.other);
+  let others = 0;
+  for (let i = 0; i < plan.length; i++) if (plan[i].other && ++others > NOTICE_MAX) plan.splice(i--, 1);
   await log(plan.length ? plan.map((p) => `- ${p.when} ${p.name} (${p.no}, 접수 ${p.receipt})`).join('\n') : '이번에 예약할 단지 없음');
   const done = [], failed = [];
   for (const p of plan.slice(0, MAX)) {
     const base = `drafts/analysis_${p.no}.json`;
-    if (await run(`수집 ${p.no}`, ['posts/analysis_post.mjs', p.no, '--auto'])) { failed.push(`${p.name}: 수집 실패`); continue; }
+    const got = await run(`수집 ${p.no}`, [p.other ? 'posts/notice_post.mjs' : 'posts/analysis_post.mjs', p.no, '--auto']);
+    if (got === 8) continue; // 재료 부족(주변 정보도 비교도 없음) — 실패가 아니라 건너뜀
+    if (got) { failed.push(`${p.name}: 수집 실패`); continue; }
     const code = await run(`예약 ${p.no}`, ['tistory/draft.mjs', base, ...(dryRun ? ['--dry-run'] : []), '--approved', '--schedule', p.when]);
     // 예약이 실패하면 임시저장해 둔다(2026-10-27 사용자 결정) — 저장되면 save.json이 save·ok라 다음 실행은 이 단지를 건너뛴다(발행은 사람이)
     const kept = code && code !== 4 && !dryRun && !(await run(`임시저장 ${p.no}`, ['tistory/draft.mjs', base, '--approved']));

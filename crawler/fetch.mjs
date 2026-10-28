@@ -210,6 +210,9 @@ async function main() {
   // SH 입주자 모집공고(장기전세·매입임대·사회주택 등 — 공식 API가 없어 공고 게시판을 읽는다). 실패해도 나머지는 그대로 배포한다
   try {
     const sh = await fetchSH(noticeFrom);
+    // 본문에 일정이 없는 글은 첨부 이미지를 읽어 둔 값(crawler/sh_attach.json — 로컬에서 OCR로 만든다)으로 채운다
+    const att = JSON.parse(await readFile(new URL('./sh_attach.json', import.meta.url), 'utf8').catch(() => '{}'));
+    for (const it of sh) if (!it.phases.length && att[it.id]?.phases?.length) it.phases = att[it.id].phases;
     let kept = 0;
     for (const it of sh) if (it.phases.some((p) => p.date >= from && p.date <= to)) { items.set(it.id, it); kept++; }
     console.log(`SH 공고: ${sh.length}건 중 ${kept}건${sh.some((i) => !i.phases.length) ? ` (일정 못 읽음 ${sh.filter((i) => !i.phases.length).length}건 — 첨부파일에만 일정이 있는 글)` : ''}`);

@@ -30,9 +30,9 @@ export function dates(s, year) {
   const out = [];
   let y = year;
   // 한글 표기(2026년 10월 28일 · 11월 3일)와 점 표기(’26. 11. 4. · 11. 6.)를 둘 다 읽는다. 점 표기는 끝 점이 있어야 날짜로 본다
-  const re = /(?:(\d{4})\s*년\s*)?(\d{1,2})\s*월\s*(\d{1,2})\s*일|(?:(?:20)?(\d{2})\s*\.\s*)?(\d{1,2})\s*\.\s*(\d{1,2})\s*\./g;
+  const re = /(?:(\d{4})\s*년\s*)?(\d{1,2})\s*월\s*(\d{1,2})\s*일|(?<![\d.])(2[5-9])\s*\.\s*(\d{1,2})\s*\.\s*(\d{1,2})(?!\d)|(?:(?:20)?(\d{2})\s*\.\s*)?(\d{1,2})\s*\.\s*(\d{1,2})\s*\./g; // 마지막: 「26.10.02」처럼 끝 점이 없는 표(표 첨부를 OCR로 읽을 때)
   for (const m of s.replace(/[’‘'`]/g, '').matchAll(re)) {
-    const yy = m[1] ? +m[1] : m[4] ? 2000 + +m[4] : null, mo = +(m[2] || m[5]), d = +(m[3] || m[6]);
+    const yy = m[1] ? +m[1] : m[4] ? 2000 + +m[4] : m[7] ? 2000 + +m[7] : null, mo = +(m[2] || m[5] || m[8]), d = +(m[3] || m[6] || m[9]); // 그룹: 1~3 한글 표기, 4~6 「26.10.02」, 7~9 「’26. 11. 4.」·「11. 6.」
     if (yy) y = yy;
     if (mo < 1 || mo > 12 || d < 1 || d > 31) continue;
     let date = `${y}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
@@ -48,20 +48,28 @@ const BS = String.fromCharCode(92); // 역슬래시
 const lab = (w) => w.split('').join(`${BS}s*`); // 라벨은 한글뿐이라 따로 이스케이프할 것이 없다
 const head = (words) => new RegExp(`(?:${words.map(lab).join('|')})${BS}s*[:：]?`);
 const LINES = [
+  ['p1', head(['서류접수'])], // 표로 된 첨부(OCR)에서 「서류접수 26.10.02 ~26.10.03」 — 「모집일정」 줄보다 먼저 본다
   ['p1', head(['모집신청일', '신청접수기간', '접수기간', '청약접수기간', '청약접수일', '신청기간', '접수일정', '모집일정'])],
   ['win', head(['당첨자발표', '대상자발표', '합격자발표', '발표일'])],
 ];
 
-export function toShItem(row, body) {
-  const whole = clean(body), a = whole.indexOf('등록일'), b = whole.indexOf('이전글'), t = a >= 0 && b > a ? whole.slice(a, b) : whole, year = +String(row.date).slice(0, 4) || new Date().getFullYear();
+// 글(또는 첨부 이미지를 읽은) 텍스트 → 단계 목록. 접수일을 못 읽으면 빈 목록(발표일만 남기지 않는다)
+export function phasesOf(t, year) {
   const phases = [];
   for (const [k, re] of LINES) {
+    if (phases.some((p) => p.k === k)) continue;
     const m = re.exec(t);
     if (!m) continue;
     const [date, end] = dates(t.slice(m.index + m[0].length, m.index + m[0].length + 90), year);
     if (date) phases.push(end && end > date ? { k, date, end } : { k, date });
   }
-  if (!phases.some((p) => p.k === 'p1')) phases.length = 0; // 접수일을 못 읽으면 발표일만 남기지 않는다(첨부파일에만 일정이 있는 글 — 달력에선 뺀다)
+  if (!phases.some((p) => p.k === 'p1')) phases.length = 0;
+  return phases;
+}
+
+export function toShItem(row, body) {
+  const whole = clean(body), a = whole.indexOf('등록일'), b = whole.indexOf('이전글'), t = a >= 0 && b > a ? whole.slice(a, b) : whole, year = +String(row.date).slice(0, 4) || new Date().getFullYear();
+  const phases = phasesOf(t, year); // 첨부파일에만 일정이 있는 글은 비어 있다 — crawler/sh_attach.mjs가 첨부 이미지를 읽어 채운다
   // 「상시 접수」처럼 날짜가 없으면 접수일 = 공고일, 발표는 비움
   const name = row.title.replace(/^(\[NEW\]\s*)/, '').replace(/\s+/g, ' ').trim();
   const addr = /(?:소재지|위치|사업지)\s*[:：]\s*([^-■·]{4,60})/.exec(t)?.[1]?.trim() || null;
@@ -107,6 +115,7 @@ if (process.argv.includes('--check')) {
   assert.equal(kindOf('강북구 신혼부부(수요자맞춤형)주택 입주자 모집 공고'), '수요자맞춤형'); assert.equal(isRecruit('2026년 2차 장기미임대 매입임대주택 입주자 모집공고(2026. 8. 28.) 서류심사 대상자 발표'), false);
   assert.deepEqual(dates('모집신청일: 2026년 10월 28일(수) ~ 2026년 11월 3일(화)', 2026), ['2026-10-28', '2026-11-03']);
   assert.deepEqual(dates('’26. 11. 4. ~ 11. 6.', 2026), ['2026-11-04', '2026-11-06']);
+  assert.deepEqual(dates('서류접수 26.10.02 ~26.10.03', 2026), ['2026-10-02', '2026-10-03']);
   assert.deepEqual(dates('12월 29일 ~ 1월 3일', 2026), ['2026-12-29', '2027-01-03']); // 끝이 앞서면 다음 해
   const it = toShItem({ seq: '1', date: '2026-10-28', title: '[NEW][토지임대부 사회주택] 옥류서원 입주자 모집 공고문' }, '<p>모집호수: 총 2호 - 사회주택 소재지: 서울시 종로구 옥인동 47-334 외 2필지 - 신청접수기간: 모집공고일 이후 상시 접수 (모집신청일: 2026년 10월 28일(수) ~ 2026년 11월 3일(화))</p>');
   assert.equal(it.kind, '사회주택'); assert.equal(it.units, 2); assert.equal(it.district, '종로구'); assert.equal(it.phases[0].date, '2026-10-28'); assert.equal(it.phases[0].end, '2026-11-03');

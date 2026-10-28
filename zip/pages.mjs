@@ -10,7 +10,7 @@ const last = (r) => (r.phases || []).filter((p) => p.date).map((p) => p.date).so
 
 // list: 글이 있는 공고들(r: deals 한 줄, title: 글 제목). 열린 공고는 접수일 빠른 순, 마감은 최근 순
 export function openPage(list, today) {
-  const row = (r) => [link(`https://auleezip.com/apt-${r.no}/`, `${shortName(r.name)}`), esc(areaOf(r)), r.kind === '무순위' ? '무순위' : '분양', first(r) ? md(first(r)) : '-', last(r) ? md(last(r)) : '-'];
+  const row = (r) => [link(`https://auleezip.com/${r.slug || 'apt-' + r.no}/`, `${shortName(r.name)}`), esc(areaOf(r)), r.source === 'sh' ? esc(r.kind) : r.kind === '무순위' ? '무순위' : '분양', first(r) ? md(first(r)) : '-', last(r) ? md(last(r)) : '-'];
   const open = list.filter((r) => !closedOf(r.phases, today)).sort((a, b) => (first(a) < first(b) ? -1 : 1));
   const done = list.filter((r) => closedOf(r.phases, today)).sort((a, b) => (last(a) < last(b) ? 1 : -1));
   return [

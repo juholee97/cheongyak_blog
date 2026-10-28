@@ -15,6 +15,8 @@ echo ===== %DATE% %TIME% >> data\logs\policy_watch.log
 node posts\policy_watch.mjs >> data\logs\policy_watch.log 2>&1
 rem auleezip: notices open for application with no price-comparison post yet -> popup + data\zip_new.json (2026-10-28). Posts are made together with the user.
 node zip\new_notices.mjs >> data\logs\zip_new.log 2>&1
+rem SH notices whose schedule is only in attachments: read the viewer page images with OCR (tools\ocr_venv) -> crawler\sh_attach.json (commit it to reach the calendar) (2026-10-28)
+node crawler\sh_attach.mjs >> data\logs\sh_attach.log 2>&1
 node posts\analysis_auto.mjs %*
 set RC=%ERRORLEVEL%
 if not exist data\logs mkdir data\logs
