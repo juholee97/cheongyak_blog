@@ -43,6 +43,12 @@ const man = (n) => n.toLocaleString() + '만원';
 const eok = (n) => (n >= 10000 ? `${Math.floor(n / 10000)}억${n % 10000 ? ' ' + (n % 10000).toLocaleString() + '만' : ''}원` : man(n));
 const pyOf = (amount, area) => Math.round(amount / (area / PY));
 // 거리: 100m 이상은 100m 아래를 버려 "약 1.7km", 100m 안이면 그대로 "85m"
+// 같은 등급 비교 단지는 핵심 3~5곳만 보여 준다(2026-10-28 사용자 지시): 비슷한 면적 거래가 있는 단지 먼저, 가까운 순. 3곳 이하면 그대로
+export const CORE_MAX = 5;
+export function coreOf(t) {
+  const s = [...(t.same || [])].sort((a, b) => (!!b.near - !!a.near) || a.d - b.d);
+  return s.slice(0, CORE_MAX).sort((a, b) => a.d - b.d);
+}
 export const dist = (m) => (m < 100 ? `${m}m` : `약 ${(Math.floor(m / 100) / 10).toFixed(1)}km`);
 
 export async function collect(no, dataSrc) {
@@ -121,7 +127,8 @@ export function renderFacts(f) {
   out.types = table([two('주택형', '공급면적(평균)'), '세대(일반+특별)', two('분양가', '최고가 기준'), two('3.3㎡당', '전용면적 기준')],
     types.map((g) => [two(`전용 ${g.area}㎡`, `${g.types > 1 ? `${g.types}개 타입 · ` : ''}공급 ${g.supply}㎡`), `${g.units.toLocaleString()}세대`, g.min === g.max ? two(eok(g.max)) : two(eok(g.max), `가장 낮은 타입 ${eok(g.min)}`), man(g.perPy)]));
   const row = (g) => [two(`${esc(g.apt)}${g.leasehold ? ' (토지임대부)' : ''}`, `${(g.d / 1000).toFixed(1)}km · ${g.built ? `${g.built}년 준공` : '준공 연도 없음'}`), g.near ? two(eok(g.near.amount), `전용 ${g.near.ar}㎡ · ${g.near.count}건 · 최근 ${g.near.last.replace('-', '.')}`) : `<span style="color:${C.muted}">비교 면적 거래 없음</span>`, two(man(Math.round(g.perPy)), `${g.count}건`)];
-  out.trades = t.skip ? `<p>실거래를 불러오지 못했습니다(${esc(t.skip)}).</p>` : `${table([two('단지', '거리 · 준공'), two('비슷한 면적 거래가', `전용 ${t.area}±15㎡ 중앙값`), two('3.3㎡당', '전용 기준 중앙값')], t.same.map(row))}
+  out.trades = t.skip ? `<p>실거래를 불러오지 못했습니다(${esc(t.skip)}).</p>` : `${table([two('단지', '거리 · 준공'), two('비슷한 면적 거래가', `전용 ${t.area}±15㎡ 중앙값`), two('3.3㎡당', '전용 기준 중앙값')], coreOf(t).map(row))}
+${(t.same || []).length > coreOf(t).length ? `<p style="font-size:13px;color:${C.muted}">같은 등급 ${t.same.length}곳 중 비슷한 면적 거래가 있는 가까운 ${coreOf(t).length}곳만 보여요.</p>` : ''}
 <p style="font-size:13px;color:${C.muted}">같은 등급(${esc(t.tier)}) · 반경 ${(t.widened ? t.wide : t.range) / 1000}km${t.widened ? '(넓힘)' : ''} · ${t.months} · 해제·직거래 제외 · ${esc(it.district || '같은 시군구')} 안 거래만</p>
 ${t.others.length ? `<p style="font-size:13px;color:${C.muted}">같은 등급이 아닌 단지 ${t.others.length}곳은 위 표에서 뺐어요(단지 목록은 생략).</p>` : ''}`; // 다른 등급 단지를 한 줄씩 나열하던 긴 목록은 뺐다(2026-10-28 사용자 지시: 불필요한 설명)
   out.leasehold = f.leasehold ? box(`<p style="margin:0"><span style="font-weight:700">토지임대부 분양주택</span>: 분양가에 토지값이 들어 있지 않고, 토지는 사업주체에 매달 임대료를 냅니다(금액은 입주자모집공고 확인). 그래서 토지 소유권이 있는 주변 아파트와 분양가를 그대로 비교할 수 없습니다. 관련 법령상 전매제한 10년·거주의무 5년입니다(주택법 시행령 별표3·제60조의2, 공고문으로 최종 확인).</p>`) : '';
@@ -200,7 +207,7 @@ export function autoNotes(f) {
   const { item: it, detail: d, types, trades: t, nearby: n } = f;
   const main = types.find((g) => g.area === f.mainArea) || types[0];
   const ph = it.phases.filter((p) => ['sp', 'p1', 'win'].includes(p.k)).map((p) => `${label(it, p.k)} ${span(p, md)}`);
-  const near = (t.same || []).filter((g) => g.near).map((g) => g.near.amount);
+  const near = coreOf(t).filter((g) => g.near).map((g) => g.near.amount);
   const sc = n.schools || {}, elem = sc.elem?.[0]?.schools?.[0];
   const st = Array.isArray(n.stations) ? n.stations[0] : null;
   const fit = LOAN.filter((l) => main.max <= l.max && (!l.area || main.area <= l.area)).map((l) => l.name);
@@ -228,7 +235,7 @@ export function autoNotes(f) {
 export function summaryOf(f) {
   const { item: it, types, trades: t } = f;
   const main = types.find((g) => g.area === f.mainArea) || types[0];
-  const near = (t.same || []).filter((g) => g.near).map((g) => g.near.amount);
+  const near = coreOf(t).filter((g) => g.near).map((g) => g.near.amount);
   const rec = it.phases.filter((p) => ['sp', 'p1'].includes(p.k)).sort((a, b) => (a.date < b.date ? -1 : 1))[0];
   const km = (t.widened ? t.wide : t.range) / 1000;
   let cmp;
