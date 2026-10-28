@@ -105,4 +105,18 @@ assert.equal(lh.noticeDate, '2026-10-20');
 assert.deepEqual(lh.phases, [{ k: 'p1', date: '2026-11-03' }]);
 assert.equal(toLhItem({ PAN_ID: '1', CNP_CD_NM: '전국', CLSG_DT: '2026.11.03' }).region, null); // 전국 공고는 시·도 필터에 못 걸어 뺀다
 
+// SH 모집공고(sh.mjs): 모집공고 글만, 글자 사이 띄어쓰기가 든 본문에서도 접수·발표일을 읽고, 접수일을 못 읽으면 일정을 비운다
+const { toShItem, isRecruit, kindOf, dates: shDates } = await import('./sh.mjs');
+assert.equal(isRecruit('제50차 장기전세주택 입주자 모집공고'), true);
+assert.equal(isRecruit('제50차 장기전세주택 입주자 모집공고 당첨자 및 예비입주자 발표'), false);
+assert.equal(isRecruit('2026년 2차 장기미임대 매입임대주택 입주자 모집공고(2026. 8. 28.) 서류심사 대상자 발표'), false);
+assert.equal(kindOf('[토지임대부 사회주택] 옥류서원 입주자 모집 공고문'), '사회주택');
+assert.deepEqual(shDates('2026.10.26.( 월 ) ~ 2026.11.02.( 월 ) 까지', 2026), ['2026-10-26', '2026-11-02']);
+const shItem = toShItem({ seq: '311987', date: '2026-10-26', title: '[토지지원 사회주택]유니버설디자인하우스_장안 입주자 모집 공고' },
+  '<p>등록일 : 2026-10-26 ▷ 접 수 기 간 : 2026.10.26.( 월 ) ~ 2026.11.02.( 월 ) 까지 ▷ 모 집 세 대 : 405 호 ( 총 1 호 ) ▷ 대상자 발표 : 2026 년 11 월 03 일 ( 화 ) 내외로 이전글 서울특별시 강남구 개포로621</p>');
+assert.equal(shItem.id, 'sh-311987');
+assert.equal(shItem.district, null); // 본사 주소(강남구)는 본문 밖이라 읽지 않는다
+assert.deepEqual(shItem.phases, [{ k: 'p1', date: '2026-10-26', end: '2026-11-02' }, { k: 'win', date: '2026-11-03' }]);
+assert.deepEqual(toShItem({ seq: '2', date: '2026-10-02', title: '2026년 하반기 신혼 매입임대주택 입주자 모집공고' }, '<p>등록일 : 2026-10-02 서류 제출일 2026.10.19 ~ 2026.10.20 이전글</p>').phases, []); // 접수일 없으면 비움
+
 console.log('crawler check OK');

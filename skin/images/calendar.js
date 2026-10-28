@@ -89,7 +89,7 @@
   var W = '일월화수목금토';
   var STORE = 'cheongyak-regions', STORE_GU = 'cheongyak-seoul-gu', STORE_FOLD = 'cheongyak-filter-folded', STORE_KIND = 'cheongyak-kinds-off';
   // 청약 종류 필터(2026-10-27): 보이는 순서와 이름. 목록에 없는 새 종류(LH 공고 세부 유형 등)는 뒤에 그대로. 꺼 둔 종류만 저장해서 새 종류는 켜진 채로 나온다
-  var KIND_ORDER = ['APT', '오피스텔', '도시형', '무순위', '임의공급', '공공지원 민간임대', '청년안심주택', '행복주택', '국민임대', '영구임대', '통합공공임대', '공공임대'];
+  var KIND_ORDER = ['APT', '오피스텔', '도시형', '무순위', '임의공급', '공공지원 민간임대', '청년안심주택', '행복주택', '국민임대', '영구임대', '통합공공임대', '공공임대', '장기전세', '매입임대', '미리내집', '사회주택', '수요자맞춤형'];
   var KIND_NAME = { APT: '아파트', '공공지원 민간임대': '민간임대' };
   var kindName = function (k) { return KIND_NAME[k] || k; };
   // 경기 시·군(2026-10-26 사용자 요청: 서울 자치구처럼 경기도도 시별로). 일정 자료의 district(「화성특례시」「용인시」)에서 시·군을 뗀 이름
@@ -128,7 +128,7 @@
     var p = PHK[k];
     if (k === 'p1' && item.source === 'lh') return Object.assign({}, p, { label: '마감', full: '접수 마감' }); // LH 임대는 마감일만 안다
     if (k === 'p1' && item.kind !== 'APT') return Object.assign({}, p, { label: '접수', full: '접수' });
-    return k === 'win' && item.kind === '청년안심주택' ? Object.assign({}, p, { label: '발표', full: '발표' }) : p;
+    return k === 'win' && (item.kind === '청년안심주택' || item.source === 'sh') ? Object.assign({}, p, { label: '발표', full: '발표' }) : p;
   };
   var load = function (k, allowed) {
     try {
@@ -352,8 +352,8 @@
       '<div class="modal-name">' + esc(it.name) + '</div></div>' +
       '<button type="button" class="modal-close" data-act="close" aria-label="닫기">✕</button></div>' +
       '<div class="modal-body"><div class="mtable">' + rows + '</div>' +
-      '<div class="modal-btns">' + (go ? '<a class="go" href="' + esc(go) + '" target="_blank" rel="noopener">' + (youth ? '청년안심주택 공고' : it.source === 'lh' ? 'LH청약플러스 공고' : '청약홈 바로가기') + '</a>' : '') +
-      (home ? '<a href="' + esc(home) + '" target="_blank" rel="noopener">' + (youth ? '청약신청 페이지' : '분양 홈페이지') + '</a>' : '') + '</div></div></div></div>';
+      '<div class="modal-btns">' + (go ? '<a class="go" href="' + esc(go) + '" target="_blank" rel="noopener">' + (youth ? '청년안심주택 공고' : it.source === 'lh' ? 'LH청약플러스 공고' : it.source === 'sh' ? 'SH 공고 원문' : '청약홈 바로가기') + '</a>' : '') +
+      (home ? '<a href="' + esc(home) + '" target="_blank" rel="noopener">' + (youth ? '청약신청 페이지' : it.source === 'sh' ? 'SH 홈페이지' : '분양 홈페이지') + '</a>' : '') + '</div></div></div></div>';
   }
 
   root.addEventListener('click', function (e) {

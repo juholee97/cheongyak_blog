@@ -4,9 +4,11 @@
 // 호출 횟수는 data/api_usage.json에 날짜별로 쌓인다. 한도는 아래 기본값이고 data/api_limits.json({ "naver_hub": { "day": 80 } })으로 바꾼다.
 // paid:true = 한도를 넘기면 돈이 나갈 수 있는 서비스 — 기본 한도를 일부러 낮게 잡았다. 올리려면 사용자가 요금 안내를 확인한 뒤 api_limits.json을 직접 고친다.
 // node zip/guard.mjs        오늘·이번 달 사용량 표
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { ROOT } from '../tistory/common.mjs';
+import { fileURLToPath } from 'node:url';
+// tistory/common.mjs를 부르지 않는다: 그 파일은 playwright를 불러오는데, 달력 자동 배포(GitHub Actions, crawler/sh.mjs가 이 가드를 씀)에는 설치돼 있지 않다
+const ROOT = fileURLToPath(new URL('..', import.meta.url));
 
 export const DEFAULTS = {
   // 네이버 API HUB 요금표(2026-10-28 사용자가 알려 줌): 검색어 트렌드 0~30,000건 무료(30,001~50,000건 한시적 무료), 검색 API 0~775,000건 무료·하루 최대 25,000건. 기간(월/일)이 표에 없어 월 기준으로 보고 무료 구간보다 한참 낮게 잡는다
@@ -14,6 +16,7 @@ export const DEFAULTS = {
   naver_search: { day: 1000, month: 20000, paid: true, note: '네이버 API HUB 검색 API(뉴스) — 무료 775,000건까지, 하루 25,000건 제한' },
   youtube: { day: 3000, month: 60000, paid: false, note: 'YouTube Data API 단위(검색 100·목록 1). 기본 무료 할당 하루 10,000 — 결제 계정은 연결하지 않았다' },
   vworld: { day: 20000, month: 400000, paid: false, note: '브이월드 지오코더(무료, 일일 한도 있음 — 2026-10-28 초과)' },
+  sh: { day: 200, month: 4000, paid: false, note: 'SH 공고 게시판 읽기(공식 API 없음 — 목록·글 한 번에 1회). 사이트 부담을 줄이는 한도' },
   datago: { day: 8000, month: 160000, paid: false, note: '공공데이터포털(개발계정 API당 일 10,000)' },
 };
 const FILE = () => process.env.ZIP_USAGE_FILE || join(ROOT, 'data/api_usage.json');
@@ -36,7 +39,7 @@ export function useApi(api, n = 1) {
     throw new Error(`API_BUDGET:${api} — ${which} 한도에 도달(${lim.paid ? '유료 전환 위험 서비스' : '무료 한도 보호'}). ${lim.note}. 한도는 data/api_limits.json에서 바꾼다`);
   }
   u.dayCount += n; u.monthCount += n;
-  writeFileSync(FILE(), JSON.stringify(st, null, 1));
+  try { mkdirSync(join(FILE(), '..'), { recursive: true }); writeFileSync(FILE(), JSON.stringify(st, null, 1)); } catch { /* 쓸 수 없는 환경(읽기 전용)이면 이번 실행 안에서만 세지 못할 뿐 막지는 않는다 */ }
   return { dayCount: u.dayCount, monthCount: u.monthCount };
 }
 

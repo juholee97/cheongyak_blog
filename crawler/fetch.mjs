@@ -5,6 +5,7 @@ import { dirname } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { fetchYouth } from './youth.mjs';
 import { fetchLH } from './lh.mjs';
+import { fetchSH } from './sh.mjs';
 
 const BASE = 'https://api.odcloud.kr/api/ApplyhomeInfoDetailSvc/v1/';
 const PREV_URL = 'https://juholee97.github.io/cheongyak_blog/schedule.json'; // 지난번 배포본
@@ -205,6 +206,16 @@ async function main() {
   } catch (e) {
     console.warn(`LH 임대공고 수집 실패: ${e.message}`);
     keepPrev('LH 임대공고', (it) => it.source === 'lh');
+  }
+  // SH 입주자 모집공고(장기전세·매입임대·사회주택 등 — 공식 API가 없어 공고 게시판을 읽는다). 실패해도 나머지는 그대로 배포한다
+  try {
+    const sh = await fetchSH(noticeFrom);
+    let kept = 0;
+    for (const it of sh) if (it.phases.some((p) => p.date >= from && p.date <= to)) { items.set(it.id, it); kept++; }
+    console.log(`SH 공고: ${sh.length}건 중 ${kept}건${sh.some((i) => !i.phases.length) ? ` (일정 못 읽음 ${sh.filter((i) => !i.phases.length).length}건 — 첨부파일에만 일정이 있는 글)` : ''}`);
+  } catch (e) {
+    console.warn(`SH 공고 수집 실패: ${e.message}`);
+    keepPrev('SH 공고', (it) => it.source === 'sh');
   }
   if (!items.size) throw new Error('수집 결과 0건 — 빈 달력을 배포하지 않도록 중단합니다.');
 
