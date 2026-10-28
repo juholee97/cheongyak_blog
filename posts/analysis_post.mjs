@@ -374,6 +374,13 @@ const tableN = (head, rows, min = 0) => `<div style="overflow-x:auto"><table sty
 ${rows.map((r) => `<tr>${r.map((c) => `<td ${TD}>${c}</td>`).join('')}</tr>`).join('\n')}
 </tbody></table></div>`;
 const B = (s) => `<span style="font-weight:700">${s}</span>`;
+// 강조(2026-10-29 사용자 지시): 답이 되는 숫자만 — 노랑 = 핵심 금액, 연빨강 = 제한 기간. 글 한 편에 몇 곳만
+const HL = (s) => `<span style="font-weight:700;background:#fff3b0;padding:0 3px;border-radius:3px;white-space:nowrap">${s}</span>`;
+const WARN = (s) => `<span style="font-weight:700;background:#fde8e8;color:#8a1c1c;padding:0 3px;border-radius:3px;white-space:nowrap">${s}</span>`;
+// 문장 속 금액·기간 숫자만 굵게(따져 볼 점): 3억 9,050만원 · 51만 1,500원 · 93만원~112만원 · 10년 · 6개월 · 248세대
+const AMT = '\\d[\\d,.]*억(?: [\\d,]+만)?원|\\d[\\d,]*만 [\\d,]+원|\\d[\\d,.]*(?:만원|원|년|개월|세대)';
+const NUM_RE = new RegExp(`(?:${AMT})(?:~(?:${AMT}))?`, 'g');
+const boldNums = (s) => s.replace(NUM_RE, (m) => B(m));
 // 가정·전제·출처는 접어 둔다(2026-10-29 사용자 지시: 읽는 자리를 너무 차지함). <details>는 편집기가 지워도 글자는 그대로 남는다
 const fold = (label, inner) => `<details style="margin:6px 0 0"><summary style="cursor:pointer;font-size:13px;color:${C.muted}">${label}</summary>${inner}</details>`;
 const foldNote = (label, s) => fold(label, small(s));
@@ -399,7 +406,7 @@ function moneyHtml(f, m, x) {
   const base = m.byType.find((b) => b.area === m.main.area);
   if (m.cases.length) {
     const cards = m.cases.map((c) => card(esc(c.name), esc(c.who), `월 상환 ${B(span2(c.pay[0], c.pay[1], M))} · 입주 때 자기 돈 ${B(W(c.cash))}`, `대출 ${W(c.loan)}(LTV ${c.ltv}%${c.limit ? ` · 한도 ${W(c.limit)}` : ''}) · 연 ${span2(c.rate[0], c.rate[1], rt)}% · ${c.years}년 원리금균등`)).join('');
-    const rent = m.rent && base?.base ? `<p style="margin:8px 0 0">여기에 토지임대료 ${iga(`월 ${R(m.rent.won)}`)} 따로 나가서, ${esc(base.base.name)} 기준 매달 내는 돈은 원리금과 합쳐 ${B(`월 ${span2(base.total[0], base.total[1], M)}`)}이에요.</p>` : '';
+    const rent = m.rent && base?.base ? `<p style="margin:8px 0 0">여기에 토지임대료 ${iga(`월 ${R(m.rent.won)}`)} 따로 나가서, ${esc(base.base.name)} 기준 매달 내는 돈은 원리금과 합쳐 ${HL(`월 ${span2(base.total[0], base.total[1], M)}`)}이에요.</p>` : '';
     const src = [t.balLoan ? `${pg(t.balLoan.p)} 잔금 대출 안내` : null, `정책대출은 주택도시기금·한국주택금융공사 기준(확인일 ${MONEY_CHECKED}, ${POLICY_YEARS}년 가정)`, f.bank ? bankLabel(f.bank) : null].filter(Boolean).join(' · ');
     out.push(calcBox(`전용 ${m.main.area}㎡(최고 ${W(m.main.price)})를 대출받아 산다면`, cards + rent
       + foldNote('계산 가정·출처', `가정: 최고 분양가 기준, 대출액은 한도와 분양가×LTV 중 작은 값, 금리 구간의 낮은 쪽과 높은 쪽으로 각각 계산, 입주 때 자기 돈 = 분양가 − 대출. 금리: ${src}. 실제 대출 여부·금액·금리는 소득·신용·심사로 달라지고, 중도금 대출 이자·발코니 확장비·관리비는 빠져 있어요.`)));
@@ -460,7 +467,7 @@ function typesCompare(f, m) {
 function rulesV2(f) {
   const t = f.terms || {}, p = t.periods, out = [];
   if (p) {
-    const row = (name, v) => (v ? [name, per(v), has(v) && v.from ? `${esc(v.from)}부터` : '-'] : [name, '공고문 확인', '-']);
+    const row = (name, v) => (v ? [name, has(v) ? WARN(per(v)) : per(v), has(v) && v.from ? `${esc(v.from)}부터` : '-'] : [name, '공고문 확인', '-']);
     out.push(tableN(['구분', '기간', '언제부터'], [row('재당첨 제한', p.rewin), row('전매 제한', p.resale), row('거주 의무', p.residence)]) + foldNote('출처', `${pg(p.p)}${p.resale?.note ? ` · 전매 제한: ${esc(p.resale.note)}` : ''} · 기간과 기준일은 공고문이 우선이에요.`));
   } else out.push('<p>재당첨·전매 제한과 거주 의무 기간은 공고문에서 읽지 못했어요. 공고문 앞쪽 단지 주요정보에서 확인하세요.</p>');
   if (f.leasehold) {
@@ -479,7 +486,16 @@ function checklist(f, m) {
   if (t.periods) { const p = t.periods; lines.push(`전매 제한 ${per(p.resale)}, 거주 의무 ${per(p.residence)}${has(p.rewin) ? `, 재당첨 제한 ${per(p.rewin)}` : ''}이에요.${has(p.resale) ? ' 전매 제한 기간에는 자유롭게 팔 수 없어요.' : ''}`); }
   if (s?.ok) { const kinds = SP.map(([k, n]) => [n, s.rows.reduce((a, g) => a + g.sp[k], 0)]).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]); if (kinds.length) lines.push(`특별공급은 ${kinds.slice(0, 3).map(([n, v]) => `${n} ${v.toLocaleString()}세대`).join(', ')} 순으로 많아요 — 우리 집이 넣을 수 있는 공급과 소득 기준부터 확인하세요.`); }
   if (m.rent) lines.push('토지임대료는 약정 2년 뒤부터 법령 한도 안에서 인상될 수 있어요.');
-  return lines.map((l) => `<p>· ${esc(l)}</p>`).join('\n');
+  return lines.map((l) => `<p>· ${boldNums(esc(l))}</p>`).join('\n');
+}
+
+// 한 줄 요약 아래 「핵심 숫자」 띠: 입주 때 자기 돈 · 매달 내는 돈 · 전매 제한(가정 계산은 기준 대출 하나로)
+function keyBand(f, m) {
+  const b = m.byType.find((x) => x.area === m.main.area), c = b?.base, p = f.terms?.periods, items = [];
+  if (c) items.push(`입주 때 자기 돈 ${HL(W(c.cash))}`, `매달 ${HL(`${span2(b.total[0], b.total[1], M)}`)}${m.rent ? '(토지임대료 포함)' : ''}`);
+  if (p?.resale) items.push(`전매 제한 ${has(p.resale) ? WARN(per(p.resale)) : B('없음')}`);
+  if (!items.length) return '';
+  return `<div style="border:1px solid #f0dc8c;border-radius:12px;padding:12px 16px;margin:12px 0;background:#fffbea"><p style="margin:0 0 6px;font-size:13px;font-weight:700;color:#6b5000">핵심 숫자 · 전용 ${m.main.area}㎡ 최고가 기준</p><p style="margin:0;line-height:2">${items.join(' · ')}</p>${c ? `<p style="margin:4px 0 0;font-size:13px;color:${C.muted}">가정 계산 — ${esc(c.name)} 기준, 자세한 가정은 아래 「얼마 있어야 하고, 매달 얼마 낼까?」</p>` : ''}</div>`;
 }
 
 function renderV2(f, notes = {}, images = []) {
@@ -492,7 +508,7 @@ function renderV2(f, notes = {}, images = []) {
     img('thumb'), img('card'), (notes.intro || []).filter(Boolean).length ? `<p>${notes.intro.filter(Boolean).map(esc).join(' ')}</p>` : '',
     `<p style="font-weight:700">${esc(question)} 공고문 조건과 공개 자료로 계산해 봤어요.</p>`,
     has.has('aerial') ? `${img('aerial')}\n<p style="font-size:13px;color:${C.muted}">단지 조감도 · 출처: ${srcOf(f, images.find((i) => i.key === 'aerial'))} · 실제와 다를 수 있습니다.</p>` : '',
-    summaryBox(f), toc(heads.map(([id, t2]) => ({ id, t: t2 }))),
+    summaryBox(f), keyBand(f, m), toc(heads.map(([id, t2]) => ({ id, t: t2 }))),
     H('glance'), x.glance, typesV2(f), plans(f, images),
     H('price'), x.leasehold, note(notes.price), foldSmalls(x.trades, '비교 기준'),
     H('money'), note(notes.loans), moneyHtml(f, m, x),
