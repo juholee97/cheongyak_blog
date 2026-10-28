@@ -171,6 +171,10 @@ ${t.others.length ? `<p style="font-size:13px;color:${C.muted}">참고(다른 �
   return out;
 }
 
+// 같은 단지의 시세 비교 글(auleezip.com)이 있으면 서로 연결 — 목록은 zip/post.mjs가 data/zip_posts/index.json에 쓴다
+const ZIP_INDEX = JSON.parse(await readFile(new URL('../data/zip_posts/index.json', import.meta.url), 'utf8').catch(() => '{}'));
+const zipLink = (f) => { const slug = ZIP_INDEX[String(f.item.id).split('-')[0]]; return slug ? `<p>이 단지의 분양가를 주변 단지 실거래와 맞춰 본 글은 <a href="https://auleezip.com/${slug}/">aulee의 집</a>에서 볼 수 있어요.</p>` : ''; };
+
 export function render(f, notes = {}, images = []) {
   const x = renderFacts(f), has = new Set(images.map((i) => i.key));
   const img = (k) => (has.has(k) ? IMG(k) : '');
@@ -183,7 +187,7 @@ export function render(f, notes = {}, images = []) {
     H2('입지 — 교통·학교', 'place'), img('map'), note(notes.place), x.place, x.busRoutes,
     H2('자격·규제', 'rules'), note(notes.rules), x.rules,
     H2('대출·자금', 'loans'), note(notes.loans), x.loans,
-    H2('공고문·문의', 'links'), x.links,
+    H2('공고문·문의', 'links'), x.links, zipLink(f),
     `<p style="font-size:13px;color:${C.muted}">기준: 청약홈(한국부동산원) 분양정보 ${f.dataUpdatedAt.slice(0, 10)} 수집 · 실거래 ${esc(f.trades.source || '')} · 이 글은 공고와 공개 자료를 정리한 것이며 청약·투자 권유가 아닙니다.</p>`,
     `<p style="font-size:13px;color:${C.muted}">※ ${DISCLAIMER}</p>`,
   ].filter(Boolean).join('\n');

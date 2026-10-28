@@ -51,6 +51,9 @@ export function closedOf(phases, today) {
   return ds.length > 0 && ds.at(-1) < today;
 }
 
+// 분석 문단(data/zip_analysis.json — 세션에서 공식 자료·이전 공고로 쓰고 zip/check_analysis.mjs로 숫자를 대조한다)
+export const analysisHtml = (secs) => (secs || []).flatMap((x) => [`<h2>${esc(x.h)}</h2>`, ...x.p.map((t) => `<p>${esc(t)}</p>`)]);
+
 export function postOf(r, buzz, claims, ctx = {}) {
   r = { ...r, med: Math.round(r.med), own: Math.round(r.own) };
   const peer = '비교 단지';
@@ -84,6 +87,7 @@ export function postOf(r, buzz, claims, ctx = {}) {
     table(['단지', '준공', '거리', '전용 3.3㎡당', '고른 이유'], r.refs.map((g) => [esc(g.apt) + (g.kind ? ` <b style="font-size:12px">${g.kind === 'silv' ? '분양권' : '오피스텔'}</b>` : '') + (g.sgg && !(r.district || '').includes(g.sgg.split(' ')[1]) ? ` <span style="font-size:13px;color:${C.muted}">(${esc(g.sgg.split(' ').slice(1).join(' '))})</span>` : ''), g.built ? `${g.built}년` : '-', g.d != null ? km(g.d) : '-', `${g.perPy.toLocaleString()}만원`, esc(g.why)])),
     ...(r.note ? [`<p>${esc(r.note)}</p>`] : []),
     `<p style="font-size:13px;color:${C.muted}">기준: 국토교통부 아파트 매매·분양권 전매·오피스텔 매매 실거래가(${esc(r.months)}) · 같은 시·군·구와 생활권이 이어지는 옆 시·군·구에서 생활권 인식·상급지/하급지·브랜드·단지 규모를 보고 고른 단지 · 단지별 전용 3.3㎡당 중앙값의 중앙값. 고른 기준은 aulee의 판단이고, 값은 모두 실거래예요. 분양가는 주력 주택형(세대수 최다)의 최고 분양가로, 발코니 확장·옵션 비용은 빠져 있어요.</p>`,
+    ...analysisHtml(ctx.analysis),
     ...(when.length ? ['<h2>청약 일정</h2>', table(['단계', '날짜'], when)] : []),
     ...claimsHtml(claims),
     ...buzzHtml(buzz),
@@ -106,6 +110,7 @@ export function checkPost(p) {
 if (process.argv[1]?.endsWith('post.mjs')) {
   const { items } = JSON.parse(await readFile(join(ROOT, 'data/deals.json'), 'utf8'));
   const buzz = JSON.parse(await readFile(join(ROOT, 'data/buzz.json'), 'utf8').catch(() => '{}')), claims = JSON.parse(await readFile(join(ROOT, 'data/zip_claims.json'), 'utf8').catch(() => '{}'));
+  const analysis = JSON.parse(await readFile(join(ROOT, 'data/zip_analysis.json'), 'utf8').catch(() => '{}'));
   const dir = join(ROOT, 'data/zip_posts');
   await mkdir(dir, { recursive: true });
   const posts = [];
@@ -128,12 +133,16 @@ if (process.argv[1]?.endsWith('post.mjs')) {
     // 같은 지역의 다른 시세 비교 글 최대 2편(열린 공고 먼저)
     for (const o of list.filter((x) => x.no !== r.no && x.region === r.region).sort((a, b) => closedOf(a.phases, today) - closedOf(b.phases, today)).slice(0, 2)) more.push({ url: `https://auleezip.com/apt-${o.no}/`, label: `${shortName(o.name)} 시세 비교` });
     more.push({ url: OPEN_URL, label: '현재 열린 공고 보기' }, { url: CAL_URL, label: '청약 일정 달력 (우리의 청약달력)' });
-    const p = postOf(r, buzz[r.no], claims[r.no], { closed, more }), issues = checkPost(p);
+    const p = postOf(r, buzz[r.no], claims[r.no], { closed, more, analysis: analysis[r.no] }), issues = checkPost(p);
     if (issues.length) { console.log(`✗ ${r.name}: ${issues.join(', ')}`); continue; }
     await writeFile(join(dir, `${r.no}.json`), JSON.stringify(p, null, 2));
     posts.push(p);
     console.log(`${r.hit ? '★' : ' '}${closed ? '[마감]' : '      '} ${p.title}`);
   }
   await writeFile(join(dir, 'preview.html'), `<!doctype html><meta charset="utf-8"><body style="max-width:760px;margin:24px auto;padding:0 16px;font:16px/1.7 sans-serif;color:${C.ink}">${posts.map((p) => `<article style="border-bottom:3px solid #ccc;padding-bottom:32px;margin-bottom:32px"><p style="color:${C.muted};font-size:13px">${p.categories.join(' · ')}</p><h1 style="font-size:24px">${esc(p.title)}</h1>${p.html}</article>`).join('')}</body>`);
+  // 티스토리 분양분석 글이 자기 단지의 auleezip 글로 링크 걸 때 쓰는 목록(posts/analysis_post.mjs가 읽는다)
+  const index = {};
+  for (const r of items.filter((x) => !x.skip)) { const m = [...seen.values()].find((x) => shortName(x.name) === shortName(r.name) && x.main.max === r.main.max); if (m) index[r.no] = `apt-${m.no}`; }
+  await writeFile(join(dir, 'index.json'), JSON.stringify(index, null, 1));
   console.log(`\n글 ${posts.length}편 → data/zip_posts/ (미리보기 preview.html)`);
 }
