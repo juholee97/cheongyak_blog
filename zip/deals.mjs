@@ -11,7 +11,7 @@ import { join } from 'node:path';
 import { ROOT } from '../tistory/common.mjs';
 import { loadData } from '../posts/weekly.mjs';
 import { odcloud } from '../posts/analysis_post.mjs';
-import { nearbyTrades, poolIn, dataKey, PY, siteVariants } from '../posts/trades.mjs';
+import { nearbyTrades, poolIn, dataKey, PY, siteVariants, distanceOf } from '../posts/trades.mjs';
 
 export const GAP = 20000, RATE = 0.2; // 주력 주택형 한 채로 2억원 이상 또는 20% 이상 싸면 꿀분양
 const MODEL = { APT: 'getAPTLttotPblancMdl', 무순위: 'getRemndrLttotPblancMdl' }; // 임의공급은 분양가 모델 API가 없어 제외
@@ -43,6 +43,13 @@ export function pick(pool, peers) {
   return peers.map((p) => { const g = pool.find((x) => x.apt === p.apt && (!p.sgg || x.sgg === p.sgg) && (p.kind || null) === (x.kind || null)); return g && g.perPy ? { ...g, why: p.why } : null; }).filter(Boolean);
 }
 
+// 최종 비교 단지(refs)에만 거리를 붙인다(후보 수백 곳의 거리는 쓰지 않으니 구하지 않는다). distFn(site, loc) → 미터 또는 null
+export async function withDistances(refs, site, distFn) {
+  const out = [];
+  for (const g of refs) out.push(g.d == null && g.loc && site ? { ...g, d: await distFn(site, g.loc) } : g);
+  return out;
+}
+
 async function main() {
   const key = await dataKey();
   if (!key) throw new Error('.env에 DATA_GO_KR_KEY 필요');
@@ -60,17 +67,16 @@ async function main() {
     try {
       const m = mainType(await odcloud(MODEL[it.kind], no, key));
       if (!m) { out.push({ ...row, skip: '주택형 분양가 없음' }); continue; }
-      const t = await nearbyTrades(it.address, m.area);
+      const t = await nearbyTrades(it.address, m.area, { geo: false }); // 후보의 거리는 구하지 않는다
       if (t.skip) { out.push({ ...row, main: m, skip: t.skip }); continue; }
-      // 후보 풀: 같은 시군구 120곳 + 생활권이 이어지는 옆 시군구(data/zip_neighbors.json)마다 60곳 — 최근 12개월 2건 이상 거래, 가까운 순
-      const keep = (gs, n) => gs.filter((g) => g.count >= 2 && g.perPy).slice(0, n).map(({ apt, umd, jibun, built, tier, leasehold, count, perPy, d, near, sgg, kind }) => ({ apt, umd, jibun, built, tier, leasehold, count, perPy, d, near, ...(sgg ? { sgg } : {}), ...(kind ? { kind } : {}) }));
-      const pool = keep(t.all, 120);
-      for (const addr of neighbors[no] || []) pool.push(...keep(await poolIn(addr, t.site, m.area), 60));
-      // 분양권·입주권 전매(아직 매매 거래가 쌓이지 않은 신축)와 오피스텔 매매도 후보에 — 공고 시군구와 옆 시군구마다 40곳
-      for (const addr of [it.address, ...(neighbors[no] || [])]) for (const kind of ['silv', 'offi']) pool.push(...keep(await poolIn(addr, t.site, m.area, { kind }), 40));
-      const chosen = peersOf[no] ? pick(pool, peersOf[no].peers) : [];
+      // 후보 풀: 같은 시군구 거래 단지 + 생활권이 이어지는 옆 시군구(data/zip_neighbors.json) + 분양권·오피스텔 — 최근 12개월 2건 이상 거래, 거래 많은 순. 거리는 안 구한다(비교 단지에만)
+      const keep = (gs, n) => gs.filter((g) => g.count >= 2 && g.perPy).slice(0, n).map(({ apt, umd, jibun, built, tier, leasehold, count, perPy, d, near, sgg, kind, loc }) => ({ apt, umd, jibun, built, tier, leasehold, count, perPy, d, near, loc, ...(sgg ? { sgg } : {}), ...(kind ? { kind } : {}) }));
+      const pool = keep(t.all, 250);
+      for (const addr of neighbors[no] || []) pool.push(...keep(await poolIn(addr, t.site, m.area, { geo: false }), 120));
+      for (const addr of [it.address, ...(neighbors[no] || [])]) for (const kind of ['silv', 'offi']) pool.push(...keep(await poolIn(addr, t.site, m.area, { kind, geo: false }), 60));
+      const chosen = peersOf[no] ? await withDistances(pick(pool, peersOf[no].peers), t.site, distanceOf) : [];
       const d = dealOf(m, chosen);
-      out.push({ ...row, main: m, months: t.months, pool, refs: chosen, note: peersOf[no]?.note || '', ...(d ? { ...d, hit: d.hit && !row.leasehold } : { skip: peersOf[no] ? '고른 비교 단지가 풀에 2곳 미만' : '비교 단지 아직 안 고름' }) }); // 토지임대부는 땅값이 빠져 꿀분양에서 뺀다
+      out.push({ ...row, main: m, site: t.site, months: t.months, pool, refs: chosen, note: peersOf[no]?.note || '', ...(d ? { ...d, hit: d.hit && !row.leasehold } : { skip: peersOf[no] ? '고른 비교 단지가 풀에 2곳 미만' : '비교 단지 아직 안 고름' }) }); // 토지임대부는 땅값이 빠져 꿀분양에서 뺀다
     } catch (e) { out.push({ ...row, skip: e.message }); }
     const r = out.at(-1);
     await writeFile(join(ROOT, 'data/deals.json'), JSON.stringify({ at: new Date().toISOString(), rule: { GAP, RATE }, partial: true, items: carry(out) }, null, 2)); // 중간에 끊겨도 한 곳씩 남는다
@@ -93,17 +99,24 @@ if (process.argv.includes('--check')) {
   assert.equal(dealOf(m, [{ perPy: 5000 }]), null); // 비교 단지 1곳은 판단 안 함
   assert.ok(siteVariants('경기도 파주시 파주운정3지구 주상복합 4블록(경기도 파주시 동패동 400-7번지 일원)').includes('경기도 파주시 동패동 400-7')); // 블록 주소는 괄호 속 지번으로
   assert.ok(siteVariants('경기도 시흥시 하중동 일원 시흥하중 공공주택지구 내 A1블록').includes('경기도 시흥시 하중동')); // 마지막은 동 단위
+  let calls = 0;
+  const fake = async (site, loc) => { calls++; return loc === 'x' ? null : 500; };
+  const wd = await withDistances([{ apt: 'A', loc: 'a' }, { apt: 'B', loc: 'x' }, { apt: 'C', loc: 'c', d: 77 }, { apt: 'D' }], { lon: 1, lat: 2 }, fake);
+  assert.deepEqual(wd.map((g) => g.d ?? null), [500, null, 77, null]); // d가 이미 있거나 주소가 없으면 묻지 않는다
+  assert.equal(calls, 2); // 최종 비교 단지만, 그것도 필요한 것만
   console.log('deals 점검 통과');
 } else if (process.argv.includes('--recompute')) {
   // 비교 단지만 다시 골랐을 때: 저장된 풀(data/deals.json)로 다시 계산(네트워크 없음)
   const file = join(ROOT, 'data/deals.json'), d = JSON.parse(await readFile(file, 'utf8'));
   const peersOf = JSON.parse(await readFile(join(ROOT, 'data/zip_peers.json'), 'utf8').catch(() => '{}'));
-  d.items = d.items.map((r) => {
-    if (!r.pool) return r;
+  const next = [];
+  for (const r of d.items) {
+    if (!r.pool) { next.push(r); continue; }
     const { own, med, gap, rate, n, hit, skip, ...base } = r;
-    const refs = peersOf[r.no] ? pick(r.pool, peersOf[r.no].peers) : [], x = dealOf(r.main, refs);
-    return { ...base, refs, note: peersOf[r.no]?.note || '', ...(x ? { ...x, hit: x.hit && !r.leasehold } : { skip: peersOf[r.no] ? '고른 비교 단지가 풀에 2곳 미만' : '비교 단지 아직 안 고름' }) };
-  });
+    const refs = peersOf[r.no] ? await withDistances(pick(r.pool, peersOf[r.no].peers), r.site, distanceOf) : [], x = dealOf(r.main, refs);
+    next.push({ ...base, refs, note: peersOf[r.no]?.note || '', ...(x ? { ...x, hit: x.hit && !r.leasehold } : { skip: peersOf[r.no] ? '고른 비교 단지가 풀에 2곳 미만' : '비교 단지 아직 안 고름' }) });
+  }
+  d.items = next;
   await writeFile(file, JSON.stringify(d, null, 2));
   for (const r of d.items.filter((x) => x.pool)) console.log(`${r.hit ? '★' : ' '} ${r.name} ${r.skip || `3.3㎡당 ${r.own} vs ${r.med} → ${r.gap}만 (${Math.round(r.rate * 100)}%) · 비교 ${r.n}곳`}`);
 } else if (process.argv[1]?.endsWith('deals.mjs')) await main();

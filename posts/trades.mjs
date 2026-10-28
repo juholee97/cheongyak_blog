@@ -82,6 +82,16 @@ function month(lawd, ym, key, kind = 'apt') {
   return MONTHS.get(k);
 }
 async function fetchMonth(lawd, ym, key, kind) {
+  // 지난 달 거래는 거의 안 바뀌니 파일에 저장해 다시 받지 않는다(공공데이터포털 일일 호출 한도). 이번 달은 하루 안만 재사용
+  const f = join(ROOT, 'data/rtms_cache', `${kind}_${lawd}_${ym}.json`), nowYm = new Date().toISOString().slice(0, 7).replace('-', ''), today = new Date().toISOString().slice(0, 10);
+  const hit = JSON.parse(await readFile(f, 'utf8').catch(() => 'null'));
+  if (hit && (ym < nowYm || hit.at === today)) return hit.items;
+  const out = await fetchMonthRaw(lawd, ym, key, kind);
+  await (await import('node:fs/promises')).mkdir(join(ROOT, 'data/rtms_cache'), { recursive: true });
+  await writeFile(f, JSON.stringify({ at: today, items: out })).catch(() => {});
+  return out;
+}
+async function fetchMonthRaw(lawd, ym, key, kind) {
   const out = [];
   for (let page = 1; page <= 10; page++) {
     const u = `${RTMS_OF[kind]}?serviceKey=${encodeURIComponent(key)}&LAWD_CD=${lawd}&DEAL_YMD=${ym}&pageNo=${page}&numOfRows=1000`;
@@ -119,6 +129,13 @@ export function summarize(items, area) {
   }));
 }
 
+// 공고 위치(site)에서 한 단지(g.loc 주소)까지 직선거리(m). 못 찾으면 null — 최종 비교 단지에만 쓴다
+export async function distanceOf(site, loc) {
+  const vkey = await keyOf();
+  const p = site && loc && vkey ? await locate(loc, vkey) : null;
+  return p ? meters(site.lon, site.lat, p.lon, p.lat) : null;
+}
+
 // 공고 주소는 「○○지구 A1블록」「(○○동 400-7번지 일원)」처럼 덧붙은 말이 많다 — 그대로 못 찾으면 줄여 가며 찾는다(마지막은 동 단위)
 export function siteVariants(address) {
   const a = String(address).replace(/\s+/g, ' ').trim();
@@ -135,7 +152,7 @@ export function siteVariants(address) {
   return [...new Set(out.filter(Boolean))];
 }
 
-export async function nearbyTrades(address, area, { tier = null, months = 12, range = 1500, wide = 3000, now = new Date() } = {}) {
+export async function nearbyTrades(address, area, { tier = null, months = 12, range = 1500, wide = 3000, now = new Date(), geo: withGeo = true } = {}) {
   const key = await dataKey(), vkey = await keyOf();
   if (!key || !vkey) return { skip: 'DATA_GO_KR_KEY 또는 VWORLD_KEY 없음' };
   let site = null;
@@ -147,8 +164,10 @@ export async function nearbyTrades(address, area, { tier = null, months = 12, ra
   const groups = summarize(items, area);
   // 단지 위치: 같은 시군구 + 법정동 + 지번으로 좌표를 찾아 직선거리(좌표는 저장하지 않고 거리만)
   const sgg = cleanAddress(address).split(' ').slice(0, 2).join(' ');
-  await each(groups, 8, async (g) => {
-    const p = g.jibun ? await locate(`${sgg} ${g.umd} ${g.jibun}`, vkey) : null;
+  // geo:false(zip/deals.mjs): 후보 단지의 거리는 구하지 않는다 — 거리는 최종 비교 단지에만 distanceOf로(브이월드 호출을 수백 번에서 몇 번으로)
+  for (const g of groups) g.loc = `${sgg} ${g.umd} ${g.jibun}`;
+  if (withGeo) await each(groups, 8, async (g) => {
+    const p = g.jibun ? await locate(g.loc, vkey) : null;
     g.d = p ? meters(site.lon, site.lat, p.lon, p.lat) : null;
   });
   const near = (r) => groups.filter((g) => g.d != null && g.d <= r).sort((a, b) => a.d - b.d);
@@ -159,12 +178,12 @@ export async function nearbyTrades(address, area, { tier = null, months = 12, ra
   return {
     lawd: site.lawd, months: `${yms.at(-1).slice(0, 4)}.${yms.at(-1).slice(4)}~${yms[0].slice(0, 4)}.${yms[0].slice(4)}`, area, range, wide, tier, widened, total: items.length,
     site: { lon: site.lon, lat: site.lat }, // 옆 시군구 풀(poolIn) 거리 계산용 — 호출한 쪽은 파일에 남기지 않는다
-    same, all: groups.filter((g) => g.d != null).sort((a, b) => a.d - b.d), others: tier ? inRange.filter((g) => g.tier !== tier) : [], source: '국토교통부 아파트 매매 실거래가(공공데이터포털)',
+    same, all: withGeo ? groups.filter((g) => g.d != null).sort((a, b) => a.d - b.d) : [...groups].sort((a, b) => b.count - a.count), others: tier ? inRange.filter((g) => g.tier !== tier) : [], source: '국토교통부 아파트 매매 실거래가(공공데이터포털)',
   };
 }
 
 // 생활권이 이어지는 옆 시군구의 거래 단지: address(그 시군구의 아무 동 주소)로 법정동코드를 찾고, site(공고 위치)에서의 거리를 붙인다
-export async function poolIn(address, site, area, { months = 12, now = new Date(), kind = 'apt' } = {}) {
+export async function poolIn(address, site, area, { months = 12, now = new Date(), kind = 'apt', geo: withGeo = true } = {}) {
   const key = await dataKey(), vkey = await keyOf();
   let at = null;
   if (key && vkey) for (const v of siteVariants(address)) if ((at = await locate(v, vkey))?.lawd) break;
@@ -174,10 +193,11 @@ export async function poolIn(address, site, area, { months = 12, now = new Date(
   for (const ym of yms) items.push(...(await month(at.lawd, ym, key, kind)));
   const groups = summarize(items, area).filter((g) => g.count >= 2), sgg = cleanAddress(address).split(' ').slice(0, 2).join(' '); // 1건뿐인 단지는 후보에서 어차피 빠지니 위치도 안 찾는다
   if (kind !== 'apt') for (const g of groups) g.kind = kind;
+  for (const g of groups) { g.sgg = sgg; g.loc = `${sgg} ${g.umd} ${g.jibun}`; }
+  if (!withGeo) return groups.sort((a, b) => b.count - a.count);
   await each(groups, 8, async (g) => {
-    const p = g.jibun ? await locate(`${sgg} ${g.umd} ${g.jibun}`, vkey) : null;
+    const p = g.jibun ? await locate(g.loc, vkey) : null;
     g.d = p ? meters(site.lon, site.lat, p.lon, p.lat) : null;
-    g.sgg = sgg;
   });
   return groups.filter((g) => g.d != null).sort((a, b) => a.d - b.d);
 }
