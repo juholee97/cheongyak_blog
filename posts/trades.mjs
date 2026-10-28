@@ -1,7 +1,7 @@
 // 주변 아파트 매매 실거래(국토교통부 실거래가 상세 API) — 분양분석 글의 "분양가와 주변 실거래가" 표
 // node posts/trades.mjs "서울특별시 강동구 강일동 174" 49   → 반경 1.5km 단지별 최근 12개월 거래 요약(전용 3.3㎡당 중앙값)
 // 키: .env의 DATA_GO_KR_KEY(로그·파일에 남기지 않는다). 브이월드 응답은 법정동코드·거리 계산에만 쓰고 저장하지 않는다.
-import { readFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { keyOf, cleanAddress, addressVariants } from './map.mjs';
@@ -34,11 +34,23 @@ async function getJson(u) {
 }
 
 // 주소 → 좌표 + 법정동코드 앞 5자리(실거래 API의 LAWD_CD). 한 번 실행 안에서는 같은 주소를 다시 묻지 않는다
+// 주소 → 좌표는 디스크에 저장해 다음 실행에서도 다시 묻지 않는다(브이월드 일일 사용량 한도 — 2026-10-28 한도를 넘겨 비교 자료를 못 만든 일). 찾은 것만 저장한다
+const GEO_FILE = join(ROOT, 'data/geo_cache.json');
+let GEO = null, geoDirty = 0;
+async function geo() { return (GEO ??= JSON.parse(await readFile(GEO_FILE, 'utf8').catch(() => '{}'))); }
 const PLACES = new Map();
 export function locate(address, vkey) {
-  if (!PLACES.has(address)) PLACES.set(address, locateOnce(address, vkey));
+  if (!PLACES.has(address)) PLACES.set(address, (async () => {
+    const g = await geo();
+    if (g[address]) return g[address];
+    const r = await locateOnce(address, vkey);
+    if (r) { g[address] = r; if (++geoDirty % 20 === 0) await writeFile(GEO_FILE, JSON.stringify(g)).catch(() => {}); }
+    return r;
+  })());
   return PLACES.get(address);
 }
+// 실행이 끝나기 전에 남은 것도 저장
+process.on('beforeExit', () => { if (GEO && geoDirty) { geoDirty = 0; writeFile(GEO_FILE, JSON.stringify(GEO)).catch(() => {}); } });
 async function locateOnce(address, vkey) {
   for (const a of addressVariants(cleanAddress(address))) {
     for (const type of ['PARCEL', 'ROAD']) {

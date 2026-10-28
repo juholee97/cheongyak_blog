@@ -1,5 +1,7 @@
 // 「aulee의 집」(auleezip.com) 비교: 접수 전 분양 공고마다 주력 주택형 분양가 vs 직접 고른 비교 단지 실거래
 // node zip/deals.mjs           → data/deals.json: 공고마다 후보 단지 풀(같은 시군구 최근 12개월 거래 단지) + 고른 단지로 계산한 차이
+// node zip/deals.mjs --only 2026910275,2026000435   그 공고만(다른 공고 자료는 그대로 이어 둔다)
+// --include-past: 접수가 끝난 공고도 다시 계산(--only와 함께)
 // node zip/deals.mjs --check   → 계산 자체 점검(네트워크 없음)
 // 비교 단지는 반경으로 자르지 않는다(2026-10-28 사용자 결정): 생활권 인식·상급지/하급지·브랜드·고급 단지를 보고 사람이(Claude 세션) 골라
 // data/zip_peers.json에 { "공고번호": { "peers": [{ "apt": "단지명(풀에 있는 이름 그대로)", "why": "고른 이유" }], "note"?: "" } } 로 적는다.
@@ -47,10 +49,11 @@ async function main() {
   const peersOf = JSON.parse(await readFile(join(ROOT, 'data/zip_peers.json'), 'utf8').catch(() => '{}'));
   const neighbors = JSON.parse(await readFile(join(ROOT, 'data/zip_neighbors.json'), 'utf8').catch(() => '{}'));
   // 접수가 끝나 이번 수집에서 빠진 공고도 글이 계속 열려 있으니 지난 자료(풀·고른 단지·비교값)를 이어 둔다 — 시작할 때 읽어 둔다
-  const prev = JSON.parse(await readFile(join(ROOT, 'data/deals.json'), 'utf8').catch(() => '{"items":[]}')).items.filter((r) => r.pool && !r.skip);
+  const prev = JSON.parse(await readFile(join(ROOT, 'data/deals.json'), 'utf8').catch(() => '{"items":[]}')).items.filter((r) => r.pool);
   const carry = (out) => [...out, ...prev.filter((r) => !out.some((o) => o.no === r.no))];
   const data = await loadData(), today = new Date().toISOString().slice(0, 10);
-  const items = data.items.filter((it) => MODEL[it.kind] && (it.phases || []).some((p) => ['sp', 'p1'].includes(p.k) && p.date >= today));
+  const only = (process.argv[process.argv.indexOf('--only') + 1] || '').split(',').filter((x) => /^\d{10}$/.test(x)); // --only 공고번호,공고번호: 그 공고만 다시 계산
+  const items = data.items.filter((it) => (!process.argv.includes('--only') || only.includes(it.id.split('-')[0])) && MODEL[it.kind] && (process.argv.includes('--include-past') || (it.phases || []).some((p) => ['sp', 'p1'].includes(p.k) && p.date >= today)));
   const out = [];
   for (const it of items) {
     const no = it.id.split('-')[0], row = { no, name: it.name, kind: it.kind, region: it.region, district: it.district, address: it.address, leasehold: /토지임대부/.test(it.name), applyhomeUrl: it.applyhomeUrl, phases: it.phases };
@@ -73,7 +76,7 @@ async function main() {
     await writeFile(join(ROOT, 'data/deals.json'), JSON.stringify({ at: new Date().toISOString(), rule: { GAP, RATE }, partial: true, items: carry(out) }, null, 2)); // 중간에 끊겨도 한 곳씩 남는다
     console.log(`${r.hit ? '★' : ' '} ${it.kind} ${it.name} ${r.skip || `3.3㎡당 ${r.own} vs ${r.med} → ${r.gap}만 (${Math.round(r.rate * 100)}%)`} · 풀 ${r.pool?.length ?? 0}곳`);
   }
-  await writeFile(join(ROOT, 'data/deals.json'), JSON.stringify({ at: new Date().toISOString(), rule: { GAP, RATE }, items: out }, null, 2));
+  await writeFile(join(ROOT, 'data/deals.json'), JSON.stringify({ at: new Date().toISOString(), rule: { GAP, RATE }, items: carry(out) }, null, 2));
   console.log(`\n공고 ${items.length}곳 · 꿀분양 ${out.filter((r) => r.hit).length}곳 · 비교 단지 고를 곳 ${out.filter((r) => r.skip === '비교 단지 아직 안 고름').length}곳 → data/deals.json`);
 }
 

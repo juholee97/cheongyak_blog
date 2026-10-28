@@ -34,6 +34,8 @@ if (process.argv.includes('--check')) {
 } else if (process.argv[1]?.endsWith('publish.mjs')) {
   const go = process.argv.includes('--go');
   const { items } = JSON.parse(await readFile(join(ROOT, 'data/deals.json'), 'utf8')), today = ymd(kst());
+  // 공개한 공고 장부: 자료가 일시적으로 비어도(예: 지도 사용량 한도) 「현재 열린 공고」 페이지에서 글이 빠지지 않게 쌓아 둔다
+  const regFile = join(ROOT, 'data/zip_registry.json'), reg = JSON.parse(await readFile(regFile, 'utf8').catch(() => '{}'));
   const seen = new Set(), live = [];
   for (const r of items.filter((x) => !x.skip)) {
     const post = JSON.parse(await readFile(join(ROOT, 'data/zip_posts', `${r.no}.json`), 'utf8').catch(() => 'null'));
@@ -48,10 +50,12 @@ if (process.argv.includes('--check')) {
       res = ` → ${o.ok ? '✓' : '✗'} ${o.status} ${o.link}`;
     }
     if (pl.mode === 'now') live.push({ ...r, phases });
+    if (go && pl.mode === 'now') reg[r.no] = { no: r.no, name: r.name, region: r.region, district: r.district, kind: r.kind, address: r.address, phases };
     console.log(`${pl.mode.padEnd(4)} ${pl.at || ''} ${post.title.slice(0, 44)} · ${pl.why}${res}`);
   }
   if (go) {
-    const pages = [['open-notices', '현재 열린 공고', openPage(live, today)], ['about', '소개', aboutPage()], ['privacy', '개인정보처리방침', privacyPage()]];
+    await (await import('node:fs/promises')).writeFile(regFile, JSON.stringify(reg, null, 1));
+    const pages = [['open-notices', '현재 열린 공고', openPage(Object.values(reg), today)], ['about', '소개', aboutPage()], ['privacy', '개인정보처리방침', privacyPage()]];
     let openId;
     for (const [slug, title, html] of pages) { const o = await upsertPage({ slug, title, html }); if (slug === 'open-notices') openId = o.id; console.log(`${o.ok ? '✓' : '✗'} 페이지 ${slug} ${o.link}`); }
     // 첫 화면을 「현재 열린 공고」로: 방문자가 사이트 안을 돌게 한다

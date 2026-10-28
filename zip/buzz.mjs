@@ -13,7 +13,7 @@ const strip = (s) => String(s || '').replace(/<[^>]+>/g, '').replace(/&quot;/g, 
 const iso = (d) => d.toISOString().slice(0, 10);
 
 // 검색어: 단지 이름에서 괄호(회차·블록)와 「(본청약)」 같은 꼬리를 뺀 것
-export const queryOf = (name) => shortName(name).replace(/\s*\d+단지$/, '').replace(/\s+/g, ' ').trim();
+export const queryOf = (name) => shortName(name).replace(/\s*\d+단지$/, '').replace(/\s*(토지임대부\s*)?(공공분양주택|공공분양)$/, '').replace(/\s*(추가\s*)?입주자모집(공고)?$/, '').replace(/\s+/g, ' ').trim();
 
 // 데이터랩 비율(0~100) → 최근 4주 평균 vs 그 앞 8주 평균
 export function trendOf(points) {
@@ -71,7 +71,8 @@ async function main() {
   const out = JSON.parse(await readFile(join(ROOT, 'data/buzz.json'), 'utf8').catch(() => '{}')), now = new Date();
   const missing = [!(await env('NAVER_CLIENT_ID')) && '네이버', !(await env('YOUTUBE_API_KEY')) && '유튜브'].filter(Boolean);
   if (missing.length) console.log(`키 없음: ${missing.join('·')} — 그 부분은 건너뜀`);
-  for (const r of items.filter((x) => !x.skip)) {
+  const oi = process.argv.indexOf('--only'), only = oi > 0 ? process.argv[oi + 1].split(',') : null; // --only 공고번호,공고번호: 그 공고만(비교 단지를 아직 안 골라 skip 표시인 공고도 포함)
+  for (const r of items.filter((x) => (only ? only.includes(x.no) : !x.skip))) {
     const q = queryOf(r.name);
     try {
       out[r.no] = { q, at: now.toISOString(), trend: await trend(q, now), news: await news(q), youtube: await youtube(q, now) };
