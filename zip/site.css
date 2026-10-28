@@ -224,3 +224,30 @@ a:hover{color:var(--az-ink)}
 .az-list .wp-block-query-pagination{margin-top:20px;font-size:14px}
 .az-s{font-size:13px;color:var(--az-sub)}
 .az-nw{white-space:nowrap}
+
+/* 「분양 시세비교」 목록: 왼쪽 글, 오른쪽 조감도(정보 제공용, 출처 분양 홈페이지) */
+.az-vlead{font-size:15px;color:var(--az-sub);margin:0;max-width:720px}
+.az-vgroup{font-size:clamp(18px,0.5vw + 15px,20px);margin:28px 0 0}
+.az-vlist{list-style:none;margin:6px 0 0;padding:0}
+.az-page>.az-vlist{max-width:none}
+.az-vitem{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:36px;padding:22px 0;border-bottom:1px solid var(--az-line);align-items:start}
+.az-vmeta{font-size:12.5px;color:var(--az-sub);margin:0}
+.az-vtext h2{font-size:18px;line-height:1.45;margin:6px 0 0;letter-spacing:-0.01em}
+.az-vtext h2 a{color:var(--az-ink);text-decoration:none}
+.az-vtext h2 a:hover{color:var(--az-blue)}
+.az-vex{font-size:14.5px;color:var(--az-sub);line-height:1.7;margin:8px 0 0}
+.az-vcmp{margin:10px 0 0}
+.az-vimg{margin:0}
+.az-vimg img{display:block;width:100%;height:auto;aspect-ratio:16/10;object-fit:cover;border-radius:6px;background:var(--az-panel)}
+.az-vimg figcaption{font-size:11.5px;color:var(--az-sub);margin-top:5px;line-height:1.4}
+.az-vimg figcaption a{color:inherit}
+.az-vph{display:grid;place-items:center;aspect-ratio:16/10;border-radius:6px;background:var(--az-panel);color:var(--az-sub);font-size:14px;font-weight:600;text-align:center;padding:16px;line-height:1.4}
+.az-status.end{color:var(--az-sub)}
+@media (max-width:640px){
+  .az-vitem{grid-template-columns:minmax(0,1fr) 104px;gap:14px;padding:18px 0}
+  .az-vimg img{aspect-ratio:1/1}
+  .az-vimg figcaption{display:none}
+  .az-vph{aspect-ratio:1/1;font-size:11.5px;padding:8px}
+  .az-vex{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;font-size:14px}
+  .az-vtext h2{font-size:16.5px}
+}

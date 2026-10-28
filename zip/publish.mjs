@@ -9,7 +9,8 @@ import { join } from 'node:path';
 import { ROOT } from '../tistory/common.mjs';
 import { upsert, upsertPage, uploadMedia, wp } from './wp.mjs';
 import { closedOf } from './post.mjs';
-import { openPage, methodPage, aboutPage, privacyPage } from './pages.mjs';
+import { openPage, methodPage, aboutPage, privacyPage, saleList } from './pages.mjs';
+import { loadViews } from './views.mjs';
 import { loadLog, saveLog, applyLog } from './revlog.mjs';
 import { purge } from './site.mjs';
 
@@ -73,6 +74,27 @@ if (process.argv.includes('--check')) {
     for (const [slug, title, html] of pages) { const o = await upsertPage({ slug, title, html }); if (slug === 'open-notices') openId = o.id; console.log(`${o.ok ? '✓' : '✗'} 페이지 ${slug} ${o.link}`); }
     // 첫 화면을 「현재 열린 공고」로: 방문자가 사이트 안을 돌게 한다
     await wp('settings', { method: 'POST', body: { show_on_front: 'page', page_on_front: openId } }).then((s) => console.log('첫 화면:', s.show_on_front, s.page_on_front)).catch((e) => console.log('첫 화면 설정 못 바꿈:', e.message));
+    // 「분양 시세비교」 목록 = 카테고리 템플릿 category-<id>(글 왼쪽, 조감도 오른쪽). 조감도는 data/zip_views.json(zip/views.mjs)을 미디어로 올려 쓴다
+    const views = await loadViews(), posts = {};
+    for (const [no, v] of Object.entries(views)) if (v.file && !v.url) {
+      const id = await uploadMedia(join(ROOT, v.file), `view-${no}.jpg`, `${reg[no]?.name || no} 조감도`).catch(() => null);
+      if (id) Object.assign(v, { mid: id, url: (await wp(`media/${id}`)).source_url });
+    }
+    await (await import('node:fs/promises')).writeFile(join(ROOT, 'data/zip_views.json'), JSON.stringify(views, null, 1));
+    for (const r of Object.values(reg)) { const j = JSON.parse(await readFile(join(ROOT, 'data/zip_posts', `${r.slug || r.no}.json`), 'utf8').catch(() => 'null')); if (j) posts[r.no] = { title: j.title, excerpt: j.excerpt, link: `https://auleezip.com/${j.slug}/` }; }
+    const [cat] = await wp(`categories?slug=${encodeURIComponent('분양-시세비교')}`);
+    if (cat) {
+      const slug = `category-${cat.id}`, content = `<!-- wp:template-part {"slug":"header","theme":"twentytwentyfive"} /-->
+<!-- wp:html -->
+<main class="az-main"><div class="az-head"><h1 class="az-title">${cat.name}</h1></div><div class="az-content"><div class="az az-page">
+${saleList(Object.values(reg), today, res, posts, views)}
+</div></div></main>
+<!-- /wp:html -->
+<!-- wp:template-part {"slug":"footer","theme":"twentytwentyfive"} /-->`;
+      const old = await wp(`templates/twentytwentyfive//${slug}?context=edit`).catch(() => null);
+      const t = old ? await wp(`templates/twentytwentyfive//${slug}`, { method: 'POST', body: { content } }) : await wp('templates', { method: 'POST', body: { slug, title: `${cat.name} 목록`, content } });
+      console.log(`${t?.content?.raw === content ? '✓' : '✗'} 목록 템플릿 ${slug} (조감도 ${Object.values(views).filter((v) => v.url).length}곳)`);
+    }
     console.log('캐시 비우기', (await purge()) ? '✓' : '✗'); // 이 사이트는 글을 고쳐도 캐시를 자동으로 안 비운다
   }
 }

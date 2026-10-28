@@ -28,6 +28,30 @@ export function openPage(list, today, res = {}) {
   ].join('\n'));
 }
 
+// 「분양 시세비교」 목록(카테고리 템플릿 category-5에 들어간다): 글마다 왼쪽 글, 오른쪽 조감도(2026-10-29 사용자 요청 — 정보 제공용, 출처는 사업주체 분양 홈페이지).
+// posts: 공고번호 → { title, excerpt, link }. views: 공고번호 → { url, homepage }(조감도가 없으면 단지 이름 칸으로 자리만 채운다)
+export function saleList(list, today, res = {}, posts = {}, views = {}) {
+  const start = (r) => receiptOf(r.phases)?.start || '9999';
+  const items = list.filter((r) => r.source !== 'sh' && posts[r.no]);
+  const open = items.filter((r) => !closedOf(r.phases, today)).sort((a, b) => (start(a) < start(b) ? -1 : 1));
+  const done = items.filter((r) => closedOf(r.phases, today)).sort((a, b) => ((receiptOf(a.phases)?.end || '') < (receiptOf(b.phases)?.end || '') ? 1 : -1));
+  const item = (r) => {
+    const p = posts[r.no], v = views[r.no], rc = receiptOf(r.phases), x = res[r.no];
+    const status = !rc ? '' : closedOf(r.phases, today) ? '접수 마감' : today < rc.start ? `D-${days(today, rc.start)}` : '접수 중';
+    const meta = [esc(areaOf(r)), r.kind === '무순위' ? '무순위' : '분양', rc ? `접수 ${span(rc.start, rc.end)}` : '', status ? `<span class="az-status${status === '접수 마감' ? ' end' : ''}">${status}</span>` : ''].filter(Boolean).join(' · ');
+    const img = v?.url
+      ? `<figure class="az-vimg"><a href="${esc(p.link)}" tabindex="-1" aria-hidden="true"><img src="${esc(v.url)}" alt="${esc(shortName(r.name))} 조감도" width="800" height="500" loading="lazy"></a><figcaption>조감도 · ${v.homepage ? `<a href="${esc(v.homepage)}" rel="nofollow noopener">분양 홈페이지</a>` : '분양 홈페이지'}</figcaption></figure>`
+      : `<div class="az-vph" aria-hidden="true">${esc(shortName(r.name))}</div>`;
+    return `<li class="az-vitem"><div class="az-vtext"><p class="az-vmeta">${meta}</p><h2><a href="${esc(p.link)}">${esc(p.title)}</a></h2><p class="az-vex">${esc(p.excerpt)}</p>${x && !x.text && !x.leasehold ? `<p class="az-vcmp">${cmpBar(x.d)}</p>` : ''}</div>${img}</li>`;
+  };
+  return [
+    `<p class="az-vlead">청약 공고마다 주력 주택형 분양가를 주변 단지 실거래(전용 3.3㎡당 중앙값)와 비교합니다. 접수 중이거나 곧 열리는 공고가 위에 있고, ${esc(today.replaceAll('-', '.'))} 기준입니다.</p>`,
+    open.length ? `<h2 class="az-vgroup">접수 중·예정 ${open.length}곳</h2><ul class="az-vlist">${open.map(item).join('')}</ul>` : '',
+    done.length ? `<h2 class="az-vgroup">접수가 끝난 공고 ${done.length}곳</h2><ul class="az-vlist">${done.map(item).join('')}</ul>` : '',
+    src('조감도·투시도는 사업주체 분양 홈페이지(청약홈 공고에 적힌 주소)에서 정보 제공을 위해 옮긴 그림으로, 실제와 다를 수 있습니다. 그림이 없는 공고는 공식 홈페이지에서 찾지 못한 경우입니다.'),
+  ].filter(Boolean).join('\n');
+}
+
 // 비교 기준: zip/deals.mjs(분양)·zip/sh_rent.mjs(임대)·zip/ui.mjs(눈금)가 실제로 하는 그대로 적는다 — 코드를 바꾸면 이 글도 같이 고친다
 export const methodPage = () => page([
   '<p>우리의 집 글이 숫자를 어떻게 고르고 계산하는지 한곳에 적었습니다. 글마다 쓴 기간과 단지 수는 각 글의 「이 글의 자료」에 있습니다.</p>',
