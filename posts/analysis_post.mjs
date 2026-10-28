@@ -477,16 +477,20 @@ function rulesV2(f) {
   return out.join('\n');
 }
 
+// 따져 볼 점(2026-10-29 사용자 지시: 시선이 흩어짐): 문장 대신 「항목 · 답 하나 · 짧은 설명」 줄, 강조는 줄마다 답 하나만
 function checklist(f, m) {
-  const t = f.terms || {}, s = f.supply, lines = [summaryOf(f)];
-  const c = m.byType.find((b) => b.area === m.main.area)?.base;
-  if (c) lines.push(`전용 ${m.main.area}㎡ 최고가 기준으로 ${eul(c.name)} 받는다고 가정하면 입주 때까지 자기 돈 ${W(c.cash)}${m.pay ? `(그중 계약금 ${W(m.pay.downWon)}은 계약할 때)` : ''}이 필요하고, 월 상환은 ${span2(c.pay[0], c.pay[1], M)}${m.rent ? `에 토지임대료 ${iga(`월 ${R(m.rent.won)}`)} 더해져요` : '이에요'}.`);
+  const t = f.terms || {}, s = f.supply, rows = [];
+  const b = m.byType.find((x) => x.area === m.main.area), c = b?.base, sum = summaryOf(f);
+  rows.push(['시세', esc(sum.slice(sum.indexOf(', ') + 2).replace(/ 첫 접수는.*$/, '')), '']);
+  if (c) rows.push(['필요한 현금', `입주 때 자기 돈 ${HL(W(c.cash))}`, `${m.pay ? `계약할 때 계약금 ${W(m.pay.downWon)} · ` : ''}${esc(c.name)} 기준 가정 계산`]);
+  if (c) rows.push(['매달 내는 돈', HL(`월 ${span2(b.total[0], b.total[1], M)}`), m.rent ? `원리금 월 ${span2(c.pay[0], c.pay[1], M)} + 토지임대료 월 ${R(m.rent.won)}` : `원리금 · ${c.years}년 원리금균등`]);
   const mid = m.dsr?.rows.find((r) => r.pct === 100);
-  if (mid) lines.push(`은행 주택담보대출만 쓴다면 연 소득 ${W(mid.income)} 가구(3인 이하 평균) 기준 ${W(mid.loan)}까지 빌릴 수 있다고 보고(DSR·LTV 가정), 자기 돈 ${W(mid.cash)}이 필요해요.`);
-  if (t.periods) { const p = t.periods; lines.push(`전매 제한 ${per(p.resale)}, 거주 의무 ${per(p.residence)}${has(p.rewin) ? `, 재당첨 제한 ${per(p.rewin)}` : ''}이에요.${has(p.resale) ? ' 전매 제한 기간에는 자유롭게 팔 수 없어요.' : ''}`); }
-  if (s?.ok) { const kinds = SP.map(([k, n]) => [n, s.rows.reduce((a, g) => a + g.sp[k], 0)]).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]); if (kinds.length) lines.push(`특별공급은 ${kinds.slice(0, 3).map(([n, v]) => `${n} ${v.toLocaleString()}세대`).join(', ')} 순으로 많아요 — 우리 집이 넣을 수 있는 공급과 소득 기준부터 확인하세요.`); }
-  if (m.rent) lines.push('토지임대료는 약정 2년 뒤부터 법령 한도 안에서 인상될 수 있어요.');
-  return lines.map((l) => `<p>· ${boldNums(esc(l))}</p>`).join('\n');
+  if (mid) rows.push(['은행 대출', `최대 ${B(W(mid.loan))}`, `연 소득 ${W(mid.income)}(3인 이하 평균) · DSR·LTV 가정 · 그때 자기 돈 ${W(mid.cash)}`]);
+  if (t.periods) { const p = t.periods; rows.push(['팔기·거주', `전매 제한 ${has(p.resale) ? WARN(per(p.resale)) : B('없음')} · 거주 의무 ${has(p.residence) ? WARN(per(p.residence)) : B('없음')}`, `재당첨 제한 ${per(p.rewin)}${has(p.resale) ? ' · 전매 제한 기간에는 자유롭게 팔 수 없어요' : ''}`]); }
+  if (s?.ok) { const kinds = SP.map(([k, n]) => [n, s.rows.reduce((a, g) => a + g.sp[k], 0)]).filter(([, v]) => v > 0).sort((x, y) => y[1] - x[1]); if (kinds.length) rows.push(['특별공급', `${kinds[0][0]} ${B(`${kinds[0][1].toLocaleString()}세대`)}로 가장 많음`, `${kinds.slice(1, 3).map(([n, v]) => `${n} ${v.toLocaleString()}세대`).join(' · ')} — 넣을 수 있는 공급과 소득 기준부터 확인`]); }
+  if (m.rent) rows.push(['주의', '토지임대료 인상 가능', '약정 2년 뒤부터 법령 한도 안에서']);
+  const chip = 'display:inline-block;min-width:72px;margin-right:8px;padding:1px 8px;border-radius:999px;background:#eef0f6;color:#3a3f4b;font-size:12px;font-weight:700;text-align:center;vertical-align:1px';
+  return rows.map(([tag, main, sub]) => `<div style="border-top:1px solid ${C.line};padding:10px 0"><p style="margin:0"><span style="${chip}">${tag}</span>${main}</p>${sub ? `<p style="margin:3px 0 0;font-size:13px;color:${C.muted}">${sub}</p>` : ''}</div>`).join('\n');
 }
 
 // 한 줄 요약 아래 「핵심 숫자」 띠: 입주 때 자기 돈 · 매달 내는 돈 · 전매 제한(가정 계산은 기준 대출 하나로)
