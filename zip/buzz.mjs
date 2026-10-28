@@ -30,7 +30,7 @@ export function trendOf(points) {
 async function naver(path, init = {}) {
   const [id, secret] = [await env('NAVER_CLIENT_ID'), await env('NAVER_CLIENT_SECRET')];
   if (!id || !secret) return null;
-  useApi('naver_hub'); // 호출 한도 가드 — 유료 전환 위험 서비스라 하루 60·한 달 600번까지(zip/guard.mjs)
+  useApi(/datalab|search-trend/.test(path) ? 'naver_trend' : 'naver_search'); // 호출 한도 가드 — 네이버 API HUB는 무료 구간을 넘으면 유료(zip/guard.mjs)
   const legacy = (await env('NAVER_LEGACY')) === '1';
   const base = legacy ? 'https://openapi.naver.com' : 'https://naverapihub.apigw.ntruss.com';
   const key = legacy ? { 'X-Naver-Client-Id': id, 'X-Naver-Client-Secret': secret } : { 'X-NCP-APIGW-API-KEY-ID': id, 'X-NCP-APIGW-API-KEY': secret };

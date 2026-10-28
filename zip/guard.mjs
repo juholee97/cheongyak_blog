@@ -9,7 +9,9 @@ import { join } from 'node:path';
 import { ROOT } from '../tistory/common.mjs';
 
 export const DEFAULTS = {
-  naver_hub: { day: 60, month: 600, paid: true, note: '네이버 API HUB(NCP) — 무료 한도·요금을 확인하지 못했다. 이 한도를 넘기지 않는다' },
+  // 네이버 API HUB 요금표(2026-10-28 사용자가 알려 줌): 검색어 트렌드 0~30,000건 무료(30,001~50,000건 한시적 무료), 검색 API 0~775,000건 무료·하루 최대 25,000건. 기간(월/일)이 표에 없어 월 기준으로 보고 무료 구간보다 한참 낮게 잡는다
+  naver_trend: { day: 300, month: 5000, paid: true, note: '네이버 API HUB 검색어 트렌드 — 무료 월 30,000건까지(표 기준, 기간 단위는 확인 못 함)' },
+  naver_search: { day: 1000, month: 20000, paid: true, note: '네이버 API HUB 검색 API(뉴스) — 무료 775,000건까지, 하루 25,000건 제한' },
   youtube: { day: 3000, month: 60000, paid: false, note: 'YouTube Data API 단위(검색 100·목록 1). 기본 무료 할당 하루 10,000 — 결제 계정은 연결하지 않았다' },
   vworld: { day: 20000, month: 400000, paid: false, note: '브이월드 지오코더(무료, 일일 한도 있음 — 2026-10-28 초과)' },
   datago: { day: 8000, month: 160000, paid: false, note: '공공데이터포털(개발계정 API당 일 10,000)' },
@@ -45,8 +47,8 @@ if (process.argv.includes('--check')) {
   const { mkdtempSync } = await import('node:fs');
   const { tmpdir } = await import('node:os');
   process.env.ZIP_USAGE_FILE = join(mkdtempSync(join(tmpdir(), 'guard-')), 'u.json');
-  for (let i = 0; i < 60; i++) useApi('naver_hub');
-  assert.throws(() => useApi('naver_hub'), /API_BUDGET:naver_hub/); // 하루 60번 넘으면 막힌다
+  for (let i = 0; i < 300; i++) useApi('naver_trend');
+  assert.throws(() => useApi('naver_trend'), /API_BUDGET:naver_trend/); // 하루 300번 넘으면 막힌다
   useApi('youtube', 100); assert.equal(read(FILE(), {}).youtube.dayCount, 100); // 단위 호출
   assert.throws(() => useApi('youtube', 3000), /API_BUDGET:youtube/); // 한 번에 한도를 넘는 단위도 막힌다
   assert.throws(() => useApi('없는API'), /API_BUDGET/); // 등록 안 된 API는 한도 0
