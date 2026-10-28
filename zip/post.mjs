@@ -72,6 +72,7 @@ export function postOf(r, buzz, claims) {
     ...(when.length ? ['<h2>청약 일정</h2>', table(['단계', '날짜'], when)] : []),
     ...claimsHtml(claims),
     ...buzzHtml(buzz),
+    ...((r.links || []).length > 1 ? [`<p style="font-size:13px;color:${C.muted}">청약홈에 같은 단지 공고가 ${r.links.length}건 따로 올라와 있어 글 하나로 묶었어요. 공고마다 구분(불법행위 재공급·무순위)과 세대수가 달라서 아래 공식 자료 확인표와 각 공고 링크를 함께 보세요.</p>`] : []),
     '<h2>확인할 조건</h2>',
     `<p>분양가가 낮은 단지일수록 전매제한·실거주 의무·재당첨 제한이 붙는 경우가 많아요. 적용 여부와 기간은 ${(r.links || [r.applyhomeUrl]).map((u, i, a) => `<a href="${esc(u)}">청약홈 입주자모집공고${a.length > 1 ? ` ${i + 1}` : ''}</a>`).join(' · ')}에서 확인하세요.</p>`,
     `<p style="font-size:13px;color:${C.muted}">이 글은 공고와 공개 실거래 자료를 비교한 것이며 청약·투자 권유가 아닙니다. ${esc(DISCLAIMER)}</p>`,
