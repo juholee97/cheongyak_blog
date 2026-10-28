@@ -68,7 +68,16 @@ button { font: inherit; color: inherit; white-space: nowrap; flex: none; cursor:
 .hero-list-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 8px; }
 .hero-list-head h3 { margin: 0; font-size: 22px; font-weight: 900; letter-spacing: -0.03em; }
 .hero-list-head a { font-size: 14px; font-weight: 700; color: var(--brand); }
-.hero-list { display: flex; flex-direction: column; gap: 18px; }
+/* 홈 이번 주 남은 접수: 컴퓨터는 출처 칸을 가로로(2열), 휴대폰은 세로로 쌓는다(2026-10-28 사용자 지시). 칸이 좁아 행은 두 줄 카드 모양 */
+.hero-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; align-items: start; }
+@media (max-width: 900px) { .hero-list { grid-template-columns: minmax(0, 1fr); } }
+.hero-group .hero-row { grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; padding: 12px 16px; }
+.hero-group .hero-row .when { grid-column: 1 / -1; font-size: 13px; }
+.hero-group .hero-row .where { grid-column: 1; grid-row: 3; font-size: 13px; }
+.hero-group .hero-row .kind { grid-column: 2; grid-row: 3; text-align: right; font-size: 13px; }
+.hero-group .hero-row .units { grid-column: 2; grid-row: 2; font-size: 13px; color: var(--sub); }
+.hero-group .hero-row .name { grid-column: 1; grid-row: 2; }
+.hero-group .hero-empty { padding: 16px; }
 .hero-group { border: 1px solid var(--line-soft); border-radius: 16px; overflow: hidden; }
 .hero-group-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; padding: 12px 18px; background: var(--tint3); border-bottom: 1px solid var(--line-soft); }
 .hero-group-head b { font-size: 16px; font-weight: 900; letter-spacing: -0.02em; }

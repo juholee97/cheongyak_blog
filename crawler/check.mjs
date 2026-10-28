@@ -119,4 +119,11 @@ assert.equal(shItem.district, null); // 본사 주소(강남구)는 본문 밖�
 assert.deepEqual(shItem.phases, [{ k: 'p1', date: '2026-10-26', end: '2026-11-02' }, { k: 'win', date: '2026-11-03' }]);
 assert.deepEqual(toShItem({ seq: '2', date: '2026-10-02', title: '2026년 하반기 신혼 매입임대주택 입주자 모집공고' }, '<p>등록일 : 2026-10-02 서류 제출일 2026.10.19 ~ 2026.10.20 이전글</p>').phases, []); // 접수일 없으면 비움
 
+// LH·SH 정정·중복 정리(merge.mjs): 정정공고가 원본을 대체, 같은 접수일 글은 최신 하나, 접수일이 다른 회차와 청약홈 글은 그대로
+const { mergeNotices } = await import('./merge.mjs');
+const mi = (id, name, nd, d) => ({ id, name, region: '경남', noticeDate: nd, phases: [{ k: 'p1', date: d }] });
+const merged = mergeNotices([mi('lh-1', '의령 행복주택 모집', '2026-10-15', '2026-10-28'), mi('lh-2', '[정정공고]의령 행복주택 모집', '2026-10-20', '2026-10-30'), mi('sh-5', '옥류서원 모집', '2026-10-07', '2026-10-02'), mi('sh-6', '옥류서원 모집', '2026-10-28', '2026-10-28'), mi('123-1', '무순위 A', '2026-10-22', '2026-10-26'), mi('123-9', '무순위 A', '2026-10-22', '2026-10-26')]);
+assert.deepEqual(merged.map((x) => x.id).sort(), ['123-1', '123-9', 'lh-2', 'sh-5', 'sh-6']);
+assert.equal(merged.find((x) => x.id === 'lh-2').name, '의령 행복주택 모집');
+
 console.log('crawler check OK');

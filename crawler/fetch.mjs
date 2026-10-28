@@ -6,6 +6,7 @@ import { pathToFileURL } from 'node:url';
 import { fetchYouth } from './youth.mjs';
 import { fetchLH } from './lh.mjs';
 import { fetchSH } from './sh.mjs';
+import { mergeNotices } from './merge.mjs';
 
 const BASE = 'https://api.odcloud.kr/api/ApplyhomeInfoDetailSvc/v1/';
 const PREV_URL = 'https://juholee97.github.io/cheongyak_blog/schedule.json'; // 지난번 배포본
@@ -223,10 +224,12 @@ async function main() {
   if (!items.size) throw new Error('수집 결과 0건 — 빈 달력을 배포하지 않도록 중단합니다.');
 
   const t = now.toISOString().slice(0, 19);
-  const json = { updatedAt: `${t}+09:00`, items: [...items.values()] };
+  const merged = mergeNotices([...items.values()]); // LH·SH 정정공고·중복 글 정리(crawler/merge.mjs)
+  console.log(`중복·정정 정리: ${items.size}건 → ${merged.length}건`);
+  const json = { updatedAt: `${t}+09:00`, items: merged };
   await mkdir(dirname(out), { recursive: true });
   await writeFile(out, JSON.stringify(json));
-  console.log(`${out}: ${items.size}건 (${from} ~ ${to})`);
+  console.log(`${out}: ${merged.length}건 (${from} ~ ${to})`);
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
