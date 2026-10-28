@@ -57,7 +57,7 @@ export function renderFacts(f) {
   ]) + `<p style="font-size:13px;color:${C.muted}">학구도 2026.09 기준 · 배정은 교육지원청 확인 · 역 © OpenStreetMap</p>`;
   const ok = (rent || []).filter((u) => u.result);
   out.rent = ok.length ? table(['호', '임대보증금 · 월세', '주변 월세 중앙값', '월세 비율'], ok.map((u) => [esc(u.name), `${won(u.deposit)}<br>월 ${u.rent}만원`, u.result.insufficient ? '비교 거래 부족' : `월 ${Math.round(u.result.market)}만원`, u.result.insufficient ? '-' : `<b>${Math.round(u.result.ratio * 100)}%</b>`]))
-    + `<p style="font-size:13px;color:${C.muted}">보증금이 비슷한 주변 월세 거래와 견준 값이에요. 조건·표본은 ${f.zip ? `<a href="https://auleezip.com/${esc(f.zip)}/" target="_blank" rel="noopener">aulee의 집 비교 글</a>` : 'aulee의 집 비교 글'}에서 볼 수 있어요.</p>` : '';
+    + `<p style="font-size:13px;color:${C.muted}">보증금이 비슷한 주변 월세 거래와 견준 값이에요. 조건·표본은 ${f.zip ? `<a href="https://auleezip.com/${esc(f.zip)}/" target="_blank" rel="noopener">우리의 집 비교 글</a>` : '우리의 집 비교 글'}에서 볼 수 있어요.</p>` : '';
   out.links = `<p><a href="${esc(it.applyhomeUrl)}" target="_blank" rel="noopener">${it.source === 'sh' ? 'SH 입주자 모집공고 원문' : it.source === 'lh' ? 'LH 청약플러스 공고' : it.source === 'youth' || /^youth-/.test(it.id) ? '서울시 청년안심주택 공고' : '청약홈 입주자모집공고'} 보기</a>${it.homepageUrl ? ` · <a href="${esc(it.homepageUrl)}" target="_blank" rel="noopener">운영 기관 홈페이지</a>` : ''}</p>`;
   return out;
 }

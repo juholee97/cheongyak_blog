@@ -92,7 +92,7 @@ export async function collect(no, dataSrc, { v2 = false } = {}) {
 }
 
 // v2 자료(2026-10-29): 공급 유형별 세대·공고문 조건·은행 금리. 이 값이 있는 초안만 새 절(필요 현금·가구별·주택형 비교·따져 볼 점)을 그린다 —
-// 옛 초안은 지금 모양 그대로(재수정 대기열이 공개 글을 다시 그리므로). 샘플 승인 전까지 자동 실행(analysis_auto)은 --v2를 넘기지 않는다.
+// 이 값이 없는 옛 초안은 옛 모양 그대로 그린다. 새로 모으는 초안은 기본 v2(2026-10-29 샘플 승인, --v1이면 옛 모양), 공개 글은 --enrich로 더한 뒤 재수정 대기열로.
 async function addV2(f, d, models) {
   const doc = await noticeText(f.detail.no).catch((e) => ({ skip: e.message }));
   f.detail.publicLaw = d.PUBLIC_HOUSE_SPCLW_APPLC_AT === 'Y'; // 공공주택 특별법 적용(공공분양 소득·자산 기준)
@@ -217,7 +217,7 @@ ${t.others.length ? `<p style="font-size:13px;color:${C.muted}">같은 등급이
 
 // 같은 단지의 시세 비교 글(auleezip.com)이 있으면 서로 연결 — 목록은 zip/post.mjs가 data/zip_posts/index.json에 쓴다
 const ZIP_INDEX = JSON.parse(await readFile(new URL('../data/zip_posts/index.json', import.meta.url), 'utf8').catch(() => '{}'));
-const zipLink = (f) => { const slug = ZIP_INDEX[String(f.item.id).split('-')[0]]; return slug ? `<p>이 단지의 분양가를 주변 단지 실거래와 맞춰 본 글은 <a href="https://auleezip.com/${slug}/">aulee의 집</a>에서 볼 수 있어요.</p>` : ''; };
+const zipLink = (f) => { const slug = ZIP_INDEX[String(f.item.id).split('-')[0]]; return slug ? `<p>이 단지의 분양가를 주변 단지 실거래와 맞춰 본 글은 <a href="https://auleezip.com/${slug}/">우리의 집</a>에서 볼 수 있어요.</p>` : ''; };
 
 export function render(f, notes = {}, images = []) {
   if (f.terms || f.supply) return renderV2(f, notes, images);
@@ -360,6 +360,7 @@ const M = (won) => `${Math.round(won / 10000).toLocaleString()}만원`; // 월 �
 const R = (won) => (won >= 1e8 ? W(won) : won % 10000 ? `${won >= 1e4 ? `${Math.floor(won / 10000).toLocaleString()}만 ` : ''}${(won % 10000).toLocaleString()}원` : man(won / 10000)); // 원 단위까지
 const span2 = (a, b, f) => (f(a) === f(b) ? f(a) : `${f(a)}~${f(b)}`);
 const rt = (v) => (Number.isInteger(v) ? v.toFixed(1) : String(v)); // 금리 3 → 「3.0」
+const has = (v) => !!(v && (v.y || v.mo)), per = (v) => (v?.y ? `${v.y}년` : v?.mo ? `${v.mo}개월` : '없음'); // 공고문 기간(년·개월)
 // 조사: 끝 글자 받침으로 을/를·이/가(괄호 설명은 빼고 앞말 기준, 숫자는 읽는 소리 기준)
 const batchim = (w) => { const c = [...String(w).replace(/\s*\([^)]*\)\s*$/, '').replace(/[^가-힣0-9]+$/, '')].pop() || ''; if (/\d/.test(c)) return /[013678]/.test(c); const k = c.charCodeAt(0) - 0xac00; return k >= 0 && k <= 11171 && k % 28 !== 0; };
 const eul = (w) => `${w}${batchim(w) ? '을' : '를'}`, iga = (w) => `${w}${batchim(w) ? '이' : '가'}`;
@@ -459,7 +460,7 @@ function typesCompare(f, m) {
 function rulesV2(f) {
   const t = f.terms || {}, p = t.periods, out = [];
   if (p) {
-    const row = (name, v) => (v ? [name, v.y ? `${v.y}년` : '없음', v.y && v.from ? `${esc(v.from)}부터` : '-'] : [name, '공고문 확인', '-']);
+    const row = (name, v) => (v ? [name, per(v), has(v) && v.from ? `${esc(v.from)}부터` : '-'] : [name, '공고문 확인', '-']);
     out.push(tableN(['구분', '기간', '언제부터'], [row('재당첨 제한', p.rewin), row('전매 제한', p.resale), row('거주 의무', p.residence)]) + foldNote('출처', `${pg(p.p)}${p.resale?.note ? ` · 전매 제한: ${esc(p.resale.note)}` : ''} · 기간과 기준일은 공고문이 우선이에요.`));
   } else out.push('<p>재당첨·전매 제한과 거주 의무 기간은 공고문에서 읽지 못했어요. 공고문 앞쪽 단지 주요정보에서 확인하세요.</p>');
   if (f.leasehold) {
@@ -475,7 +476,7 @@ function checklist(f, m) {
   if (c) lines.push(`전용 ${m.main.area}㎡ 최고가 기준으로 ${eul(c.name)} 받는다고 가정하면 입주 때까지 자기 돈 ${W(c.cash)}${m.pay ? `(그중 계약금 ${W(m.pay.downWon)}은 계약할 때)` : ''}이 필요하고, 월 상환은 ${span2(c.pay[0], c.pay[1], M)}${m.rent ? `에 토지임대료 ${iga(`월 ${R(m.rent.won)}`)} 더해져요` : '이에요'}.`);
   const mid = m.dsr?.rows.find((r) => r.pct === 100);
   if (mid) lines.push(`은행 주택담보대출만 쓴다면 연 소득 ${W(mid.income)} 가구(3인 이하 평균) 기준 ${W(mid.loan)}까지 빌릴 수 있다고 보고(DSR·LTV 가정), 자기 돈 ${W(mid.cash)}이 필요해요.`);
-  if (t.periods) { const p = t.periods; lines.push(`${p.resale?.y ? `전매 제한 ${p.resale.y}년` : '전매 제한 없음'}${p.residence?.y ? `, 거주 의무 ${p.residence.y}년` : ', 거주 의무 없음'}${p.rewin?.y ? `, 재당첨 제한 ${p.rewin.y}년` : ''}이에요.${p.resale?.y ? ' 전매 제한 기간에는 자유롭게 팔 수 없어요.' : ''}`); }
+  if (t.periods) { const p = t.periods; lines.push(`전매 제한 ${per(p.resale)}, 거주 의무 ${per(p.residence)}${has(p.rewin) ? `, 재당첨 제한 ${per(p.rewin)}` : ''}이에요.${has(p.resale) ? ' 전매 제한 기간에는 자유롭게 팔 수 없어요.' : ''}`); }
   if (s?.ok) { const kinds = SP.map(([k, n]) => [n, s.rows.reduce((a, g) => a + g.sp[k], 0)]).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]); if (kinds.length) lines.push(`특별공급은 ${kinds.slice(0, 3).map(([n, v]) => `${n} ${v.toLocaleString()}세대`).join(', ')} 순으로 많아요 — 우리 집이 넣을 수 있는 공급과 소득 기준부터 확인하세요.`); }
   if (m.rent) lines.push('토지임대료는 약정 2년 뒤부터 법령 한도 안에서 인상될 수 있어요.');
   return lines.map((l) => `<p>· ${esc(l)}</p>`).join('\n');
@@ -513,7 +514,7 @@ function autoNotesV2(f) {
   const c = m.byType.find((b) => b.area === m.main.area)?.base;
   return {
     ...v1,
-    rules: p ? [`공고문 기준 ${[['재당첨 제한', p.rewin], ['전매 제한', p.resale], ['거주 의무', p.residence]].map(([n, v]) => (v?.y ? `${n} ${v.y}년` : `${n} 없음`)).join(', ')}이에요.`] : v1.rules,
+    rules: p ? [`공고문 기준 ${[['재당첨 제한', p.rewin], ['전매 제한', p.resale], ['거주 의무', p.residence]].map(([n, v]) => `${n} ${per(v)}`).join(', ')}이에요.`] : v1.rules,
     loans: c ? [`전용 ${m.main.area}㎡ 최고가에 ${eul(c.name)} 받는다고 가정하면 대출 ${W(c.loan)}, 입주 때 자기 돈 ${W(c.cash)}, 월 상환 ${span2(c.pay[0], c.pay[1], M)}이에요.`, '실제 한도는 소득과 심사로 정해집니다.'] : v1.loans,
   };
 }
@@ -545,10 +546,13 @@ export async function images(f, out) {
 async function main() {
   const arg = (k) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : null; };
   const rp = arg('--render'), ep = arg('--enrich');
-  if (ep) { // 있는 초안에 v2 자료를 더해 다시 그림(notes는 그대로, --auto면 자동 설명을 새로) → --out 파일(없으면 같은 파일)
+  if (ep) { // 있는 초안에 v2 자료를 더해 다시 그림(notes는 그대로, --auto면 자동 설명을 새로, --auto-if-unedited면 손댄 적 없는 자동 설명일 때만 새로) → --out 파일(없으면 같은 파일)
     const d = JSON.parse(await readFile(ep, 'utf8'));
+    const unedited = JSON.stringify(d.notes) === JSON.stringify(autoNotes(d.facts)); // 옛 facts로 만든 자동 설명과 같으면 사람이 고치지 않은 것
     const f = await enrich(d.facts), out = arg('--out') || ep;
-    await writeFile(out, JSON.stringify(draftOf(f, process.argv.includes('--auto') ? autoNotes(f) : d.notes, d.images), null, 2));
+    const auto = process.argv.includes('--auto') || (process.argv.includes('--auto-if-unedited') && unedited);
+    await writeFile(out, JSON.stringify(draftOf(f, auto ? autoNotes(f) : d.notes, d.images), null, 2));
+    if (process.argv.includes('--auto-if-unedited')) console.log(auto ? '설명: 자동 설명을 새로 씀' : '설명: 손으로 고친 설명이라 그대로 둠');
     const issues = checkAnalysis(JSON.parse(await readFile(out, 'utf8')));
     console.log(`${out}\n${issues.length ? issues.map((i) => '✗ ' + i).join('\n') : `검수 통과 — ${d.title}`}`);
     process.exitCode = issues.length ? 4 : 0;
@@ -564,7 +568,7 @@ async function main() {
   }
   const no = process.argv[2];
   if (!/^\d{10}$/.test(no || '')) { console.log('사용: node posts/analysis_post.mjs <공고번호10자리> [--data 수집본]'); process.exit(1); }
-  const f = await collect(no, arg('--data') || undefined, { v2: process.argv.includes('--v2') }); // --v2: 새 절(샘플 승인 전까지 자동 실행은 안 씀)
+  const f = await collect(no, arg('--data') || undefined, { v2: !process.argv.includes('--v1') }); // 기본 v2(새 절), --v1이면 옛 모양
   const out = arg('--out') || `drafts/analysis_${no}.json`;
   const imgs = await images(f, out.replace(/\.json$/, '') + '.img'); // --out이면 그림도 그 이름 폴더에(기존 초안 그림을 덮지 않게)
   await writeFile(out, JSON.stringify(draftOf(f, process.argv.includes('--auto') ? autoNotes(f) : {}, imgs), null, 2)); // --auto: 자동 설명(분석 글 자동 예약)

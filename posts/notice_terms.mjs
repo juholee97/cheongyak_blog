@@ -51,18 +51,22 @@ const num = (s) => +String(s).replace(/[,\s]/g, '');
 const first = (pages, re) => { for (let i = 0; i < pages.length; i++) { const m = pages[i].match(re); if (m) return { m, p: i + 1 }; } return null; };
 
 // 재당첨·전매·거주의무: 민영 공고 1쪽 「단지 주요정보」 칸(머리글 다음에 값이 차례로) 또는 SH식 「구분 기준일 기간」 표
+// 값은 「10 년」「6 개월」「없음」(글자 순서가 뒤바뀐 「개월 6」「년 10」도 실측 — 2026000502·509) → { y: 년, mo: 개월 }
+const V = '(\\d+\\s*년|\\d+\\s*개월|개월\\s*\\d+|년\\s*\\d+|없음)';
+const PERIOD_BOX = new RegExp(`재당첨\\s*제한\\s*전매\\s*제한\\s*거주\\s*의무\\s*기간\\s*분양가\\s*상한제\\s*택지\\s*유형\\s*${V}\\s*${V}\\s*(\\*\\s*[^*]*?\\)\\s*)?${V}`);
 function periodsOf(pages) {
-  const yr = (v) => (/없음/.test(v) ? 0 : num(v.match(/\d+/)[0]));
-  const a = first(pages, /재당첨\s*제한\s*전매\s*제한\s*거주\s*의무\s*기간\s*분양가\s*상한제\s*택지\s*유형\s*(\d+\s*년|없음)\s*(\d+\s*년|없음)\s*(\*\s*[^*]*?\)\s*)?(\d+\s*년|없음)/);
+  const per = (v) => (/없음/.test(v) ? { y: 0, mo: 0 } : /개월/.test(v) ? { y: 0, mo: num(v.match(/\d+/)[0]) } : { y: num(v.match(/\d+/)[0]), mo: 0 });
+  const a = first(pages, PERIOD_BOX);
   if (a) {
     const note = a.m[3] ? a.m[3].replace(/^\*\s*/, '').replace(/\s*([(),])\s*/g, '$1').replace(/,/g, ', ').replace(/\s+/g, ' ').trim() : null;
     const from = pages.some((t) => /전매\s*제한\s*기간[\s\S]{0,200}당첨자\s*발표일로부터/.test(t)) ? '당첨자 발표일' : null;
-    return { rewin: { y: yr(a.m[1]), from }, resale: { y: yr(a.m[2]), from, note }, residence: { y: yr(a.m[4]), from: yr(a.m[4]) ? '최초 입주가능일' : null }, p: a.p };
+    const live = per(a.m[4]);
+    return { rewin: { ...per(a.m[1]), from }, resale: { ...per(a.m[2]), from, note }, residence: { ...live, from: live.y || live.mo ? '최초 입주가능일' : null }, p: a.p };
   }
   for (let i = 0; i < pages.length; i++) {
     const rows = [...pages[i].matchAll(/(재당첨\s*제한|전매\s*제한|거주\s*의무)\s+(당첨자\s*발표일|최초\s*입주\s*가능일|입주\s*가능일|소유권\s*이전\s*등기일)\s+(\d+)\s*년/g)];
     if (rows.length < 2) continue;
-    const by = Object.fromEntries(rows.map((m) => [m[1].replace(/\s/g, ''), { y: +m[3], from: m[2].replace(/\s+/g, ' ').replace('최초 입주 가능일', '최초 입주가능일') }]));
+    const by = Object.fromEntries(rows.map((m) => [m[1].replace(/\s/g, ''), { y: +m[3], mo: 0, from: m[2].replace(/\s+/g, ' ').replace('최초 입주 가능일', '최초 입주가능일') }]));
     return { rewin: by['재당첨제한'] || null, resale: by['전매제한'] || null, residence: by['거주의무'] || null, p: i + 1 };
   }
   return null;
@@ -211,6 +215,13 @@ if (isMain && process.argv.includes('--check')) {
   assert.deepEqual([t.periods.rewin.y, t.periods.resale.y, t.periods.residence.y, t.periods.resale.from, t.periods.p], [10, 3, 0, '당첨자 발표일', 1]);
   t = termsOf({ pages: ['재당첨제한 전매제한 거주의무기간 분양가상한제 택지유형 10 년 3 년 * 소유권이전등기일까지 ( 다만 , 그 기간이 3 년을 초과하는 경우 3 년 ) 없음 적용 공공택지'] });
   assert.equal(t.periods.resale.y, 3); assert.equal(t.periods.residence.y, 0); assert.match(t.periods.resale.note, /^소유권이전등기일까지\(다만, 그 기간이 3 년을 초과하는 경우 3 년\)$/);
+  // 개월 단위·뒤바뀐 글자 순서(2026000507 「없음 6 개월 없음」, 2026000502 「없음 개월 6 없음」)
+  for (const s of ['재당첨제한 전매제한 거주의무기간 분양가상한제 택지유형 없음 6 개월 없음 미적용 민간택지', '재당첨제한 전매제한 거주의무기간 분양가상한제 택지유형 없음 개월 6 없음 미적용 민간택지']) {
+    t = termsOf({ pages: [s] });
+    assert.deepEqual([t.periods.rewin.y, t.periods.rewin.mo, t.periods.resale.mo, t.periods.residence.y, t.periods.residence.mo], [0, 0, 6, 0, 0]);
+  }
+  t = termsOf({ pages: ['재당첨제한 전매제한 거주의무기간 분양가상한제 택지유형 년 10 년 3 없음 미적용 민간택지'] }); // 2026000509
+  assert.deepEqual([t.periods.rewin.y, t.periods.resale.y, t.periods.residence.y], [10, 3, 0]);
   t = termsOf({ pages: ['x', '구분 기준일 (~로부터) 기간 관련법령 재당첨제한 당첨자 발표일 10년 「주택공급에 관한 규칙」 제54조 전매제한 당첨자 발표일 10년 「주택법」 제64조 거주의무 최초 입주가능일 5년 「주택법」 제57조의2'] });
   assert.deepEqual([t.periods.rewin.y, t.periods.resale.y, t.periods.residence.y, t.periods.residence.from, t.periods.p], [10, 10, 5, '최초 입주가능일', 2]);
   // 공급금액(천원·계 = 계약금+잔금) — 주택형마다 최고가가 청약홈 값과 맞을 때만
