@@ -463,17 +463,32 @@
       return '<div class="tile l' + lv(v) + '"><span>' + r + '</span><b>' + (v || '') + '</b></div>';
     }).join('');
     var md = function (s) { var d = parse(s); return (d.getMonth() + 1) + '.' + pad(d.getDate()) + '(' + W[d.getDay()] + ')'; };
-    var LIMIT = 8;
-    h.list.innerHTML = !left.length ? '<p class="hero-empty">' + (rec.length ? '이번 주 접수는 모두 끝났습니다. 다음 주 일정은 달력에서 볼 수 있어요.' : '이번 주에는 접수가 있는 단지가 없습니다.') + '</p>' : left.slice(0, LIMIT).map(function (x) {
+    // 공고 출처별로 나눠 보여 준다(2026-10-28): 임대 공고만 쭉 있으면 청약 사이트가 아니라고 느끼고 나가기 쉬워서, 청약홈 분양을 맨 위에 두고 LH·SH·서울시 순
+    var SRC = [
+      { k: 'applyhome', name: '청약홈(한국부동산원)', note: '분양·무순위·임의공급' },
+      { k: 'lh', name: 'LH 청약플러스', note: '공공임대·행복주택' },
+      { k: 'sh', name: 'SH 서울주택도시공사', note: '장기전세·사회주택' },
+      { k: 'youth', name: '서울시 청년안심주택', note: '' }
+    ];
+    var srcOf = function (it) { return /^lh-/.test(it.id) ? 'lh' : /^sh-/.test(it.id) ? 'sh' : /^youth-/.test(it.id) ? 'youth' : 'applyhome'; };
+    var LIMIT = 5, hidden = 0;
+    var row = function (x) {
       var u = safeUrl(x.it.applyhomeUrl), tag = u ? 'a' : 'div';
       return '<' + tag + ' class="hero-row"' + (u ? ' href="' + esc(u) + '" target="_blank" rel="noopener"' : '') + '>' +
-        '<span class="when">' + (x.p.date < t ? '~' + md(x.p.end) + '까지' : md(x.p.date)) + ' ' + phaseOf(x.it, x.p.k).label + '</span>' +
+        '<span class="when">' + (x.p.date < t ? '~' + md(x.p.end || x.p.date) + '까지' : md(x.p.date)) + ' ' + phaseOf(x.it, x.p.k).label + '</span>' +
         '<span class="name">' + esc(x.it.name) + '</span>' +
         '<span class="where">' + esc(x.it.region + ' ' + (x.it.district || '')) + '</span>' +
         '<span class="kind">' + esc(x.it.kind) + '</span>' +
         '<span class="units">' + (x.it.units ? x.it.units.toLocaleString() + '세대' : '') + '</span></' + tag + '>';
+    };
+    h.list.innerHTML = !left.length ? '<p class="hero-empty">' + (rec.length ? '이번 주 접수는 모두 끝났습니다. 다음 주 일정은 달력에서 볼 수 있어요.' : '이번 주에는 접수가 있는 단지가 없습니다.') + '</p>' : SRC.map(function (g) {
+      var xs = left.filter(function (x) { return srcOf(x.it) === g.k; });
+      if (!xs.length && g.k !== 'applyhome') return ''; // 청약홈 칸은 비어도 보여 준다(없다는 것도 정보)
+      hidden += Math.max(0, xs.length - LIMIT);
+      return '<div class="hero-group"><div class="hero-group-head"><b>' + esc(g.name) + '</b>' + (g.note ? '<span>' + esc(g.note) + '</span>' : '') + '<em>' + xs.length + '곳</em></div>' +
+        (xs.length ? xs.slice(0, LIMIT).map(row).join('') : '<p class="hero-empty">이번 주 남은 접수가 없습니다.</p>') + '</div>';
     }).join('');
-    h.more.textContent = left.length > LIMIT ? (left.length - LIMIT) + '곳 더 — 달력에서 보기' : '달력에서 전체 보기';
+    h.more.textContent = hidden ? hidden + '곳 더 — 달력에서 보기' : '달력에서 전체 보기';
   }
 
   render();

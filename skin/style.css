@@ -68,7 +68,12 @@ button { font: inherit; color: inherit; white-space: nowrap; flex: none; cursor:
 .hero-list-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 8px; }
 .hero-list-head h3 { margin: 0; font-size: 22px; font-weight: 900; letter-spacing: -0.03em; }
 .hero-list-head a { font-size: 14px; font-weight: 700; color: var(--brand); }
-.hero-list { border: 1px solid var(--line-soft); border-radius: 16px; overflow: hidden; }
+.hero-list { display: flex; flex-direction: column; gap: 18px; }
+.hero-group { border: 1px solid var(--line-soft); border-radius: 16px; overflow: hidden; }
+.hero-group-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; padding: 12px 18px; background: var(--tint3); border-bottom: 1px solid var(--line-soft); }
+.hero-group-head b { font-size: 16px; font-weight: 900; letter-spacing: -0.02em; }
+.hero-group-head span { font-size: 13px; color: var(--sub); }
+.hero-group-head em { margin-left: auto; font-style: normal; font-size: 13px; font-weight: 700; color: var(--sub); }
 .hero-row { display: grid; grid-template-columns: 170px minmax(0, 1fr) 150px 120px 90px; gap: 12px; align-items: center; padding: 12px 18px; font-size: 15px; color: var(--ink); }
 .hero-row + .hero-row { border-top: 1px solid var(--line-soft); }
 a.hero-row:hover { background: var(--tint3); text-decoration: none; color: var(--ink); }
