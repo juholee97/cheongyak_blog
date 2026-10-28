@@ -9,7 +9,8 @@ import { ROOT } from '../tistory/common.mjs';
 import { wp } from './wp.mjs';
 
 const THEME = 'twentytwentyfive', SITE = 'https://auleezip.com';
-export const AUTHOR = { name: 'aulee', nickname: 'aulee', slug: 'aulee' };
+// url은 구조화 데이터의 sameAs로 나간다(호스팅 기본 주소 juholee97.mycafe24.com이 나가던 것) — 같은 사람이 쓰는 티스토리로
+export const AUTHOR = { name: 'aulee', nickname: 'aulee', slug: 'aulee', url: 'https://aulee.tistory.com/', description: '청약 공고의 분양가·임대료를 주변 실거래와 맞춰 보는 「우리의 집」과 청약 일정을 정리하는 「우리의 청약달력」을 운영해요.' };
 // 한글 글꼴: 구글 글꼴 조각(쓰인 글자만 받음). 사이트 서버에 두면 188조각 @font-face가 모든 페이지에 붙어 오히려 무거워진다
 const FONT = '<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;600&amp;display=swap">';
 // 로고 「우리의 집」: 우리 위에 aulee, 집 위에 zip(루비) — 주소 auleezip.com을 그대로 읽게 한다(2026-10-29 사용자: 이름은 우리의 집, aulee는 디자인으로)
@@ -122,7 +123,7 @@ async function apply(go) {
   const todo = [];
   // 1) 글쓴이: 화면·작성자 주소·구조화 데이터에 로그인 아이디 대신 aulee
   const me = await wp('users/me?context=edit');
-  if (me.name !== AUTHOR.name || me.slug !== AUTHOR.slug || me.nickname !== AUTHOR.nickname) todo.push(['글쓴이', () => wp('users/me', { method: 'POST', body: AUTHOR }), async () => { const u = await wp('users/me?context=edit'); return u.name === AUTHOR.name && u.slug === AUTHOR.slug; }]);
+  if (Object.entries(AUTHOR).some(([k, v]) => me[k] !== v)) todo.push(['글쓴이', () => wp('users/me', { method: 'POST', body: AUTHOR }), async () => { const u = await wp('users/me?context=edit'); return Object.entries(AUTHOR).every(([k, v]) => u[k] === v); }]);
   // 2) 전역 스타일: 본문·제목 폭, 추가 CSS
   const [t] = await wp('themes?status=active&context=edit');
   const gsId = t._links['wp:user-global-styles'][0].href.match(/global-styles\/(\d+)/)[1];
