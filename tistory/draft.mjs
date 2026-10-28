@@ -50,6 +50,7 @@ async function compare(page, draft) {
   const want = [...draft.html.matchAll(IMG_RE)].map((m) => fileOf[m[1]]).filter(Boolean);
   r.images = fileNames(r.content);
   r.imagesSame = JSON.stringify(r.images) === JSON.stringify(want);
+  if (process.env.TISTORY_DUMP) await writeFile(process.env.TISTORY_DUMP, r.content); // 편집기가 태그를 어떻게 바꾸는지 실측용(2026-10-29 <details>)
   delete r.content;
   r.ok = r.title === draft.title && r.category.includes(draft.category) && sameTags(r.tags, draft.tags) && r.bodySame && r.imagesSame;
   return r;

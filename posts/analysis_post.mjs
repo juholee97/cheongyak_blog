@@ -373,6 +373,11 @@ const tableN = (head, rows, min = 0) => `<div style="overflow-x:auto"><table sty
 ${rows.map((r) => `<tr>${r.map((c) => `<td ${TD}>${c}</td>`).join('')}</tr>`).join('\n')}
 </tbody></table></div>`;
 const B = (s) => `<span style="font-weight:700">${s}</span>`;
+// 가정·전제·출처는 접어 둔다(2026-10-29 사용자 지시: 읽는 자리를 너무 차지함). <details>는 편집기가 지워도 글자는 그대로 남는다
+const fold = (label, inner) => `<details style="margin:6px 0 0"><summary style="cursor:pointer;font-size:13px;color:${C.muted}">${label}</summary>${inner}</details>`;
+const foldNote = (label, s) => fold(label, small(s));
+// v1과 같이 쓰는 표의 작은 글씨 설명(renderFacts)도 v2에서만 접는다 — renderFacts 자체는 그대로라 옛 초안 모양은 안 바뀐다
+const foldSmalls = (html, label) => html.replace(new RegExp(`<p style="font-size:13px;color:${C.muted}">[\\s\\S]*?</p>`, 'g'), (m) => fold(label, m));
 const card = (title, sub, main, foot) => `<div style="border-top:1px solid ${C.line};padding:10px 0"><p style="margin:0">${B(title)}${sub ? ` <span style="font-size:13px;color:${C.muted}">${sub}</span>` : ''}</p><p style="margin:4px 0 0">${main}</p>${foot ? `<p style="margin:2px 0 0;font-size:13px;color:${C.muted}">${foot}</p>` : ''}</div>`;
 const V2_HEADS = [['glance', '한눈에'], ['price', '분양가, 주변 시세와 견주면?'], ['money', '얼마 있어야 하고, 매달 얼마 낼까?'], ['household', '우리 집은 어느 공급으로 넣을까?'], ['types', '주택형마다 무엇이 다를까?'], ['place', '출퇴근·학교는 어떨까?'], ['rules', '언제 팔 수 있고, 꼭 살아야 할까?'], ['check', '청약 전 따져 볼 점'], ['links', '공고문·문의']];
 
@@ -396,17 +401,17 @@ function moneyHtml(f, m, x) {
     const rent = m.rent && base?.base ? `<p style="margin:8px 0 0">여기에 토지임대료 ${iga(`월 ${R(m.rent.won)}`)} 따로 나가서, ${esc(base.base.name)} 기준 매달 내는 돈은 원리금과 합쳐 ${B(`월 ${span2(base.total[0], base.total[1], M)}`)}이에요.</p>` : '';
     const src = [t.balLoan ? `${pg(t.balLoan.p)} 잔금 대출 안내` : null, `정책대출은 주택도시기금·한국주택금융공사 기준(확인일 ${MONEY_CHECKED}, ${POLICY_YEARS}년 가정)`, f.bank ? bankLabel(f.bank) : null].filter(Boolean).join(' · ');
     out.push(calcBox(`전용 ${m.main.area}㎡(최고 ${W(m.main.price)})를 대출받아 산다면`, cards + rent
-      + small(`가정: 최고 분양가 기준, 대출액은 한도와 분양가×LTV 중 작은 값, 금리 구간의 낮은 쪽과 높은 쪽으로 각각 계산, 입주 때 자기 돈 = 분양가 − 대출. 금리: ${src}. 실제 대출 여부·금액·금리는 소득·신용·심사로 달라지고, 중도금 대출 이자·발코니 확장비·관리비는 빠져 있어요.`)));
+      + foldNote('계산 가정·출처', `가정: 최고 분양가 기준, 대출액은 한도와 분양가×LTV 중 작은 값, 금리 구간의 낮은 쪽과 높은 쪽으로 각각 계산, 입주 때 자기 돈 = 분양가 − 대출. 금리: ${src}. 실제 대출 여부·금액·금리는 소득·신용·심사로 달라지고, 중도금 대출 이자·발코니 확장비·관리비는 빠져 있어요.`)));
   }
   if (m.rent) out.push(calcBox('토지임대료를 오래 내면', tableN([two('기간'), two('토지임대료 합계', '인상이 없다고 가정')], [['1년', R(m.rent.y1)], ['10년', R(m.rent.y10)], ['20년', R(m.rent.y20)]])
-    + small(`전용 ${m.main.area}㎡ 월 ${R(m.rent.won)}(${pg(t.landRent.p)}) × 개월 수. 토지임대료는 약정 후 2년이 지나면 지역 지가상승률 등을 고려해 법령 한도 안에서 올릴 수 있어요(주택법 시행령 제81조).`)));
+    + foldNote('계산 방법', `전용 ${m.main.area}㎡ 월 ${R(m.rent.won)}(${pg(t.landRent.p)}) × 개월 수. 토지임대료는 약정 후 2년이 지나면 지역 지가상승률 등을 고려해 법령 한도 안에서 올릴 수 있어요(주택법 시행령 제81조).`)));
   if (m.conv) out.push(calcBox('토지임대료를 보증금으로 바꾸면', m.conv.map((r) => card(`전용 ${r.area}㎡`, `월 ${R(r.before)}의 ${r.ratio}%를 전환이율 ${r.rate}%로`, `보증금 ${B(R(r.deposit))}을 더 내면 토지임대료가 ${B(`월 ${R(r.after)}`)}`, r.total ? `기준 대출 원리금과 합친 월 부담 ${span2(r.total[0], r.total[1], M)}` : '')).join('')
-    + small(`${pg(t.conversion.p)}의 예시(실제 전환 조건은 입주 전 따로 안내). 매달 내는 돈은 줄지만 보증금만큼 현금이 더 필요하고, 그 돈을 빌리면 이자를 따로 따져야 해요.`)));
+    + foldNote('예시 출처·주의', `${pg(t.conversion.p)}의 예시(실제 전환 조건은 입주 전 따로 안내). 매달 내는 돈은 줄지만 보증금만큼 현금이 더 필요하고, 그 돈을 빌리면 이자를 따로 따져야 해요.`)));
   if (m.dsr) out.push(calcBox('소득에 따라 은행에서 빌릴 수 있는 돈(DSR)', `<p style="margin:0 0 8px">은행 주택담보대출은 1년 원리금이 소득의 ${BANK.dsr}%를 넘지 않게만 빌려줘요(DSR). 3인 이하 가구 도시근로자 월평균소득(2025년도)의 70·100·130%인 가구라면:</p>`
     + m.dsr.rows.map((r) => card(`연 소득 ${W(r.income)}`, `월 ${R(incomeAt(3, r.pct))} · 3인 이하 ${r.pct}%`, `대출 ${B(W(r.loan))} · 월 상환 ${B(M(r.pay))} · 입주 때 자기 돈 ${B(W(r.cash))}`, `DSR로 빌릴 수 있는 최대 ${W(r.max)}${r.loan < r.max ? ` — LTV ${m.dsr.ltv}%${m.dsr.cap ? `·한도 ${W(m.dsr.cap)}` : ''}에 걸려 ${W(r.loan)}` : ''}`)).join('')
-    + small(`가정: 다른 대출 없음, 가구 소득 전부를 대출 심사 소득으로 봄, DSR은 금리 ${rt(m.dsr.rate)}%에 스트레스 금리 ${rt(m.dsr.stress)}%p(${m.reg ? '규제지역' : m.capital ? '수도권 하한' : '지방'})를 모두 더해 심사, 월 상환은 연 ${rt(m.dsr.rate)}% · ${m.dsr.years}년 원리금균등. 금리는 ${bankLabel(f.bank)} — 은행·상품마다 금리와 심사가 달라요(금융위원회 DSR·LTV 기준, 확인일 ${MONEY_CHECKED}).`)));
+    + foldNote('계산 가정·출처', `가정: 다른 대출 없음, 가구 소득 전부를 대출 심사 소득으로 봄, DSR은 금리 ${rt(m.dsr.rate)}%에 스트레스 금리 ${rt(m.dsr.stress)}%p(${m.reg ? '규제지역' : m.capital ? '수도권 하한' : '지방'})를 모두 더해 심사, 월 상환은 연 ${rt(m.dsr.rate)}% · ${m.dsr.years}년 원리금균등. 금리는 ${bankLabel(f.bank)} — 은행·상품마다 금리와 심사가 달라요(금융위원회 DSR·LTV 기준, 확인일 ${MONEY_CHECKED}).`)));
   out.push(`<p>취득세 등(1주택 취득, 생애최초 감면 전)은 분양가의 ${m.tax.rate}%로 계산하면 약 ${W(m.tax.won)}이에요. 발코니 확장·옵션 금액을 더하면 늘어나요(지방세법 제11조, 확인일 ${MONEY_CHECKED}).</p>`);
-  out.push(`<p style="font-weight:700;margin:20px 0 8px">정책대출 가격·면적 요건</p>`, x.loans);
+  out.push(`<p style="font-weight:700;margin:20px 0 8px">정책대출 가격·면적 요건</p>`, foldSmalls(x.loans, '기준·출처'));
   return out.join('\n');
 }
 
@@ -420,7 +425,7 @@ function householdHtml(f) {
     const areas = s.rows.length <= 4 ? s.rows : [];
     const line = (name, get) => [name, ...areas.map((g) => `${get(g).toLocaleString()}세대`), `<span style="font-weight:700">${tot(get).toLocaleString()}세대</span>`];
     out.push(tableN(['공급', ...areas.map((g) => `전용 ${g.area}㎡`), '합계'], [line('일반공급', (g) => g.general), ...kinds.map(([k, n]) => line(`특별공급 · ${n}`, (g) => g.sp[k]))])
-      + small(`청약홈 주택형별 공급 세대${s.ok ? ' · 특별공급은 유형별 합이 특별공급 수와 같은지 맞춰 봄' : ' · 유형별 세대 합이 특별공급 수와 달라 유형은 공고문에서 확인'}`));
+      + foldNote('자료 기준', `청약홈 주택형별 공급 세대${s.ok ? ' · 특별공급은 유형별 합이 특별공급 수와 같은지 맞춰 봄' : ' · 유형별 세대 합이 특별공급 수와 달라 유형은 공고문에서 확인'}`));
   }
   const amt = (n, p, dual) => `${incomeAt(n, p).toLocaleString()}원${dual ? `<br><span style="font-size:13px;color:${C.muted}">맞벌이 ${incomeAt(n, dual).toLocaleString()}원</span>` : ''}`;
   if (f.detail.kind === '민영') {
@@ -428,12 +433,12 @@ function householdHtml(f) {
     const rules = PRIVATE_RULES.filter((r) => (!s?.ok || s.rows.some((g) => g.sp[r.k] > 0)) && (!pcts || [r.pri, r.all, r.priDual, r.allDual].filter(Boolean).every((p) => pcts.includes(p))));
     if (rules.length) out.push(`<p>민영주택 특별공급은 가구원수별 월평균소득 기준이 있어요. 기준을 넘어도 세대 부동산가액이 ${W(PRIVATE_ASSET)} 이하면 추첨공급에 넣을 수 있어요.</p>`
       + tableN([two('특별공급', '월평균소득 기준'), '3인 이하', '4인', '5인'], rules.flatMap((r) => [[two(`${r.name} 우선공급`, `${r.pri}% 이하${r.priDual ? `(맞벌이 ${r.priDual}%)` : ''}`), ...[3, 4, 5].map((n) => amt(n, r.pri, r.priDual))], [two(`${r.name} 그 밖`, `${r.all}% 이하${r.allDual ? `(맞벌이 ${r.allDual}%)` : ''}`), ...[3, 4, 5].map((n) => amt(n, r.all, r.allDual))]]))
-      + small(`2025년도 도시근로자 가구원수별 월평균소득(2026년 적용) · 주택공급에 관한 규칙 제35조의3·제41조·제43조(확인일 ${MONEY_CHECKED})${pcts ? ` · 같은 금액이 ${pg(t.income.p)} 등에 있음` : ''} · 6인 이상·세부 요건은 공고문 확인`));
+      + foldNote('기준·출처', `2025년도 도시근로자 가구원수별 월평균소득(2026년 적용) · 주택공급에 관한 규칙 제35조의3·제41조·제43조(확인일 ${MONEY_CHECKED})${pcts ? ` · 같은 금액이 ${pg(t.income.p)} 등에 있음` : ''} · 6인 이상·세부 요건은 공고문 확인`));
   } else if (t.income) {
     const pcts = t.income.pcts.filter((p) => [70, 100, 120, 130, 140, 150, 160, 200].includes(p));
     out.push(`<p>공공분양은 공급 유형과 단계마다 소득 기준(%)이 달라요. 이 공고문 소득 기준 표에 나오는 비율별 금액은 아래와 같고, 어느 공급에 몇 %가 적용되는지는 ${pg(t.income.p)} 표에서 확인하세요.</p>`
       + tableN([two('기준', '월평균소득의'), '3인 이하', '4인', '5인'], pcts.map((p) => [`${p}%`, ...[3, 4, 5].map((n) => amt(n, p))]))
-      + small(`2025년도 도시근로자 가구원수별 월평균소득(2026년 적용) — 금액이 공고문 표와 같은지 맞춰 봄${t.asset ? ` · 자산 기준: 총자산(부동산·자동차·금융자산 − 부채) ${W(t.asset.total)} 이하(${pg(t.asset.p)})` : ''}`));
+      + foldNote('기준·출처', `2025년도 도시근로자 가구원수별 월평균소득(2026년 적용) — 금액이 공고문 표와 같은지 맞춰 봄${t.asset ? ` · 자산 기준: 총자산(부동산·자동차·금융자산 − 부채) ${W(t.asset.total)} 이하(${pg(t.asset.p)})` : ''}`));
   }
   return out.join('\n');
 }
@@ -448,14 +453,14 @@ function typesCompare(f, m) {
   const [a, b] = [m.byType[0], m.byType[m.byType.length - 1]];
   const diff = a.base && b.base ? `<p>전용 ${a.area}㎡와 ${b.area}㎡는 최고 분양가가 ${W(b.price - a.price)} 차이 나고, 같은 대출로 계산하면 월 상환이 ${span2(b.base.pay[0] - a.base.pay[0], b.base.pay[1] - a.base.pay[1], M)}${a.rent && b.rent ? `, 토지임대료가 월 ${R(b.rent - a.rent)}` : ''} 더 들어요.</p>` : '';
   return diff + table([two('주택형', '공급면적'), two('월 상환', '최고가·기준 대출'), two('입주 때 자기 돈', '최고가 기준'), two('분양가', Object.keys(pr).length ? '동·층별 최저~최고' : '최고'), ...(m.rent ? [two('토지임대료', '월')] : []), '이번 공급'], rows)
-    + (t.rooms ? small(`침실 수는 공고문 평면도(${Object.entries(t.rooms).map(([ar2, v]) => `${ar2}㎡ ${v.p}쪽`).join(', ')}) 대표 타입 기준 — 같은 면적이라도 타입마다 다를 수 있어요.`) : '');
+    + (t.rooms ? foldNote('침실 수 기준', `침실 수는 공고문 평면도(${Object.entries(t.rooms).map(([ar2, v]) => `${ar2}㎡ ${v.p}쪽`).join(', ')}) 대표 타입 기준 — 같은 면적이라도 타입마다 다를 수 있어요.`) : '');
 }
 
 function rulesV2(f) {
   const t = f.terms || {}, p = t.periods, out = [];
   if (p) {
     const row = (name, v) => (v ? [name, v.y ? `${v.y}년` : '없음', v.y && v.from ? `${esc(v.from)}부터` : '-'] : [name, '공고문 확인', '-']);
-    out.push(tableN(['구분', '기간', '언제부터'], [row('재당첨 제한', p.rewin), row('전매 제한', p.resale), row('거주 의무', p.residence)]) + small(`${pg(p.p)}${p.resale?.note ? ` · 전매 제한: ${esc(p.resale.note)}` : ''} · 기간과 기준일은 공고문이 우선이에요.`));
+    out.push(tableN(['구분', '기간', '언제부터'], [row('재당첨 제한', p.rewin), row('전매 제한', p.resale), row('거주 의무', p.residence)]) + foldNote('출처', `${pg(p.p)}${p.resale?.note ? ` · 전매 제한: ${esc(p.resale.note)}` : ''} · 기간과 기준일은 공고문이 우선이에요.`));
   } else out.push('<p>재당첨·전매 제한과 거주 의무 기간은 공고문에서 읽지 못했어요. 공고문 앞쪽 단지 주요정보에서 확인하세요.</p>');
   if (f.leasehold) {
     const ls = t.lease;
@@ -488,15 +493,16 @@ function renderV2(f, notes = {}, images = []) {
     has.has('aerial') ? `${img('aerial')}\n<p style="font-size:13px;color:${C.muted}">단지 조감도 · 출처: ${srcOf(f, images.find((i) => i.key === 'aerial'))} · 실제와 다를 수 있습니다.</p>` : '',
     summaryBox(f), toc(heads.map(([id, t2]) => ({ id, t: t2 }))),
     H('glance'), x.glance, typesV2(f), plans(f, images),
-    H('price'), x.leasehold, note(notes.price), x.trades,
+    H('price'), x.leasehold, note(notes.price), foldSmalls(x.trades, '비교 기준'),
     H('money'), note(notes.loans), moneyHtml(f, m, x),
     H('household'), householdHtml(f),
     ...(f.types.length > 1 ? [H('types'), typesCompare(f, m)] : []),
-    H('place'), img('map'), note(notes.place), x.place, x.busRoutes,
+    H('place'), img('map'), note(notes.place), foldSmalls(x.place, '자료 기준'), foldSmalls(x.busRoutes, '추정 방법'),
     H('rules'), note(notes.rules), rulesV2(f), t.periods ? x.rulesTable : x.rules,
     H('check'), checklist(f, m),
     H('links'), x.links, zipLink(f),
-    `<p style="font-size:13px;color:${C.muted}">기준: 청약홈(한국부동산원) 분양정보 ${f.dataUpdatedAt.slice(0, 10)} 수집 · 입주자모집공고문(청약홈 PDF${t.fetched ? `, ${t.fetched} 읽음` : ''}) · 실거래 ${esc(f.trades.source || '')} · 대출·세금·소득 기준 확인일 ${MONEY_CHECKED}(주택도시기금·한국주택금융공사·금융위원회·지방세법·주택공급에 관한 규칙)${f.bank ? ` · ${bankLabel(f.bank)}` : ''} · 이 글은 공고와 공개 자료를 정리한 것이며 청약·투자 권유가 아닙니다.</p>`,
+    foldNote('출처·기준일', `기준: 청약홈(한국부동산원) 분양정보 ${f.dataUpdatedAt.slice(0, 10)} 수집 · 입주자모집공고문(청약홈 PDF${t.fetched ? `, ${t.fetched} 읽음` : ''}) · 실거래 ${esc(f.trades.source || '')} · 대출·세금·소득 기준 확인일 ${MONEY_CHECKED}(주택도시기금·한국주택금융공사·금융위원회·지방세법·주택공급에 관한 규칙)${f.bank ? ` · ${bankLabel(f.bank)}` : ''}`),
+    `<p style="font-size:13px;color:${C.muted}">이 글은 공고와 공개 자료를 정리한 것이며 청약·투자 권유가 아닙니다.</p>`,
     `<p style="font-size:13px;color:${C.muted}">※ ${DISCLAIMER}</p>`,
   ].filter(Boolean).join('\n');
 }
