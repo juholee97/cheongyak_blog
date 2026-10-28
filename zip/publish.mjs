@@ -36,10 +36,11 @@ if (process.argv.includes('--check')) {
   const { items } = JSON.parse(await readFile(join(ROOT, 'data/deals.json'), 'utf8')), today = ymd(kst());
   // 공개한 공고 장부: 자료가 일시적으로 비어도(예: 지도 사용량 한도) 「현재 열린 공고」 페이지에서 글이 빠지지 않게 쌓아 둔다
   const regFile = join(ROOT, 'data/zip_registry.json'), reg = JSON.parse(await readFile(regFile, 'utf8').catch(() => '{}'));
+  const oi = process.argv.indexOf('--only'), only = oi > 0 ? process.argv[oi + 1].split(',') : null; // --only 공고번호: 그 글만 올린다(고정 페이지는 장부로 늘 갱신)
   const seen = new Set(), live = [];
   for (const r of items.filter((x) => !x.skip)) {
     const post = JSON.parse(await readFile(join(ROOT, 'data/zip_posts', `${r.no}.json`), 'utf8').catch(() => 'null'));
-    if (!post || seen.has(post.slug)) continue; // 합쳐진 공고는 글이 하나
+    if (!post || seen.has(post.slug) || (only && !only.includes(r.no))) continue; // 합쳐진 공고는 글이 하나
     seen.add(post.slug);
     const phases = items.filter((x) => x.name === r.name).flatMap((x) => x.phases || []);
     const pl = planOf(phases, today);

@@ -124,7 +124,9 @@ if (process.argv[1]?.endsWith('post.mjs')) {
   const today = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
   const pub = JSON.parse(await readFile(join(ROOT, 'posts/published.json'), 'utf8').catch(() => '{}'));
   const list = [...seen.values()];
+  const oi = process.argv.indexOf('--only'), only = oi > 0 ? process.argv[oi + 1].split(',') : null; // --only 공고번호: 그 글만 새로 쓴다(나머지 글 파일은 그대로)
   for (const r of list) {
+    if (only && !only.includes(r.no)) continue;
     const closed = closedOf(r.phases, today);
     const more = [];
     // 티스토리에 같은 단지 분양분석 글이 있으면 서로 연결
@@ -141,7 +143,7 @@ if (process.argv[1]?.endsWith('post.mjs')) {
   }
   await writeFile(join(dir, 'preview.html'), `<!doctype html><meta charset="utf-8"><body style="max-width:760px;margin:24px auto;padding:0 16px;font:16px/1.7 sans-serif;color:${C.ink}">${posts.map((p) => `<article style="border-bottom:3px solid #ccc;padding-bottom:32px;margin-bottom:32px"><p style="color:${C.muted};font-size:13px">${p.categories.join(' · ')}</p><h1 style="font-size:24px">${esc(p.title)}</h1>${p.html}</article>`).join('')}</body>`);
   // 티스토리 분양분석 글이 자기 단지의 auleezip 글로 링크 걸 때 쓰는 목록(posts/analysis_post.mjs가 읽는다)
-  const index = {};
+  const index = JSON.parse(await readFile(join(dir, 'index.json'), 'utf8').catch(() => '{}'));
   for (const r of items.filter((x) => !x.skip)) { const m = [...seen.values()].find((x) => shortName(x.name) === shortName(r.name) && x.main.max === r.main.max); if (m) index[r.no] = `apt-${m.no}`; }
   await writeFile(join(dir, 'index.json'), JSON.stringify(index, null, 1));
   console.log(`\n글 ${posts.length}편 → data/zip_posts/ (미리보기 preview.html)`);
