@@ -102,9 +102,21 @@ async function addV2(f, d, models) {
   f.terms = doc.skip ? { skip: doc.skip } : termsOf(doc, models);
   const saved = await bankRate(); // 한국은행 금리는 월 1회 발표 — 저장값이 20일 넘었으면 다시 받는다(ECOS_KEY 없으면 저장값)
   f.bank = !saved || Date.now() - Date.parse(saved.fetched) > 20 * 864e5 ? await bankRate({ refresh: true }) : saved;
-  // 관리비 가정 계산: 같은 시·군·구 최근 입주 단지의 K-apt 공개 관리비(주소 좌표는 저장본이라 브이월드를 다시 부르지 않는다)
-  const site = await locate(f.item.address, await keyOf()).catch(() => null);
-  f.fee = await feeNear(site?.lawd).catch((e) => ({ skip: e.message }));
+  return addFee(f);
+}
+// 관리비 가정 계산: 같은 시·군·구 최근 입주 단지의 K-apt 공개 관리비(주소 좌표는 저장본이라 브이월드를 다시 부르지 않는다).
+// 공공주택지구 주소(「시흥거모 공공주택지구 내 S-1블록」)는 지오코더가 못 찾아서 「시·도 시·군·구 ○○동」까지만으로 시·군·구 코드를 다시 찾는다
+export function dongOf(addr) {
+  const inner = /\(([^)]*(?:동|읍|면|리)\s[^)]*)\)/.exec(addr)?.[1];
+  const t = (inner && /^\S+(도|시)\s/.test(inner) ? inner : addr).split(/\s+/);
+  const i = t.findIndex((w, j) => j > 0 && /(동|읍|면|리|가),?$/.test(w));
+  return i > 0 ? t.slice(0, i + 1).join(' ').replace(/,$/, '') : null;
+}
+export async function addFee(f) {
+  const vkey = await keyOf();
+  let lawd = (await locate(f.item.address, vkey).catch(() => null))?.lawd;
+  if (!lawd && dongOf(f.item.address)) lawd = (await locate(dongOf(f.item.address), vkey).catch(() => null))?.lawd;
+  f.fee = await feeNear(lawd).catch((e) => ({ skip: e.message }));
   return f;
 }
 export async function enrich(f) {
@@ -597,7 +609,16 @@ export async function images(f, out) {
 
 async function main() {
   const arg = (k) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : null; };
-  const rp = arg('--render'), ep = arg('--enrich');
+  const rp = arg('--render'), ep = arg('--enrich'), fp = arg('--add-fee');
+  if (fp) { // 공개 글: 관리비만 더함(2026-10-29) — 다른 자료(은행 금리 등)와 설명은 그대로라 본문의 다른 숫자가 바뀌지 않는다
+    const d = JSON.parse(await readFile(fp, 'utf8'));
+    await addFee(d.facts);
+    await writeFile(fp, JSON.stringify(draftOf(d.facts, d.notes, d.images), null, 2));
+    const issues = checkAnalysis(JSON.parse(await readFile(fp, 'utf8')));
+    console.log(`${fp} · 관리비 ${d.facts.fee.skip || `${d.facts.fee.ym} ${Math.round(d.facts.fee.perM2)}원/㎡`}\n${issues.length ? issues.map((i) => '✗ ' + i).join('\n') : `검수 통과 — ${d.title}`}`);
+    process.exitCode = issues.length ? 4 : d.facts.fee.skip ? 9 : 0;
+    return;
+  }
   if (ep) { // 있는 초안에 v2 자료를 더해 다시 그림(notes는 그대로, --auto면 자동 설명을 새로, --auto-if-unedited면 손댄 적 없는 자동 설명일 때만 새로) → --out 파일(없으면 같은 파일)
     const d = JSON.parse(await readFile(ep, 'utf8'));
     const unedited = JSON.stringify(d.notes) === JSON.stringify(autoNotes(d.facts)); // 옛 facts로 만든 자동 설명과 같으면 사람이 고치지 않은 것
