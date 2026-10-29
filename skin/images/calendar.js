@@ -87,10 +87,26 @@
   var PHK = {};
   PH.forEach(function (p, i) { PHK[p.k] = Object.assign({ i: i }, p); });
   var W = '일월화수목금토';
-  var STORE = 'cheongyak-regions', STORE_GU = 'cheongyak-seoul-gu', STORE_FOLD = 'cheongyak-filter-folded', STORE_KIND = 'cheongyak-kinds-off';
-  // 청약 종류 필터(2026-10-27): 보이는 순서와 이름. 목록에 없는 새 종류(LH 공고 세부 유형 등)는 뒤에 그대로. 꺼 둔 종류만 저장해서 새 종류는 켜진 채로 나온다
-  var KIND_ORDER = ['APT', '오피스텔', '도시형', '무순위', '임의공급', '공공지원 민간임대', '청년안심주택', '행복주택', '국민임대', '영구임대', '통합공공임대', '공공임대', '장기전세', '매입임대', '미리내집', '사회주택', '수요자맞춤형'];
-  var KIND_NAME = { APT: '아파트', '공공지원 민간임대': '민간임대' };
+  var STORE = 'cheongyak-regions', STORE_GU = 'cheongyak-seoul-gu', STORE_FOLD = 'cheongyak-filter-folded';
+  // 종류 필터 두 줄(2026-10-29 사용자 지시: 「아파트」만 켜면 아파트 무순위·임대가 다 빠짐 → 집 종류와 공고 종류를 나눈다).
+  // 두 줄 다 켜진 항목만 보인다. 꺼 둔 값만 저장해서 새 값은 켜진 채로 나온다(2026-10-27 한 줄 필터의 저장값 cheongyak-kinds-off는 쓰지 않는다)
+  // 집 종류는 자료에 따로 없어서 공고 종류로 정한다: 청약홈 무순위·임의공급은 APT 공고, LH·SH 건설임대·장기전세는 아파트 단지,
+  // 매입임대·사회주택·수요자맞춤형(매입형)은 다세대·다가구가 많고 청년안심주택은 건물마다 달라 「빌라·기타」
+  var HOUSE_APT = ['APT', '무순위', '임의공급', '공공지원 민간임대', '행복주택', '국민임대', '영구임대', '통합공공임대', '공공임대', '장기전세', '미리내집'];
+  var houseOf = function (it) {
+    if (it.kind === '오피스텔' || it.kind === '도시형') return it.kind;
+    if (it.kind === '공공지원 민간임대' && /오피스텔/.test(it.name)) return '오피스텔';
+    return HOUSE_APT.indexOf(it.kind) >= 0 ? '아파트' : '빌라·기타';
+  };
+  var noticeOf = function (it) { return it.kind === 'APT' || it.kind === '오피스텔' || it.kind === '도시형' ? '분양' : it.kind; };
+  var DIMS = [
+    { k: 'house', title: '주택 종류', store: 'cheongyak-house-off', of: houseOf, order: ['아파트', '오피스텔', '도시형', '빌라·기타'] },
+    { k: 'notice', title: '공고 종류', store: 'cheongyak-notice-off', of: noticeOf,
+      order: ['분양', '무순위', '임의공급', '공공지원 민간임대', '청년안심주택', '행복주택', '국민임대', '영구임대', '통합공공임대', '공공임대', '장기전세', '매입임대', '미리내집', '사회주택', '수요자맞춤형'] },
+  ];
+  var DIM = {};
+  DIMS.forEach(function (dm) { DIM[dm.k] = dm; });
+  var KIND_NAME = { '공공지원 민간임대': '민간임대' };
   var kindName = function (k) { return KIND_NAME[k] || k; };
   // 경기 시·군(2026-10-26 사용자 요청: 서울 자치구처럼 경기도도 시별로). 일정 자료의 district(「화성특례시」「용인시」)에서 시·군을 뗀 이름
   var GG = ['가평', '고양', '과천', '광명', '광주', '구리', '군포', '김포', '남양주', '동두천', '부천', '성남', '수원', '시흥', '안산', '안성',
@@ -145,7 +161,7 @@
   }
   var S = {
     regions: load(STORE, ALL), sub: (function () { var o = {}; SUBS.forEach(function (r) { o[r] = load(SUB[r].store, SUB[r].list); }); return o; })(), subOpen: '', filterOpen: false, // filterOpen은 휴대폰에서만 의미 있음
-    kindsOff: (function () { try { var v = JSON.parse(localStorage.getItem(STORE_KIND) || '[]'); return Array.isArray(v) ? v : []; } catch (e) { return []; } })(),
+    off: (function () { var o = {}; DIMS.forEach(function (dm) { try { var v = JSON.parse(localStorage.getItem(dm.store) || '[]'); o[dm.k] = Array.isArray(v) ? v : []; } catch (e) { o[dm.k] = []; } }); return o; })(),
     folded: (function () { try { return localStorage.getItem(STORE_FOLD) === '1'; } catch (e) { return false; } })(), // PC: 지역 칸 접기(요약 줄만, 2026-10-27)
     phases: PH.map(function (p) { return p.k; }),
     y: today.getFullYear(), m: today.getMonth(), sel: key(today),
@@ -166,15 +182,15 @@
   }
   var part = function (r) { return !!SUB[r] && S.sub[r].length < SUB[r].list.length; };
 
-  // 자료에 있는 종류: 정한 순서 먼저, 나머지는 가나다
-  function allKinds() {
+  // 자료에 있는 값: 정한 순서 먼저, 나머지는 가나다
+  function allOf(dm) {
     var seen = {};
-    S.data.forEach(function (it) { if (it.kind) seen[it.kind] = 1; });
-    return KIND_ORDER.filter(function (k) { return seen[k]; }).concat(Object.keys(seen).filter(function (k) { return KIND_ORDER.indexOf(k) < 0; }).sort(function (a, b) { return a.localeCompare(b, 'ko'); }));
+    S.data.forEach(function (it) { var v = dm.of(it); if (v) seen[v] = 1; });
+    return dm.order.filter(function (k) { return seen[k]; }).concat(Object.keys(seen).filter(function (k) { return dm.order.indexOf(k) < 0; }).sort(function (a, b) { return a.localeCompare(b, 'ko'); }));
   }
 
   function visible(it, rs) {
-    if (!rs.has(it.region) || S.kindsOff.indexOf(it.kind) >= 0) return false;
+    if (!rs.has(it.region) || DIMS.some(function (dm) { return S.off[dm.k].indexOf(dm.of(it)) >= 0; })) return false;
     var sb = SUB[it.region];
     if (!sb) return true;
     var k = sb.key(it);
@@ -203,11 +219,11 @@
     var anyPart = SUBS.some(part);
 
     // 지역·구별 이 달 단지 수 (필터와 무관)
-    var counts = {}, subCounts = {}, kindCounts = {};
+    var counts = {}, subCounts = {}, dimCounts = { house: {}, notice: {} };
     S.data.forEach(function (it) {
       if (!it.phases.some(function (p) { return p.date.slice(0, 7) === ym; })) return;
       counts[it.region] = (counts[it.region] || 0) + 1;
-      kindCounts[it.kind] = (kindCounts[it.kind] || 0) + 1;
+      DIMS.forEach(function (dm) { var c = dimCounts[dm.k], v = dm.of(it); c[v] = (c[v] || 0) + 1; });
       if (SUB[it.region]) { var c = subCounts[it.region] = subCounts[it.region] || {}, k = SUB[it.region].key(it); c[k] = (c[k] || 0) + 1; }
     });
     var monthIds = new Set();
@@ -218,8 +234,10 @@
       var l = S.sub[r];
       return l.length <= 3 ? r + '(' + l.join('·') + ')' : r + '(' + l[0] + ' 외 ' + (l.length - 1) + SUB[r].unit + ')';
     });
-    var kinds = allKinds(), kindsOn = kinds.filter(function (k) { return S.kindsOff.indexOf(k) < 0; });
-    var tail = (kindsOn.length < kinds.length ? ' · 종류 ' + (kindsOn.length <= 3 ? kindsOn.map(kindName).join('·') || '없음' : kindsOn.length + '개') : '') + ' · ' + (S.m + 1) + '월 ' + monthIds.size + '개 단지';
+    var tail = DIMS.map(function (dm) {
+      var all = allOf(dm), on = all.filter(function (k) { return S.off[dm.k].indexOf(k) < 0; });
+      return on.length < all.length ? ' · ' + dm.title.split(' ')[0] + ' ' + (on.length <= 3 ? on.map(kindName).join('·') || '없음' : on.length + '개') : '';
+    }).join('') + ' · ' + (S.m + 1) + '월 ' + monthIds.size + '개 단지';
     refs.summary.textContent = names.length === ALL.length && !anyPart ? '선택 지역: 전국' + tail
       : names.length ? '선택 지역: ' + names.join(', ') + tail : '조회할 지역을 선택해 주세요.';
     refs.save.textContent = S.saved ? '저장되었습니다' : '관심 지역 저장';
@@ -257,15 +275,15 @@
           var open = S.subOpen === r, label = open ? sb.close : o && part(r) ? S.sub[r].length + sb.unit + ' ▾' : sb.open;
           return '<div class="f-item-wrap">' + btn + '<button type="button" class="gu-toggle' + (open ? ' open' : '') + '" data-act="subopen" data-r="' + r + '" aria-expanded="' + open + '">' + label + '</button></div>';
         }).join('') + '</div></div>' + g.items.filter(function (r) { return SUB[r] && S.subOpen === r; }).map(subRow).join('');
-    }).join('') + (function () { // 청약 종류 줄
-      var off = new Set(S.kindsOff), on = kinds.filter(function (k) { return !off.has(k); }).length;
-      return '<div class="f-row kinds"><button type="button" class="f-head" data-act="kindall">' + box(on > 0, on < kinds.length) + '청약 종류</button>' +
-        '<div class="f-cells">' + kinds.map(function (k) {
+    }).join('') + DIMS.map(function (dm) { // 주택 종류 · 공고 종류 줄
+      var vals = allOf(dm), off = new Set(S.off[dm.k]), on = vals.filter(function (k) { return !off.has(k); }).length, cn = dimCounts[dm.k];
+      return '<div class="f-row kinds"><button type="button" class="f-head" data-act="kindall" data-dim="' + dm.k + '">' + box(on > 0, on < vals.length) + dm.title + '</button>' +
+        '<div class="f-cells">' + vals.map(function (k) {
           var o = !off.has(k);
-          return '<button type="button" class="f-item' + (o ? ' on' : '') + '" data-act="kind" data-k="' + esc(k) + '">' + box(o, false) + esc(kindName(k)) +
-            (kindCounts[k] ? '<span class="f-n">(' + kindCounts[k] + ')</span>' : '') + '</button>';
+          return '<button type="button" class="f-item' + (o ? ' on' : '') + '" data-act="kind" data-dim="' + dm.k + '" data-k="' + esc(k) + '">' + box(o, false) + esc(kindName(k)) +
+            (cn[k] ? '<span class="f-n">(' + cn[k] + ')</span>' : '') + '</button>';
         }).join('') + '</div></div>';
-    })();
+    }).join('');
 
     refs.month.textContent = S.y + '. ' + pad(S.m + 1);
     refs.legend.innerHTML = PH.map(function (p) {
@@ -361,19 +379,20 @@
     if (!t || !root.contains(t)) return;
     var d = t.dataset;
     switch (d.act) {
-      case 'all': return set({ regions: ALL.slice(), sub: fullSub(), kindsOff: [], saved: false });
-      case 'kindall': return set({ kindsOff: S.kindsOff.length ? [] : allKinds(), saved: false });
+      case 'all': return set({ regions: ALL.slice(), sub: fullSub(), off: { house: [], notice: [] }, saved: false });
+      case 'kindall': S.off[d.dim] = S.off[d.dim].length ? [] : allOf(DIM[d.dim]); return set({ saved: false });
       case 'kind': {
-        var ko = S.kindsOff.filter(function (x) { return x !== d.k; });
-        if (ko.length === S.kindsOff.length) ko.push(d.k);
-        return set({ kindsOff: ko, saved: false });
+        var cur0 = S.off[d.dim], ko = cur0.filter(function (x) { return x !== d.k; });
+        if (ko.length === cur0.length) ko.push(d.k);
+        S.off[d.dim] = ko;
+        return set({ saved: false });
       }
       case 'none': return setRegions([]); // 구 선택은 그대로 둔다
       case 'save':
         try {
           localStorage.setItem(STORE, JSON.stringify(S.regions));
           SUBS.forEach(function (r) { localStorage.setItem(SUB[r].store, JSON.stringify(S.sub[r])); });
-          localStorage.setItem(STORE_KIND, JSON.stringify(S.kindsOff));
+          DIMS.forEach(function (dm) { localStorage.setItem(dm.store, JSON.stringify(S.off[dm.k])); });
         } catch (err) { /* 저장 불가 */ }
         return set({ saved: true });
       case 'group': {
