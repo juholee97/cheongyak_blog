@@ -29,6 +29,7 @@ node posts\analysis_auto.mjs %*
 set RC=%ERRORLEVEL%
 if not exist data\logs mkdir data\logs
 rem Tistory daily post limit is now 5 (2026-10-27), so one run in priority order: analysis posts, then up to 3 queued guides, then retrofits.
+rem Since 2026-10-30 tistory\draft.mjs allows 3 saves a day in total, 30 minutes apart, and no edits of posts until 2026-11-03 (data\tistory_usage.json).
 rem The 00:30 guide queue task is disabled; guides run here after analysis posts.
 rem Approved time-sensitive posts (policy news) first: data\priority_queue.txt, earliest free 09:30 or 15:30 slot from one hour later (2026-10-27)
 echo ===== %DATE% %TIME% priority >> data\logs\guide_queue.log

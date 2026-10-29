@@ -5,10 +5,10 @@ const now = new Date('2026-10-23T07:00:00');
 const none = new Set();
 assert.equal(publishAt('2026-10-30', now, none), '2026-10-23 10:00'); // 7일 전 10:00이 오늘
 assert.equal(publishAt('2026-10-31', now, none), null); // 내일 이후 → 다음 실행
-assert.equal(publishAt('2026-10-26', now, none), '2026-10-23 07:30'); // 이미 지남 → 30분 뒤
+assert.equal(publishAt('2026-10-26', now, none), '2026-10-23 09:00'); // 이미 지남 → 2시간 뒤(저장 사이 30분 대기, 2026-10-30)
 assert.equal(publishAt('2026-10-23', now, none), null); // 접수 시작됨
 assert.equal(publishAt('2026-10-30', now, new Set(['2026-10-23 10:00'])), '2026-10-23 10:10'); // 겹치면 10분 뒤
-assert.equal(publishAt('2026-10-26', new Date('2026-10-23T07:05:00'), none), '2026-10-23 07:40'); // 10분 단위 올림
+assert.equal(publishAt('2026-10-26', new Date('2026-10-23T07:05:00'), none), '2026-10-23 09:10'); // 10분 단위 올림
 console.log('ok');
 // 제목용 단지 이름: 블록 번호만 남기고 괄호 설명은 뺀다(같은 단지의 다른 블록이 같은 제목이 되지 않게)
 const { shortName } = await import('./analysis_post.mjs');

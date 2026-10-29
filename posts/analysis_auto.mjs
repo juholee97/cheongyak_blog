@@ -32,12 +32,12 @@ const run = async (name, args) => {
   return r.status;
 };
 
-// 공개 시각 고르기: 접수 7일 전 10:00, 이미 지났으면 지금부터 30분 뒤(10분 단위 올림). 다른 예약과 같은 시각이면 10분씩 미룬다.
+// 공개 시각 고르기: 접수 7일 전 10:00, 이미 지났으면 지금부터 2시간 뒤(10분 단위 올림 — draft.mjs가 저장 사이 30분씩 기다리므로, 2026-10-30). 다른 예약과 같은 시각이면 10분씩 미룬다.
 export function publishAt(receipt, now, taken) {
   const today = fmt(now).slice(0, 10);
   if (receipt <= today) return null; // 접수가 이미 시작됨
   let t = new Date(receipt + 'T10:00:00'); t.setDate(t.getDate() - 7);
-  const soon = new Date(now.getTime() + 30 * 60e3); soon.setMinutes(Math.ceil(soon.getMinutes() / 10) * 10, 0, 0);
+  const soon = new Date(now.getTime() + 120 * 60e3); soon.setMinutes(Math.ceil(soon.getMinutes() / 10) * 10, 0, 0);
   if (t < soon) t = soon;
   if (t - now > 24 * 3600e3) return null; // 다음 실행 때
   while (taken.has(fmt(t))) t = new Date(t.getTime() + 10 * 60e3);
@@ -83,6 +83,8 @@ async function main() {
     if (got === 8) continue; // 재료 부족(주변 정보도 비교도 없음) — 실패가 아니라 건너뜀
     if (got) { failed.push(`${p.name}: 수집 실패`); continue; }
     const code = await run(`예약 ${p.no}`, ['tistory/draft.mjs', base, ...(dryRun ? ['--dry-run'] : []), '--approved', '--schedule', p.when]);
+    // 하루 저장 한도(코드 5, 2026-10-30부터 draft.mjs 하루 3번)는 실패가 아니라 내일 차례 — 남은 단지는 다음 실행이 새 시각으로 다시 고른다
+    if (code === 5) { await log(`※ 오늘 저장 한도 — ${p.name}부터는 내일`); break; }
     // 예약이 실패하면 임시저장해 둔다(2026-10-27 사용자 결정) — 저장되면 save.json이 save·ok라 다음 실행은 이 단지를 건너뛴다(발행은 사람이)
     const kept = code && code !== 4 && !dryRun && !(await run(`임시저장 ${p.no}`, ['tistory/draft.mjs', base, '--approved']));
     if (code) failed.push(`${p.name}: ${{ 1: '입력 오류', 2: '예약 대조 불일치', 3: '로그인 필요(tistory_login.bat)', 5: '티스토리 하루 글 한도(5개)', 6: '티스토리 보안 확인(reCAPTCHA) — 사람이 직접 확인 필요', 4: '검수 실패' }[code] || `코드 ${code}`}${kept ? ' → 임시저장해 둠' : ''}`);

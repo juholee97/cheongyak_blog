@@ -14,6 +14,14 @@ import { checkGuide } from '../posts/guide.mjs';
 import { IMG_RE } from '../posts/weekly.mjs';
 
 const SEL = JSON.parse(await readFile(join(ROOT, 'tistory', 'selectors.json'), 'utf8'));
+// 티스토리 쪽 부담 줄이기(2026-10-30 사용자 결정: 하루에 저장·대조가 몰린 뒤 보안 확인이 잦아짐).
+// 저장(예약·임시저장·고치기)은 모든 스크립트를 합쳐 하루 DAY_MAX번, 저장 사이는 GAP_MIN분 — 기다릴 땐 브라우저를 띄우기 전에 기다린다.
+// 한도에 걸리면 코드 5(부르는 쪽은 「내일 다시」). 공개 글·예약 글 고치기는 EDIT_REST_UNTIL 전까지 쉰다. 기록 data/tistory_usage.json
+const DAY_MAX = 3, GAP_MIN = 30, EDIT_REST_UNTIL = '2026-11-03';
+const USAGE = join(ROOT, 'data', 'tistory_usage.json');
+const kstDay = () => new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
+const usage = async () => { const u = JSON.parse(await readFile(USAGE, 'utf8').catch(() => '{}')); return u.day === kstDay() ? u : { day: kstDay(), saves: 0, last: u.last }; };
+const markSave = async () => { const u = await usage(); await writeFile(USAGE, JSON.stringify({ day: u.day, saves: u.saves + 1, last: new Date().toISOString() }) + '\n'); };
 const TOKEN_RE = new RegExp(SEL.attach.token, 'g');
 
 const log = (...a) => console.log(...a);
@@ -86,6 +94,14 @@ async function main() {
   if (draft.title.startsWith('[') && !(areaTag && draft.title.startsWith(areaTag))) issues.push('제목 앞 [말머리] 금지 — 검색어를 제목 맨 앞에');
   if (issues.length) { issues.forEach((i) => log('✗ ' + i)); log('검수 실패 — 저장하지 않습니다.'); return 4; }
   for (const im of draft.images || []) await readFile(join(ROOT, im.file)).catch(() => { throw new Error(`그림 파일 없음: ${im.file} (posts/images.mjs 먼저)`); });
+  if (!verifyOnly && !verifySched && !dryRun) {
+    if (updating && kstDay() < EDIT_REST_UNTIL) { log(`글 고치기는 ${EDIT_REST_UNTIL}부터(쉬는 중) — 다음에 다시`); return 5; }
+    const u = await usage();
+    if (u.saves >= DAY_MAX) { log(`오늘 티스토리 저장 ${u.saves}번 — 하루 ${DAY_MAX}번까지라 내일 다시`); return 5; }
+    const wait = u.last ? Date.parse(u.last) + GAP_MIN * 60e3 - Date.now() : 0;
+    if (wait > 0) { log(`저장 사이 ${GAP_MIN}분 — ${Math.ceil(wait / 60e3)}분 기다림`); await new Promise((r) => setTimeout(r, wait)); }
+    if (when && !updatePub && new Date(when.replace(' ', 'T') + ':00') - Date.now() < (updateSched ? 12 : 15) * 60e3) { log(`기다리는 사이 예약 시각(${when})이 15분 안으로 다가옴 — 시각을 다시 골라 주세요`); return 4; }
+  }
 
   // TISTORY_HEADED=1: 브라우저를 화면에 띄워 실행 — 보안 확인(reCAPTCHA)이 뜨면 사람이 그 창에서 직접 풀 수 있게 기다린다
   const headed = process.env.TISTORY_HEADED === '1';
@@ -117,9 +133,12 @@ async function main() {
       await page.route('**/*', (route) => (route.request().method() === 'POST' && !route.request().url().includes(SEL.attach.upload) ? route.abort() : route.continue()));
     }
     await page.addInitScript(GUARD, guard);
-    await openEditor();
-    report.countAtStart = await countOf();
-    step('글쓰기 화면·발행 가드', true, { 임시저장_개수: report.countAtStart, ...(dryRun ? { 시험: '저장 요청 차단' } : {}) });
+    // 대조·고치기는 새 글 화면을 거치지 않는다(편집 화면 들어가는 횟수 줄이기, 2026-10-30) — 가드는 addInitScript로 모든 화면에 걸린다
+    if (!verifySched && !updating) {
+      await openEditor();
+      report.countAtStart = await countOf();
+      step('글쓰기 화면·발행 가드', true, { 임시저장_개수: report.countAtStart, ...(dryRun ? { 시험: '저장 요청 차단' } : {}) });
+    }
 
     // 예약 검증: 관리 > 글 목록(여러 쪽, 발행 시각 순)에서 같은 제목 맨 위 글의 주소·시각 → 그 글 수정 화면을 열어 전문 대조
     const findRow = async () => {
@@ -137,10 +156,25 @@ async function main() {
       const timeOk = info.text.includes(when);
       step('예약 목록', timeOk, { 주소: info.url, 시각: when });
       report.url = info.url;
-      await go(BLOG + info.edit.split('?')[0], { waitUntil: 'domcontentloaded' });
-      await page.waitForFunction((id) => window.tinymce?.get(id)?.initialized, SEL.editor.tinymceId, { timeout: 30000 });
-      await page.waitForTimeout(1500);
-      const saved = await compare(page, draft);
+      let saved;
+      if (new Date(when.replace(' ', 'T') + ':00') < Date.now()) {
+        // 공개된 글은 편집 화면 대신 공개 페이지로 대조(2026-10-30 — 편집 화면 진입 줄이기). 본문 글자와 그림 수·제목. 티스토리가 덧붙이는 광고·공유 버튼·같은 카테고리 글 칸은 뺀다(10-30 실측 5편 일치)
+        await go(info.url, { waitUntil: 'domcontentloaded' });
+        saved = await page.evaluate(({ html, tok }) => {
+          const re = new RegExp(tok, 'g');
+          const txt = (h) => { const d = document.createElement('div'); d.innerHTML = h; return d.textContent.replace(/\[\[IMG:[^\]]+\]\]/g, '').replace(re, '').replace(/\s+/g, ''); };
+          const body = document.querySelector('.tt_article_useless_p_margin');
+          if (!body) return { ok: false, 없음: '본문 칸(.tt_article_useless_p_margin)' };
+          body.querySelectorAll('script,style,ins,noscript,.another_category,.container_postbtn,[data-tistory-react-app]').forEach((e) => e.remove());
+          return { title: document.querySelector('meta[property="og:title"]')?.content, bodySame: txt(body.innerHTML) === txt(html), bodyLen: txt(body.innerHTML).length, images: { length: body.querySelectorAll('img').length } };
+        }, { html: draft.html, tok: SEL.attach.token });
+        saved.ok = saved.ok !== false && saved.title === draft.title && saved.bodySame && saved.images.length === (draft.images || []).length;
+      } else {
+        await go(BLOG + info.edit.split('?')[0], { waitUntil: 'domcontentloaded' });
+        await page.waitForFunction((id) => window.tinymce?.get(id)?.initialized, SEL.editor.tinymceId, { timeout: 30000 });
+        await page.waitForTimeout(1500);
+        saved = await compare(page, draft);
+      }
       report.loadedShot = await shot('loaded');
       step('예약 글 불러와 전문 대조', saved.ok, saved.ok ? { 본문_글자수: saved.bodyLen, 그림: saved.images.length } : saved);
       report.ok = timeOk && saved.ok;
@@ -274,6 +308,7 @@ async function main() {
         return 0;
       }
       if (when) {
+        await markSave();
         await page.click(SEL.publish.submit);
         // 저장이 끝나 편집 화면을 벗어날 때까지 기다린다(그림이 크면 「저장중」이 길다), 최대 90초.
         // 그 사이 Google reCAPTCHA(보안 확인)가 뜨면 멈춘다 — 대신 풀거나 넘기지 않는다(2026-10-24 실측: 짧은 시간에 수정·예약이 많으면 뜬다)
@@ -300,6 +335,7 @@ async function main() {
         if (process.argv.includes('--no-verify')) { step('저장 뒤 대조는 나중에 한꺼번에(--no-verify)', true); report.ok = true; return 0; }
         return await verifyScheduled();
       }
+      await markSave();
       await page.click(SEL.draft.save);
       await page.waitForTimeout(3000);
       report.shot = await shot('saved');
