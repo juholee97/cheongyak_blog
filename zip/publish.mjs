@@ -77,7 +77,7 @@ if (process.argv.includes('--check')) {
     // 「분양 시세비교」 목록 = 카테고리 템플릿 category-<id>(글 왼쪽, 조감도 오른쪽). 조감도는 data/zip_views.json(zip/views.mjs)을 미디어로 올려 쓴다
     const views = await loadViews(), posts = {};
     for (const [no, v] of Object.entries(views)) if (v.file && !v.url) {
-      const id = await uploadMedia(join(ROOT, v.file), `view-${no}.jpg`, `${reg[no]?.name || no} 조감도`).catch(() => null);
+      const id = await uploadMedia(join(ROOT, v.file), `view-${no}.jpg`, `${reg[no]?.name || no} ${v.label || '조감도'}`).catch(() => null);
       if (id) Object.assign(v, { mid: id, url: (await wp(`media/${id}`)).source_url });
     }
     await (await import('node:fs/promises')).writeFile(join(ROOT, 'data/zip_views.json'), JSON.stringify(views, null, 1));

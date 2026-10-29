@@ -1,7 +1,9 @@
-// 우리의 집 「분양 시세비교」 목록 옆 칸의 단지 조감도(2026-10-29 사용자 요청: 정보 제공 목적 — 출처는 사업주체 분양 홈페이지로 밝힌다)
-// node zip/views.mjs [--only 공고번호,…] [--force]  → data/zip_views/<번호>.jpg(800×500, 가운데 맞춰 자름) + data/zip_views.json { 번호: { file, homepage, page, from, at } }
-// 찾는 법: 청약홈 공고의 사업주체 홈페이지(HMPG_ADRES)에서 posts/floorplan.mjs findPlans(조감도·투시도 메뉴의 큰 그림). 사칭 분양 사이트를 피하려고 홈페이지 주소는 청약홈 값만 쓴다.
-// 못 찾으면 사람이 그 홈페이지의 사업개요·메인 그림을 캡처해 --add로 넣는다. 새 글을 올릴 때 한 번 돌리고 그림을 눈으로 확인한다(매일 자동 실행엔 넣지 않음).
+// 우리의 집 「분양 시세비교」 목록 옆 칸의 단지 조감도(2026-10-29 사용자 요청: 정보 제공 목적 — 그림마다 출처를 밝힌다)
+// node zip/views.mjs [--only 공고번호,…] [--force]  → data/zip_views/<번호>.jpg(800×500, 가운데 맞춰 자름) + data/zip_views.json { 번호: { file, homepage, page, from, label?, site?, at } }
+// 찾는 법: 청약홈 공고의 사업주체 홈페이지(HMPG_ADRES)에서 posts/floorplan.mjs findPlans(조감도·투시도 메뉴의 큰 그림).
+// 쓰는 출처는 공식 경로만(사칭 분양 사이트를 피한다, 2026-10-29 사용자: LH 공고 첨부·시행사·시공사 홈페이지 등): 청약홈 공고(이번 또는 같은 단지의 이전 공고)에 적힌 홈페이지,
+// LH 청약플러스 공고의 「단지조감도」(공고 화면 소스의 list.push 항목 cmnAhflSn → /lhapply/lhFile.do?fileid=…), 입주자모집공고문 PDF, 시공사 브랜드 사이트.
+// 자동으로 못 찾으면 사람이 그 출처의 사업개요·메인 그림을 받아 --add로 넣는다. 새 글을 올릴 때 한 번 돌리고 그림을 눈으로 확인한다(매일 자동 실행엔 넣지 않음).
 // 받은 그림은 사람이 한 번 눈으로 확인한다(로고·배너가 잡힐 수 있다) — 틀린 것은 data/zip_views.json에서 지우고 { skip: '이유' }로 둔다.
 import { readFile, writeFile, mkdir, rm } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -32,14 +34,17 @@ export async function frame(src, out, focus = 'center') {
   } finally { await b.close(); }
 }
 
-// 자동으로 못 찾은 곳은 사람이 공식 홈페이지(청약홈 HMPG_ADRES)의 사업개요·메인 그림을 캡처해 등록한다(2026-10-29: 13곳 중 6곳)
-// node zip/views.mjs --add 공고번호 그림파일 그림이 있던페이지 [초점(object-position, 예 'center 20%')]
+// 자동으로 못 찾은 곳은 사람이 공식 출처의 사업개요·메인 그림을 받아 등록한다(2026-10-29: 13곳 중 6곳, 이어서 나머지 9곳 중 8곳)
+// node zip/views.mjs --add 공고번호 그림파일 그림이있던페이지 [초점(object-position, 예 'center 20%')] [--label 투시도] [--site 'LH 청약플러스 공고']
+// label: 그림 이름(기본 조감도 — 눈높이 그림이면 투시도), site: 목록 그림 밑에 적는 출처 이름(기본 분양 홈페이지). 출처 링크는 그림이 있던 페이지
 if (process.argv[1]?.endsWith('views.mjs') && process.argv.includes('--add')) {
-  const [no, file, page, focus = 'center'] = process.argv.slice(process.argv.indexOf('--add') + 1);
+  const rest = process.argv.slice(process.argv.indexOf('--add') + 1), cut = rest.findIndex((a) => a.startsWith('--'));
+  const [no, file, page, focus = 'center'] = cut < 0 ? rest : rest.slice(0, cut);
+  const flag = (k) => (rest.includes(k) ? rest[rest.indexOf(k) + 1] : null), label = flag('--label'), site = flag('--site');
   const reg = JSON.parse(await readFile(join(ROOT, 'data/zip_registry.json'), 'utf8')), index = await loadViews();
   await mkdir(DIR, { recursive: true });
   await frame(file, join(DIR, `${no}.jpg`), focus);
-  index[no] = { file: `data/zip_views/${no}.jpg`, homepage: reg[no] ? await homepageOf(reg[no]) : null, page, from: '분양 홈페이지 캡처', at: new Date().toISOString().slice(0, 10) };
+  index[no] = { file: `data/zip_views/${no}.jpg`, homepage: reg[no] ? await homepageOf(reg[no]) : null, page, from: '공식 출처에서 받음', ...(label && { label }), ...(site && { site }), at: new Date().toISOString().slice(0, 10) };
   await writeFile(INDEX, JSON.stringify(index, null, 1));
   console.log('✓', no, index[no].homepage);
 } else if (process.argv[1]?.endsWith('views.mjs')) {
