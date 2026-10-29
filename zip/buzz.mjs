@@ -1,5 +1,6 @@
 // 「우리의 집」 관심도: 공고 단지마다 공식 API로 화제성만 센다 — 사실 근거로는 쓰지 않는다(2026-10-28 사용자 결정)
-// node zip/buzz.mjs            → data/buzz.json { 공고번호: { trend, news, youtube } }
+// node zip/buzz.mjs [--only 공고번호,…] [--max-age 일수] [--force]  → data/buzz.json { 공고번호: { trend, news, youtube } }
+// 새 공고는 글을 만들 때(zip/post.mjs --only) 아직 모은 적이 없으면 함께 모은다
 // node zip/buzz.mjs --check    → 계산 점검(네트워크 없음)
 // .env: NAVER_CLIENT_ID·NAVER_CLIENT_SECRET(NAVER API HUB의 검색·Search Trend), YOUTUBE_API_KEY(YouTube Data API v3) — 값은 로그·파일에 남기지 않는다.
 // 남의 글·영상 본문은 가져오지 않는다: 뉴스는 제목·링크·날짜, 유튜브는 제목·채널·조회수·날짜(메타데이터)만. 자막·영상 내려받기 없음(약관).
@@ -70,15 +71,18 @@ async function youtube(q, now) {
   return { count: items.length, views: items.reduce((a, b) => a + b.views, 0), items: items.slice(0, 8) };
 }
 
-async function main() {
+// only: 그 공고만(비교 단지를 아직 안 골라 skip 표시인 공고도 포함), maxAgeDays: 모은 지 그보다 오래된 것만 다시(기본 12시간 — 하루에 여러 번 부르지 않는다, 유튜브 검색 한도)
+// 매일 07:00 analysis_auto.bat이 --max-age 6.5로 불러 공고마다 일주일에 한 번 갱신(2026-10-29 사용자 지시). 접수가 끝난 공고는 마지막 값을 그대로 둔다
+export async function collect({ only = null, maxAgeDays = 0.5, force = false } = {}) {
   const { items } = JSON.parse(await readFile(join(ROOT, 'data/deals.json'), 'utf8'));
-  const out = JSON.parse(await readFile(join(ROOT, 'data/buzz.json'), 'utf8').catch(() => '{}')), now = new Date();
+  const out = JSON.parse(await readFile(join(ROOT, 'data/buzz.json'), 'utf8').catch(() => '{}')), now = new Date(), today = iso(new Date(Date.now() + 9 * 3600e3));
   const missing = [!(await env('NAVER_CLIENT_ID')) && '네이버', !(await env('YOUTUBE_API_KEY')) && '유튜브'].filter(Boolean);
   if (missing.length) console.log(`키 없음: ${missing.join('·')} — 그 부분은 건너뜀`);
-  const oi = process.argv.indexOf('--only'), only = oi > 0 ? process.argv[oi + 1].split(',') : null; // --only 공고번호,공고번호: 그 공고만(비교 단지를 아직 안 골라 skip 표시인 공고도 포함)
+  const { closedOf } = await import('./post.mjs');
   for (const r of items.filter((x) => (only ? only.includes(x.no) : !x.skip))) {
     const q = queryOf(r.name);
-    if (!process.argv.includes('--force') && out[r.no]?.at && Date.now() - Date.parse(out[r.no].at) < 12 * 3600e3) { console.log(`건너뜀(12시간 안에 모음) ${q}`); continue; } // 같은 공고를 하루에 여러 번 부르지 않는다(유튜브 검색 한도)
+    if (!force && out[r.no]?.at && Date.now() - Date.parse(out[r.no].at) < maxAgeDays * 864e5) { console.log(`건너뜀(${maxAgeDays}일 안에 모음) ${q}`); continue; }
+    if (!force && !only && out[r.no]?.at && closedOf(r.phases, today)) { console.log(`건너뜀(접수 마감 — 마지막 값 유지) ${q}`); continue; }
     try {
       out[r.no] = { q, at: now.toISOString(), trend: await trend(q, now), news: await news(q), youtube: await youtube(q, now) };
       const b = out[r.no];
@@ -97,4 +101,7 @@ if (process.argv.includes('--check')) {
   assert.equal(t.recent, 40); assert.equal(t.before, 10);
   assert.equal(trendOf(pts.slice(0, 3)), null); // 몇 주 안 되면 판단 안 함
   console.log('buzz 점검 통과');
-} else if (process.argv[1]?.endsWith('buzz.mjs')) await main();
+} else if (process.argv[1]?.endsWith('buzz.mjs')) {
+  const arg = (k) => (process.argv.includes(k) ? process.argv[process.argv.indexOf(k) + 1] : null);
+  await collect({ only: arg('--only')?.split(','), maxAgeDays: arg('--max-age') ? +arg('--max-age') : 0.5, force: process.argv.includes('--force') });
+}

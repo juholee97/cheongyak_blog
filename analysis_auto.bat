@@ -17,6 +17,8 @@ rem auleezip: notices open for application with no price-comparison post yet -> 
 node zip\new_notices.mjs >> data\logs\zip_new.log 2>&1
 rem auleezip daily refresh (2026-10-29 user decision): closed-notice banners, open-notices page (receipt status, D-day), revision log, cache purge.
 rem Only existing data is re-rendered (no new notices are added here) and held drafts are not touched (--live = already published only).
+rem Interest numbers (Naver search trend, news count, YouTube metadata) refreshed once a week per notice; closed notices keep their last values (2026-10-29)
+node zip\buzz.mjs --max-age 6.5 >> data\logs\zip_buzz.log 2>&1
 node zip\post.mjs >> data\logs\zip_daily.log 2>&1
 node zip\sh_write.mjs --publish --live >> data\logs\zip_daily.log 2>&1
 node zip\publish.mjs --go >> data\logs\zip_daily.log 2>&1

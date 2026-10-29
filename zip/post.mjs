@@ -143,6 +143,12 @@ export async function previewHtml(posts) {
 
 if (process.argv[1]?.endsWith('post.mjs')) {
   const { items } = JSON.parse(await readFile(join(ROOT, 'data/deals.json'), 'utf8'));
+  // 새 공고 글을 만들 때(--only) 관심도를 아직 모은 적이 없으면 먼저 모은다(2026-10-29 사용자 지시)
+  if (process.argv.includes('--only')) {
+    const nos = process.argv[process.argv.indexOf('--only') + 1].split(','), had = JSON.parse(await readFile(join(ROOT, 'data/buzz.json'), 'utf8').catch(() => '{}'));
+    const need = nos.filter((n) => !had[n]);
+    if (need.length) await (await import('./buzz.mjs')).collect({ only: need }).catch((e) => console.log(`관심도 못 모음: ${e.message}`));
+  }
   const buzz = JSON.parse(await readFile(join(ROOT, 'data/buzz.json'), 'utf8').catch(() => '{}')), claims = JSON.parse(await readFile(join(ROOT, 'data/zip_claims.json'), 'utf8').catch(() => '{}'));
   const analysis = JSON.parse(await readFile(join(ROOT, 'data/zip_analysis.json'), 'utf8').catch(() => '{}'));
   const dir = join(ROOT, 'data/zip_posts');
