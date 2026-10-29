@@ -16,6 +16,7 @@ import { keyOf, mapHtml } from './map.mjs';
 import { itemHtml, renderPngs, searchThumbHtml } from './card.mjs';
 import { plansFor } from './floorplan.mjs';
 import { noticeText, termsOf } from './notice_terms.mjs';
+import { feeNear, feeFor } from './kapt_fee.mjs';
 import { moneyOf, checkMoney, bankRate, BANK, POLICY_YEARS, INCOME, incomeAt, PRIVATE_RULES, PRIVATE_ASSET, MONEY_CHECKED } from './money.mjs';
 
 const ODCLOUD = 'https://api.odcloud.kr/api/ApplyhomeInfoDetailSvc/v1/';
@@ -101,6 +102,9 @@ async function addV2(f, d, models) {
   f.terms = doc.skip ? { skip: doc.skip } : termsOf(doc, models);
   const saved = await bankRate(); // 한국은행 금리는 월 1회 발표 — 저장값이 20일 넘었으면 다시 받는다(ECOS_KEY 없으면 저장값)
   f.bank = !saved || Date.now() - Date.parse(saved.fetched) > 20 * 864e5 ? await bankRate({ refresh: true }) : saved;
+  // 관리비 가정 계산: 같은 시·군·구 최근 입주 단지의 K-apt 공개 관리비(주소 좌표는 저장본이라 브이월드를 다시 부르지 않는다)
+  const site = await locate(f.item.address, await keyOf()).catch(() => null);
+  f.fee = await feeNear(site?.lawd).catch((e) => ({ skip: e.message }));
   return f;
 }
 export async function enrich(f) {
@@ -357,6 +361,13 @@ export function checkAnalysis(draft) {
   // v2: 가정 계산을 다른 방법으로 다시 계산해 대조, 새로 자동으로 쓰는 문장에도 금지 표현 검사
   if (draft.facts.terms || draft.facts.supply) {
     issues.push(...checkMoney(draft.facts, draft.html, { pay: M, amt: W }));
+    // 관리비 어림: 단지별 ㎡당 값·중간값을 다시 구하고, 주택형별 금액이 본문에 있는지
+    const fn = draft.facts.fee;
+    if (fn?.perM2) {
+      const v = fn.rows.map((r) => r.total / r.priv).sort((a, b) => a - b), h = v.length >> 1, med = v.length % 2 ? v[h] : (v[h - 1] + v[h]) / 2;
+      if (fn.rows.length < 2 || Math.abs(med - fn.perM2) > 0.01 || Math.abs(v[0] - fn.range[0]) > 0.01 || Math.abs(v[v.length - 1] - fn.range[1]) > 0.01) issues.push('관리비 어림: ㎡당 중간값·범위 검산이 맞지 않습니다');
+      for (const g of draft.facts.types) if (!draft.html.includes(`월 약 ${B(M(feeFor(fn, g.area)))}`)) issues.push(`관리비 어림: 전용 ${g.area}㎡ 금액이 본문에 없습니다`);
+    }
     const body = render(draft.facts, {}, []).replace(/<[^>]+>/g, ' ').split(draft.facts.item.name).join(' ').split('기관추천').join(' '); // 「기관추천」은 특별공급 이름
     BANNED.forEach((b) => { if (body.includes(b)) issues.push(`금지 표현 "${b}"(자동 문장)`); });
   }
@@ -428,9 +439,19 @@ function moneyHtml(f, m, x) {
   if (m.dsr) out.push(calcBox('소득에 따라 은행에서 빌릴 수 있는 돈(DSR)', `<p style="margin:0 0 8px">은행 주택담보대출은 1년 원리금이 소득의 ${BANK.dsr}%를 넘지 않게만 빌려줘요(DSR). 3인 이하 가구 도시근로자 월평균소득(2025년도)의 70·100·130%인 가구라면:</p>`
     + m.dsr.rows.map((r) => card(`연 소득 ${W(r.income)}`, `월 ${R(incomeAt(3, r.pct))} · 3인 이하 ${r.pct}%`, `대출 ${B(W(r.loan))} · 월 상환 ${B(M(r.pay))} · 입주 때 자기 돈 ${B(W(r.cash))}`, `DSR로 빌릴 수 있는 최대 ${W(r.max)}${r.loan < r.max ? ` — LTV ${m.dsr.ltv}%${m.dsr.cap ? `·한도 ${W(m.dsr.cap)}` : ''}에 걸려 ${W(r.loan)}` : ''}`)).join('')
     + foldNote('계산 가정·출처', `가정: 다른 대출 없음, 가구 소득 전부를 대출 심사 소득으로 봄, DSR은 금리 ${rt(m.dsr.rate)}%에 스트레스 금리 ${rt(m.dsr.stress)}%p(${m.reg ? '규제지역' : m.capital ? '수도권 하한' : '지방'})를 모두 더해 심사, 월 상환은 연 ${rt(m.dsr.rate)}% · ${m.dsr.years}년 원리금균등. 금리는 ${bankLabel(f.bank)} — 은행·상품마다 금리와 심사가 달라요(금융위원회 DSR·LTV 기준, 확인일 ${MONEY_CHECKED}).`)));
+  if (f.fee?.perM2) out.push(feeHtml(f));
   out.push(`<p>취득세 등(1주택 취득, 생애최초 감면 전)은 분양가의 ${m.tax.rate}%로 계산하면 약 ${W(m.tax.won)}이에요. 발코니 확장·옵션 금액을 더하면 늘어나요(지방세법 제11조, 확인일 ${MONEY_CHECKED}).</p>`);
   out.push(`<p style="font-weight:700;margin:20px 0 8px">정책대출 가격·면적 요건</p>`, foldSmalls(x.loans, '기준·출처'));
   return out.join('\n');
+}
+
+// 관리비: 새 단지는 자료가 없어 같은 시·군·구 최근 입주 단지의 ㎡당 관리비 중간값으로 어림한다
+const ymLabel = (ym) => `${ym.slice(0, 4)}년 ${+ym.slice(4)}월`;
+function feeHtml(f) {
+  const fn = f.fee, lo = Math.round(fn.range[0]), hi = Math.round(fn.range[1]);
+  return calcBox('관리비는 얼마쯤 나올까', `<p style="margin:0 0 8px">같은 시·군·구에서 최근 10년 안에 입주한 ${fn.rows.length}곳 단지의 ${ymLabel(fn.ym)} 관리비는 전용면적 1㎡당 ${R(lo)}~${R(hi)}이었고, 중간값은 ${R(Math.round(fn.perM2))}이에요. 중간값으로 어림하면:</p>`
+    + f.types.map((g) => card(`전용 ${g.area}㎡`, '', `월 약 ${B(M(feeFor(fn, g.area)))}`, `가장 낮은 곳~높은 곳 기준 월 ${span2(lo * g.area, hi * g.area, M)}`)).join('')
+    + foldNote('계산 가정·출처', `국토교통부 공동주택관리정보시스템(K-apt) 공개 관리비(공용관리비 17항목 + 난방·급탕·전기·수도 등 개별사용료 10항목, 단지 전체 금액) ÷ 단지 주거전용면적 합. 비교 단지: ${fn.rows.map((r) => `${esc(r.name)}(${r.used.slice(0, 4)}년 사용승인, ${r.units.toLocaleString()}세대, 1㎡당 ${R(Math.round(r.perM2))})`).join(' · ')}. 한 달 값이라 계절(겨울 난방)에 따라 달라지고, 이 단지의 실제 관리비는 입주 뒤 정해져요. 장기수선충당금은 빠져 있어요(${fn.fetched} 조회).`));
 }
 
 function householdHtml(f) {
@@ -497,6 +518,7 @@ function checklist(f, m) {
   if (mid) rows.push(['은행 대출', `최대 ${B(W(mid.loan))}`, `연 소득 ${W(mid.income)}(3인 이하 평균) · DSR·LTV 가정 · 그때 자기 돈 ${W(mid.cash)}`]);
   if (t.periods) { const p = t.periods; rows.push(['팔기·거주', `전매 제한 ${has(p.resale) ? WARN(per(p.resale)) : B('없음')} · 거주 의무 ${has(p.residence) ? WARN(per(p.residence)) : B('없음')}`, `재당첨 제한 ${per(p.rewin)}${has(p.resale) ? ' · 전매 제한 기간에는 자유롭게 팔 수 없어요' : ''}`]); }
   if (s?.ok) { const kinds = SP.map(([k, n]) => [n, s.rows.reduce((a, g) => a + g.sp[k], 0)]).filter(([, v]) => v > 0).sort((x, y) => y[1] - x[1]); if (kinds.length) rows.push(['특별공급', `${kinds[0][0]} ${B(`${kinds[0][1].toLocaleString()}세대`)}로 가장 많음`, `${kinds.slice(1, 3).map(([n, v]) => `${n} ${v.toLocaleString()}세대`).join(' · ')} — 넣을 수 있는 공급과 소득 기준부터 확인`]); }
+  if (f.fee?.perM2) rows.push(['관리비', `월 약 ${B(M(feeFor(f.fee, m.main.area)))}`, `전용 ${m.main.area}㎡ · 근처 최근 입주 단지 ${ymLabel(f.fee.ym)} 중간값 어림`]);
   if (m.rent) rows.push(['주의', '토지임대료 인상 가능', '약정 2년 뒤부터 법령 한도 안에서']);
   const chip = 'display:inline-block;min-width:72px;margin-right:8px;padding:1px 8px;border-radius:999px;background:#eef0f6;color:#3a3f4b;font-size:12px;font-weight:700;text-align:center;vertical-align:1px';
   return rows.map(([tag, main, sub]) => `<div style="border-top:1px solid ${C.line};padding:10px 0"><p style="margin:0"><span style="${chip}">${tag}</span>${main}</p>${sub ? `<p style="margin:3px 0 0;font-size:13px;color:${C.muted}">${sub}</p>` : ''}</div>`).join('\n');
@@ -531,7 +553,7 @@ function renderV2(f, notes = {}, images = []) {
     H('rules'), note(notes.rules), rulesV2(f), t.periods ? x.rulesTable : x.rules,
     H('check'), checklist(f, m),
     H('links'), x.links,
-    foldNote('출처·기준일', `기준: 청약홈(한국부동산원) 분양정보 ${f.dataUpdatedAt.slice(0, 10)} 수집 · 입주자모집공고문(청약홈 PDF${t.fetched ? `, ${t.fetched} 읽음` : ''}) · 대출·세금·소득 기준 확인일 ${MONEY_CHECKED}(주택도시기금·한국주택금융공사·금융위원회·지방세법·주택공급에 관한 규칙)${f.bank ? ` · ${bankLabel(f.bank)}` : ''}`),
+    foldNote('출처·기준일', `기준: 청약홈(한국부동산원) 분양정보 ${f.dataUpdatedAt.slice(0, 10)} 수집 · 입주자모집공고문(청약홈 PDF${t.fetched ? `, ${t.fetched} 읽음` : ''}) · 대출·세금·소득 기준 확인일 ${MONEY_CHECKED}(주택도시기금·한국주택금융공사·금융위원회·지방세법·주택공급에 관한 규칙)${f.bank ? ` · ${bankLabel(f.bank)}` : ''}${f.fee?.perM2 ? ` · 관리비: K-apt ${ymLabel(f.fee.ym)} 공개값(${f.fee.fetched} 조회)` : ''}`),
     `<p style="font-size:13px;color:${C.muted}">이 글은 공고와 공개 자료를 정리한 것이며 청약·투자 권유가 아닙니다.</p>`,
     `<p style="font-size:13px;color:${C.muted}">※ ${DISCLAIMER}</p>`,
   ].filter(Boolean).join('\n');
