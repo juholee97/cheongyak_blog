@@ -4,7 +4,8 @@ import { readFile, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { ROOT } from '../tistory/common.mjs';
 import { renderPngs } from '../posts/card.mjs';
-import { shortName, areaOf } from '../posts/analysis_post.mjs';
+import { areaOf } from '../posts/analysis_post.mjs';
+import { shortName } from './post.mjs';
 import { esc } from '../posts/weekly.mjs';
 
 export const thumbHtml = (r) => `<!doctype html><meta charset="utf-8"><body style="margin:0;width:1200px;height:630px;background:#f4f3ee;color:#1d1d1b;font-family:'Malgun Gothic','Apple SD Gothic Neo','Noto Sans KR',sans-serif;position:relative">

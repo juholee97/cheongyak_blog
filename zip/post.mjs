@@ -6,7 +6,9 @@ import { readFile, writeFile, mkdir, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { ROOT } from '../tistory/common.mjs';
 import { esc, md, label, DISCLAIMER } from '../posts/weekly.mjs';
-import { areaOf, shortName } from '../posts/analysis_post.mjs';
+import { areaOf, shortName as baseName } from '../posts/analysis_post.mjs';
+// 우리의 집에 쓰는 단지 이름(2026-10-31 사용자 지시): 토지임대부는 계약 방식이라 이름에서 빼고 본문에 적는다. 「고덕강일지구 3단지」는 「고덕강일 3단지」
+export const shortName = (n) => baseName(n).replace(/\s*토지임대부/g, '').replace(/지구\s+(?=\d+단지)/, ' ').replace(/\s+/g, ' ').trim();
 import { BANNED } from '../posts/check.mjs';
 const formalDisclaimer = DISCLAIMER.replace('확인하세요.', '확인하시기 바랍니다.'); // 공용 면책 문구는 티스토리와 같이 써서 우리의 집(합쇼체)에서만 끝맺음을 바꾼다
 import { table, verdict, keyBox, rail, dotPlot, src, note, chip, banner, links, num, keepUnits, LOG_MARK } from './ui.mjs';

@@ -12,7 +12,7 @@ const THEME = 'twentytwentyfive', SITE = 'https://auleezip.com';
 // url은 구조화 데이터의 sameAs로 나간다(호스팅 기본 주소 juholee97.mycafe24.com이 나가던 것) — 같은 사람이 쓰는 티스토리로
 export const AUTHOR = { name: 'aulee', nickname: 'aulee', slug: 'aulee', url: 'https://aulee.tistory.com/', description: '청약 공고의 분양가·임대료를 주변 실거래와 맞춰 보는 「우리의 집」과 청약 일정을 정리하는 「우리의 청약달력」을 운영합니다.' };
 // 한글 글꼴: 구글 글꼴 조각(쓰인 글자만 받음). 사이트 서버에 두면 188조각 @font-face가 모든 페이지에 붙어 오히려 무거워진다
-const FONT = '<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;600&amp;display=swap">';
+const FONT = '<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;600&amp;family=Noto+Serif+KR:wght@700&amp;display=swap">';
 // 로고 「우리의 집」: 우리 위에 aulee, 집 위에 zip(루비) — 주소 auleezip.com을 그대로 읽게 한다(2026-10-29 사용자: 이름은 우리의 집, aulee는 디자인으로)
 export const LOGO = `<a class="az-logo" href="${SITE}/" rel="home" aria-label="우리의 집"><ruby>우리<rt aria-hidden="true">aulee</rt></ruby>의 <ruby>집<rt aria-hidden="true">zip</rt></ruby></a>`;
 const NAV = [['열린 공고', `${SITE}/`], ['심층 분석', `${SITE}/category/심층-분석/`], ['분양 시세', `${SITE}/category/분양-시세비교/`], ['임대 시세', `${SITE}/category/임대-시세비교/`], ['비교 기준', `${SITE}/method/`]];

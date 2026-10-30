@@ -506,3 +506,38 @@ body:has(.az-deep-post) .az-head>*{max-width:880px}
 .az-deeplink-go::after{content:" →"}
 .az-deeplink:hover .az-deeplink-go{background:var(--az-ink)}
 @media (max-width:640px){.az-deeplink{flex-wrap:wrap;gap:10px 12px}.az-deeplink img{width:96px;height:64px}.az-deeplink-b{flex-basis:calc(100% - 108px)}.az-deeplink-d{display:none!important}.az-deeplink-go{flex-basis:100%;text-align:center}}
+
+/* 첫 화면 다시 다듬기(2026-10-31 사용자: 밋밋하고 AI 냄새 — 믿을 만한 50대 부동산 전문가 블로그처럼).
+   둥근 카드·알약 버튼을 걷고 신문 지면처럼: 제목은 명조, 날짜 띠는 줄 친 달력, 고르기 버튼은 각진 칸 */
+:root{--az-serif:"Noto Serif KR","Nanum Myeongjo","AppleMyungjo",serif}
+.az-head .az-title,.az-days-head h2,.az-rbox>h2,.az-sum .num{font-family:var(--az-serif);font-weight:700;letter-spacing:-0.02em}
+.az-days-head h2{font-size:19px}
+.az-days-row{gap:0;border:1px solid #b9c3cc;border-top:3px solid var(--az-ink);background:#fff}
+.az-day{min-height:64px;border:0;border-left:1px solid var(--az-line);border-radius:0;padding:9px 11px}
+.az-days-row>label:first-of-type{border-left:0}
+.az-day:hover{border-color:var(--az-line);background:#f5f7f9}
+.az-day.wk{border-left:3px double #9aa6b1}
+.az-day .dt{font-family:var(--az-serif);font-size:17px;font-weight:700}
+.az-front input:checked+label.az-day{background:var(--az-ink);border-color:var(--az-line);color:#fff}
+.az-front input:checked+label.az-day .dt small,.az-front input:checked+label.az-day .ct{color:#d5dbe1}
+.az-fg{gap:0}
+.az-fg>span{font-size:12.5px;font-weight:600;color:var(--az-ink);margin-right:10px}
+.az-fc{position:relative;border:1px solid #b9c3cc;border-radius:0;margin-left:-1px;background:#fff}
+.az-fg>span+input+label{margin-left:0}
+.az-fc:hover{border-color:#b9c3cc;background:#f5f7f9;z-index:1}
+.az-front input:checked+label.az-fc{z-index:2}
+.az-bd{border-radius:2px}
+/* 첫 화면 표의 분양가와 주변 시세: 흐리게 + 「비교 보기」 */
+.az-peek{position:relative;display:inline-block;text-decoration:none!important;color:inherit}
+.az-peek-v{display:block;filter:blur(4px);opacity:.7;user-select:none;pointer-events:none}
+.az-peek-l{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:var(--az-blue);white-space:nowrap}
+.az-peek-l::after{content:"\00a0→"}
+.az-peek:hover .az-peek-l{text-decoration:underline;text-underline-offset:3px}
+@media (max-width:1280px){
+  .az-days-row>label:nth-of-type(6){border-left:0}
+  .az-days-row>label:nth-of-type(n+6){border-top:1px solid var(--az-line)}
+}
+@media (max-width:900px){
+  .az-days-row>label:nth-of-type(n+6){border-top:0}
+  .az-days-row>label:nth-of-type(6){border-left:3px double #9aa6b1}
+}
