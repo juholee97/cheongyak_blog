@@ -84,7 +84,7 @@ export const scrub = (t, videos = []) => {
   s = s.replace(/\s*\(\d+(?:~\d+)?초[^()]*\)/g, '').replace(/'다른 분석 의견'/g, '다른 분석 의견')
     .replace(/다른 분석 의견(?:와|과) 다른 분석 의견(이|가|도|은|는)?/g, (_, j) => `다른 분석 의견들${{ 가: '이', 는: '은' }[j] || j || ''}`)
     .replace(/다른 분석 의견(는|가|를|와)(?![가-힣])/g, (_, j) => `다른 분석 의견${{ 는: '은', 가: '이', 를: '을', 와: '과' }[j]}`);
-  return s.replace(/출연자의? 의견/g, '개인 의견').replace(/출연자/g, '의견을 낸 쪽').replace(/로 들리는/g, '로 적힌').replace(/자막 오인식/g, '잘못 적은 이름').replace(/자막/g, '표기').replace(/영상/g, '분석 의견').replace(/가장 확실하다/g, '가장 정확하다').replace(/같은 채널의 /g, '같은 쪽의 ').replace(/채널/g, '출처').replace(/시세차익/g, '차익').replace(/오를 수/g, '인상될 수').replace(/\bnotice(?:_[0-9a-f]+)?/g, '공고문').replace(/공고문·공고문/g, '공고문') // 리포트의 내부 파일 이름(notice_849f1ea1 = 공고문 원문).replace(/\s{2,}/g, ' ').trim();
+  return s.replace(/출연자의? 의견/g, '개인 의견').replace(/출연자/g, '의견을 낸 쪽').replace(/로 들리는/g, '로 적힌').replace(/자막 오인식/g, '잘못 적은 이름').replace(/자막/g, '표기').replace(/영상/g, '분석 의견').replace(/가장 확실하다/g, '가장 정확하다').replace(/확실/g, '분명').replace(/같은 채널의 /g, '같은 쪽의 ').replace(/채널/g, '출처').replace(/시세차익/g, '차익').replace(/오를 수/g, '인상될 수').replace(/\bnotice(?:_[0-9a-f]+)?/g, '공고문').replace(/공고문·공고문/g, '공고문') // 리포트의 내부 파일 이름(notice_849f1ea1 = 공고문 원문).replace(/\s{2,}/g, ' ').trim();
 };
 // 분석 의견 대조표: 다른 것·공식 자료로 확인 못 한 것을 먼저. 공고문과 맞는 것은 keep(주장 글귀 일부)에 적은 것만 — 글 다른 절과 겹치는 당연한 내용은 뺀다(2026-10-30 사용자 지시)
 const keptOk = (ch, keep) => ch.filter((c) => c.verdict === '맞음' && (!keep || keep.some((k) => c.claim.includes(k))));
