@@ -40,6 +40,18 @@ export function reportText(html) {
 
 // 표 칸 글자를 한 덩어리로: 휴대폰 표(az-stack)는 칸이 flex라, keepUnits가 「60㎡」에 씌우는 span마다 따로 줄이 갈라진다
 const cv = (t) => { const [a, ...b] = String(t).split('\n'); return `<span>${esc(a)}${b.map((x) => `<small>${esc(x)}</small>`).join('')}</span>`; }; // 줄바꿈 뒤는 작은 글씨 둘째 줄
+// 괄호 밖의 구분자로만 자른다(「4억9,570만」의 쉼표·괄호 속 쪽수는 그대로)
+const splitTop = (s, sep) => { const out = []; let d = 0, cur = ''; for (let i = 0; i < s.length; i++) { const ch = s[i]; if (ch === '(') d++; if (ch === ')') d--; if (!d && s.startsWith(sep, i)) { out.push(cur); cur = ''; i += sep.length - 1; } else cur += ch; } return [...out, cur].map((x) => x.trim()).filter(Boolean); };
+// 대조표 공식 자료 칸: 「공고문 공급금액: A, B, C (9쪽)」 같은 나열은 한 줄에 하나씩(2026-10-30 사용자 지시 — 쉼표 나열보다 줄바꿈). 문장은 그대로
+export const listItems = (t) => {
+  let s = String(t || '').trim(), cite = '';
+  const m = s.match(/\s*(\([^()]*쪽[^()]*\))$/); if (m) { cite = m[1]; s = s.slice(0, m.index); }
+  const h = s.match(/^(.*?\.\s+)?([^:().]{1,20}):\s*/), lead = h?.[1]?.trim() || '', head = h ? h[2] : '', body = h ? s.slice(h[0].length) : s; // 「…없다. 웹 자료: A, B」 앞 문장은 따로
+  let items = splitTop(body, ', '); if (items.length < 2) items = splitTop(body, ' / ');
+  const sentence = items.slice(0, -1).some((x) => /(고|며|서|지만|는데)$/.test(x)); // 「…하지 않고, …한다」처럼 한 문장을 쉼표로 이은 것은 자르지 않는다
+  return !sentence && items.length >= (head ? 2 : 3) ? { lead, head, items, cite } : { lead: '', head: '', items: [s], cite };
+};
+const listCell = (t) => { const { lead, head, items, cite } = listItems(t); return items.length < 2 ? cv(t) : `<span>${lead ? `${esc(lead)} ` : ''}${head ? esc(head) : ''}<ul class="az-cl">${items.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>${cite ? `<small>${esc(cite)}</small>` : ''}</span>`; };
 const VERDICT = { 맞음: '확인', 다름: '다름', 과장: '다름', '확인 필요': '공식 자료 없음', '전망·검증불가': '공식 자료 없음' };
 const mmss = (t) => `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`;
 async function analyzerData(folder) {
@@ -65,7 +77,7 @@ export const scrub = (t, videos = []) => {
 const keptOk = (ch, keep) => ch.filter((c) => c.verdict === '맞음' && (!keep || keep.some((k) => c.claim.includes(k))));
 function claimsHtml(checks, videos, keep) {
   const x = (t) => scrub(t, videos), off = claimRows(checks).filter((c) => c.verdict !== '맞음'), ok = keptOk(claimRows(checks), keep);
-  const row = (c) => [esc(x(c.claim)), `<span>${chip(VERDICT[c.verdict] || '공식 자료 없음')}${c.note ? `<small>${esc(x(c.note))}</small>` : ''}</span>`, cv(x(c.official))];
+  const row = (c) => [esc(x(c.claim)), `<span>${chip(VERDICT[c.verdict] || '공식 자료 없음')}${c.note ? `<small>${esc(x(c.note))}</small>` : ''}</span>`, listCell(x(c.official))];
   const head = ['공개된 분석 의견', '확인 결과', '공고문·공식 자료'];
   return [
     '<h3>공고문과 맞춰 본 결과</h3>',
@@ -161,6 +173,12 @@ if (process.argv[1]?.endsWith('deep.mjs')) {
     const assert = (await import('node:assert/strict')).default;
     const t = reportText('<h2>종합 판단</h2><p>좋은 점</p><h2>우리 가족 청약 자격</h2><p>혼인 정보</p><h2>영상별 의견 비교</h2><p>우리 가족 기준 한 줄</p><p>영상 A</p><img src="data:image/png;base64,AAAA">');
     assert.ok(t.includes('좋은 점') && t.includes('영상 A') && !t.includes('혼인 정보') && !t.includes('우리 가족') && !t.includes('base64'));
+    const r = listItems('공고문 공급금액: 3단지 60형 4억9,570만~5억8,900만원, 84A 6억7,270만~7억9,800만원, 88형 6억9,000만~8억4,100만원 (3단지 9·10쪽)');
+    assert.deepEqual([r.head, r.items.length, r.items[1], r.cite], ['공고문 공급금액', 3, '84A 6억7,270만~7억9,800만원', '(3단지 9·10쪽)']);
+    assert.equal(listItems('공고문: 우선공급(3단지 135세대, 4단지 114세대) 대상자는 청약을 하지 않고, 서류만 제출한다').items.length, 1);
+    const g = listItems('공고문에는 GTX 관련 서술이 없다. 웹 자료: 운정중앙~서울역 개통, 서울역~수서 2026년 개통 예정(삼성역 무정차 통과), 삼성역 포함 전 구간 2028년 예정');
+    assert.deepEqual([g.lead, g.head, g.items.length], ['공고문에는 GTX 관련 서술이 없다.', '웹 자료', 3]);
+    assert.equal(listItems('공고문: 3단지 주차 779대 / 472세대, 4단지 724대 / 472세대').items[0], '3단지 주차 779대 / 472세대');
     console.log('deep 점검 통과');
   } else if (arg('--read')) {
     const key = arg('--read'), folder = await folderOf(key);

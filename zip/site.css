@@ -300,6 +300,9 @@ a:hover{color:var(--az-ink)}
 }
 .az-stack td>span{min-width:0;overflow-wrap:break-word}
 .az-t td>span small{display:block;font-size:12.5px;color:var(--az-sub);font-weight:400}
+.az-cl{margin:2px 0 0;padding-left:1.1em;list-style:disc}
+.az-cl li{margin:0;padding:0;line-height:1.55}
+.az-cl li::marker{color:var(--az-gray)}
 .az-more{margin:12px 0 0}
 @media (max-width:640px){
   .az-claims .az-stack td{display:block;text-align:left;padding:4px 0}
