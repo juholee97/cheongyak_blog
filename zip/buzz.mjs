@@ -78,7 +78,8 @@ export async function collect({ only = null, maxAgeDays = 0.5, force = false } =
   const out = JSON.parse(await readFile(join(ROOT, 'data/buzz.json'), 'utf8').catch(() => '{}')), now = new Date(), today = iso(new Date(Date.now() + 9 * 3600e3));
   const missing = [!(await env('NAVER_CLIENT_ID')) && '네이버', !(await env('YOUTUBE_API_KEY')) && '유튜브'].filter(Boolean);
   if (missing.length) console.log(`키 없음: ${missing.join('·')} — 그 부분은 건너뜀`);
-  const { closedOf } = await import('./post.mjs');
+  // only(post.mjs가 새 공고만 모을 때)는 마감 검사를 안 쓴다 — post.mjs가 아직 실행 중이라 여기서 post.mjs를 다시 불러오면 서로 기다려 멈춘다(2026-10-31)
+  const closedOf = only ? () => false : (await import('./post.mjs')).closedOf;
   for (const r of items.filter((x) => (only ? only.includes(x.no) : !x.skip))) {
     const q = queryOf(r.name);
     if (!force && out[r.no]?.at && Date.now() - Date.parse(out[r.no].at) < maxAgeDays * 864e5) { console.log(`건너뜀(${maxAgeDays}일 안에 모음) ${q}`); continue; }
