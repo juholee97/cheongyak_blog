@@ -5,7 +5,7 @@
 // node zip/deep.mjs --read <키>       리포트 글자 → data/deep/<키>.txt(세션이 읽는다). 가족 맞춤 절(우리집_정보 기반)은 빼고 옮긴다 — 글에 쓰지 않는다
 // node zip/deep.mjs --lint <키>       글 자료 점검: 숫자가 리포트·공고 자료에 있는지, 금지 표현, 가족 정보, 해요체
 // node zip/deep.mjs --draft <키>      임시글로 올림(미리보기 링크)    --publish <키>  사용자 승인 뒤 공개(그 뒤 node zip/publish.mjs --go --pages로 메인 갱신)
-// 글 자료: { title, excerpt, card: [메인 카드 숫자 줄], blocks: [{h}|{p}|{ul}|{key}|{table:{head,rows}}|{note}|{claims:true}|{links:[[이름,주소]]}], sources: [[이름,주소]] }
+// 글 자료: { title, excerpt, card: [메인 카드 숫자 줄], blocks: [{h}|{p}|{ul}|{key}|{table:{head,rows}}|{note}|{grid:{cols,rows}}|{plan:[[구분,내용,상태]]}|{timeline}|{claims:{keep:[공고문과 맞는 주장 중 실을 것의 글귀]}}|{links:[[이름,주소]]}], sources: [[이름,주소]] }
 // 리포트 속 분석 의견은 공고문과 맞춰 본 결과만 싣는다(전망 숫자·채널 평가는 옮기지 않는다). 채널·영상 이름·링크는 쓰지 않고 「공개된 분석 의견」으로 포괄한다(2026-10-30 사용자 결정).
 import { readFile, writeFile, mkdir, readdir, stat } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -59,17 +59,16 @@ export const scrub = (t, videos = []) => {
   for (const v of videos) { s = s.replace(new RegExp(`${v.id.slice(0, 4).replace(/-/g, '\\-')}[A-Za-z0-9_-]*,?\\s*`, 'g'), ''); if (v.channel) s = s.split(v.channel).join('다른 분석'); } // 영상 번호는 앞 네 글자만 적힌 곳도 있다
   return s.replace(/출연자의? 의견/g, '개인 의견').replace(/출연자/g, '의견을 낸 쪽').replace(/로 들리는/g, '로 적힌').replace(/자막 오인식/g, '잘못 적은 이름').replace(/자막/g, '표기').replace(/영상/g, '분석 의견').replace(/\s{2,}/g, ' ').trim();
 };
-// 분석 의견 대조표: 다른 것·공식 자료로 확인 못 한 것을 먼저, 맞는 것은 접어 둔다
-function claimsHtml(checks, videos) {
-  const ch = claimRows(checks), x = (t) => scrub(t, videos);
-  const row = (c) => [esc(x(c.claim)), `${chip(VERDICT[c.verdict] || '공식 자료 없음')}${c.note ? `<small>${esc(x(c.note))}</small>` : ''}`, cv(x(c.official))];
+// 분석 의견 대조표: 다른 것·공식 자료로 확인 못 한 것을 먼저. 공고문과 맞는 것은 keep(주장 글귀 일부)에 적은 것만 — 글 다른 절과 겹치는 당연한 내용은 뺀다(2026-10-30 사용자 지시)
+const keptOk = (ch, keep) => ch.filter((c) => c.verdict === '맞음' && (!keep || keep.some((k) => c.claim.includes(k))));
+function claimsHtml(checks, videos, keep) {
+  const x = (t) => scrub(t, videos), off = claimRows(checks).filter((c) => c.verdict !== '맞음'), ok = keptOk(claimRows(checks), keep);
+  const row = (c) => [esc(x(c.claim)), `<span>${chip(VERDICT[c.verdict] || '공식 자료 없음')}${c.note ? `<small>${esc(x(c.note))}</small>` : ''}</span>`, cv(x(c.official))];
   const head = ['공개된 분석 의견', '확인 결과', '공고문·공식 자료'];
-  const off = ch.filter((c) => c.verdict !== '맞음'), ok = ch.filter((c) => c.verdict === '맞음');
   return [
-    '<h2>공개된 분석 의견, 공고문과 맞춰 보기</h2>',
-    `<p>이 단지에 대해 온라인에 공개된 여러 분석 의견을 찾아보니 아래와 같은 이야기가 있었습니다. 사실에 가까운 내용과 그렇지 않은 내용을 구분하려고, 그중 확인할 수 있는 주장 ${ch.length}개를 입주자모집공고문과 공식 자료에 맞춰 봤습니다. 공고문과 다르거나 공식 자료로 확인되지 않은 것 ${off.length}개를 먼저 보여 드립니다.</p>`,
-    off.length ? table(head, off.map(row)) : '',
-    ok.length ? `<details class="az-more"><summary>공고문과 맞는 내용 ${ok.length}개 보기</summary>${table(head, ok.map(row))}</details>` : '',
+    '<h3>공고문과 맞춰 본 결과</h3>',
+    `<p>사실에 가까운 내용과 그렇지 않은 내용을 구분하려고, 분석 의견 가운데 확인할 수 있는 주장 ${off.length + ok.length}개를 입주자모집공고문과 공식 자료에 맞춰 봤습니다. 공고문과 다르거나 공식 자료로 확인되지 않은 것을 먼저 놓았고, 공고문과 맞는 내용 중 이 글의 다른 부분에 이미 적은 것은 뺐습니다.</p>`,
+    `<div class="az-claims">${table(head, [...off, ...ok].map(row))}</div>`,
     src('「공식 자료 없음」은 틀렸다는 뜻이 아니라 공고문·공식 자료로 확인되지 않았다는 뜻입니다. 앞으로의 가격 전망은 확인할 수 있는 사실이 아니어서 이 표에 싣지 않았습니다. 어느 한 의견을 평가하려는 표가 아니라, 청약 전에 사실을 가려 보려는 정리입니다.'),
   ];
 }
@@ -89,8 +88,20 @@ async function figures(key, blocks, local) {
 const altOf = (t) => (t.kind === 'money'
   ? `${t.title}. ${t.cash.map((c) => `${c.date} ${c.label} ${won(c.amount)}`).join(', ')}. ${t.loan ? t.loan.label + '. ' : ''}${t.interest ? t.interest.label + '. ' : ''}${t.total.label} ${t.total.value}.`
   : `${t.title}. ${t.items.map((x) => `${x.date} ${x.label}`).join(', ')}.`);
+// 노선 이름에 노선 색 표시(2026-10-30 사용자 요청). 색은 수도권 전철 노선도 색. 새 노선이 글에 나오면 여기에 더한다
+const LINES = { 'GTX-A': '#9a6292', 경의중앙선: '#77c4a3', 수인분당선: '#f5a200', 신분당선: '#d4003b', 서해선: '#8fc31f', 인천1호선: '#7ca8d5', 인천2호선: '#ed8b00', '1호선': '#0052a4', '2호선': '#00a84d', '3호선': '#ef7c1c', '4호선': '#00a5de', '5호선': '#996cac', '6호선': '#cd7c2f', '7호선': '#747f00', '8호선': '#e6186c', '9호선': '#bdb092' };
+const LINE_RE = new RegExp(`(?<![0-9가-힣A-Za-z-])(${Object.keys(LINES).sort((a, b) => b.length - a.length).join('|')})`, 'g');
+const line = (h) => h.replace(LINE_RE, (m) => `<span class="az-line" style="--c:${LINES[m]}">${m}</span>`); // h: 이미 이스케이프한 글자
+// 입지 표: [구분, 내용, 상태] 줄을 구분별 묶음으로(좁은 구분 칸이 세로 글씨가 되지 않게). 상태 앞머리 「확정·계획·공고문」은 색 표시
+const STATE = { 확정: 'ok', 계획: 'plan', 공고문: 'na' };
+const planHtml = (rows) => {
+  const groups = [];
+  for (const [g, ...r] of rows) { if (groups.at(-1)?.[0] !== g) groups.push([g, []]); groups.at(-1)[1].push(r); }
+  const st = (t) => { const m = t.match(/^(확정|계획|공고문)\s*[·:]\s*/); return m ? `<span class="az-chip ${STATE[m[1]]}">${m[1]}</span> ${esc(t.slice(m[0].length))}` : esc(t); };
+  return `<div class="az-plan">${groups.map(([g, r]) => `<section><p class="az-plan-h">${esc(g)}</p><ul>${r.map(([w, s]) => `<li><p class="w">${line(esc(w))}</p><p class="s">${st(s)}</p></li>`).join('')}</ul></section>`).join('')}</div>`;
+};
 // 기본 정보 그리드: 칸마다 이름, 3단지·4단지처럼 나란히 놓을 값. 두 값이 같으면 한 칸으로 합친다
-const gridHtml = ({ cols, rows }) => `<div class="az-grid" style="--n:${cols.length}"><div class="az-grid-r az-grid-h"><span></span>${cols.map((c) => `<span>${esc(c)}</span>`).join('')}</div>${rows.map(([k, ...v]) => `<div class="az-grid-r"><span class="k">${esc(k)}</span>${v.every((x) => x === v[0]) ? `<span class="all">${esc(v[0])}</span>` : v.map((x) => `<span>${esc(x)}</span>`).join('')}</div>`).join('')}</div>`;
+const gridHtml = ({ cols, rows }) => `<div class="az-grid" style="--n:${cols.length}"><div class="az-grid-r az-grid-h"><span></span>${cols.map((c) => `<span>${esc(c)}</span>`).join('')}</div>${rows.map(([k, ...v]) => `<div class="az-grid-r"><span class="k">${esc(k)}</span>${v.every((x) => x === v[0]) ? `<span class="all">${line(esc(v[0]))}</span>` : v.map((x) => `<span>${line(esc(x))}</span>`).join('')}</div>`).join('')}</div>`;
 
 export async function render(key, { local = false } = {}) {
   const d = await loadDeep(key), folder = await folderOf(key);
@@ -101,14 +112,15 @@ export async function render(key, { local = false } = {}) {
     if (b.h3) return `<h3>${esc(b.h3)}</h3>`;
     if (b.p) return `<p>${esc(b.p)}</p>`;
     if (b.ul) return `<ul>${b.ul.map((t) => `<li>${esc(t)}</li>`).join('')}</ul>`;
-    if (b.key) return keyBox(b.key.map(esc), b.title || '한눈에 보기');
+    if (b.key) return keyBox(b.key.map((t) => line(esc(t))), b.title || '한눈에 보기');
     if (b.table) return table(b.table.head, b.table.rows.map((r) => r.map(cv)), { stack: !b.table.compact });
     if (b.grid) return gridHtml(b.grid);
+    if (b.plan) return planHtml(b.plan);
     if (b.timeline) return `<figure class="az-fig"><img src="${esc(figs[b.timeline.kind])}" alt="${esc(altOf(b.timeline))}" width="720" loading="lazy">${b.timeline.caption ? `<figcaption>${esc(b.timeline.caption)}</figcaption>` : ''}</figure>`;
     if (b.note) return note(esc(b.note));
     if (b.src) return src(esc(b.src));
     if (b.links) return `<ul class="az-links">${b.links.map(([t, u]) => `<li><a href="${esc(u)}">${esc(t)}</a></li>`).join('')}</ul>`;
-    if (b.claims) return claimsHtml(summary?.claim_checks, videos).join('\n');
+    if (b.claims) return claimsHtml(summary?.claim_checks, videos, b.claims.keep).join('\n');
     throw new Error(`모르는 블록 ${JSON.stringify(b).slice(0, 60)}`);
   };
   const html = [
@@ -126,10 +138,11 @@ export async function check(key) {
   const d = await loadDeep(key), folder = await folderOf(key), issues = [];
   const { summary, videos } = await analyzerData(folder);
   const tl = (t) => (!t ? [] : [t.title, t.sub, t.caption, t.note, ...(t.items || []).flatMap((x) => [x.date, x.label, x.sub]), ...(t.cash || []).flatMap((c) => [c.date, c.label, won(c.amount)]), t.loan?.label, ...(t.loan?.dates || []), t.loan && won(t.loan.amount), t.interest?.label, t.total?.label, t.total?.value]);
-  const texts = d.blocks.flatMap((b) => [b.h, b.h3, b.p, b.note, b.src, ...(b.ul || []), ...(b.key || []), ...(b.table ? [...b.table.head, ...b.table.rows.flat()] : []), ...(b.grid ? [...b.grid.cols, ...b.grid.rows.flat()] : []), ...tl(b.timeline)]).filter(Boolean).concat([d.title, d.excerpt, ...(d.card || [])]);
+  const texts = d.blocks.flatMap((b) => [b.h, b.h3, b.p, b.note, b.src, ...(b.ul || []), ...(b.key || []), ...(b.table ? [...b.table.head, ...b.table.rows.flat()] : []), ...(b.grid ? [...b.grid.cols, ...b.grid.rows.flat()] : []), ...(b.plan || []).flat(), ...tl(b.timeline)]).filter(Boolean).concat([d.title, d.excerpt, ...(d.card || [])]);
   const auto = d.blocks.some((b) => b.claims) ? claimRows(summary?.claim_checks).flatMap((c) => [c.claim, c.note, c.official]).filter(Boolean).map((t) => scrub(t, videos)) : []; // 대조표는 리포트 문장 그대로라 숫자 대조는 건너뛰고 표현만 본다
   const corpus = [await readFile(join(BASE, folder, '종합리포트.html'), 'utf8'), await readFile(join(BASE, folder, '_data/notice.json'), 'utf8').catch(() => ''),
     ...await Promise.all((await folders())[folder].map((n) => readFile(join(ROOT, 'data/zip_posts', `${n}.json`), 'utf8').catch(() => '')))].join('\n').replace(/(\d),(?=\d{3})/g, '$1');
+  for (const k of d.blocks.find((b) => b.claims)?.claims.keep || []) if (!keptOk(claimRows(summary?.claim_checks), [k]).length) issues.push(`대조표 keep 「${k}」 — 공고문과 맞는 주장 중에 없음(리포트가 새로 만들어졌으면 다시 고른다)`);
   for (const t of [...texts, ...auto]) {
     if (!auto.includes(t)) for (const m of t.replace(/(\d),(?=\d{3})/g, '$1').match(/\d{2,}(?:\.\d+)?/g) || []) if (!corpus.includes(m)) issues.push(`숫자 ${m} — 리포트·공고 자료에 없음: 「${t.slice(0, 50)}」`);
     for (const w of BANNED) if (t.replace(/기관추천/g, '').includes(w)) issues.push(`금지 표현 「${w}」: 「${t.slice(0, 50)}」`);
