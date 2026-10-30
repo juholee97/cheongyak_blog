@@ -269,10 +269,12 @@ if (process.argv[1]?.endsWith('deep.mjs')) {
     const d = await loadDeep(key), nos = Object.values(await folders()).find((n) => n.includes(key)) || [key];
     const { items } = JSON.parse(await readFile(join(ROOT, 'data/deals.json'), 'utf8').catch(() => '{"items":[]}'));
     const today = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
-    const pl = now && d.status !== 'publish' ? planOf(items.filter((x) => nos.includes(x.no)).flatMap((x) => x.phases || []), today, { lead: 7, time: '06:00' }) : { mode: 'now', why: '이미 공개된 글' };
+    // d.receipt: 청약홈 일정의 첫 접수가 사전청약 당첨자 몫일 때(시흥거모: 11.2 사전청약, 일반 청약자는 11.16 특별공급부터) 실제 첫 접수일을 글 자료에 적는다
+    const phases = d.receipt ? [{ k: 'sp', date: d.receipt }] : items.filter((x) => nos.includes(x.no)).flatMap((x) => x.phases || []);
+    const pl = now && d.status !== 'publish' ? planOf(phases, today, { lead: 7, time: '06:00' }) : { mode: 'now', why: '이미 공개된 글' };
     if (now) console.log(`공개 계획: ${pl.mode === 'at' ? `${pl.at} 예약` : '바로'} · ${pl.why}`);
     const o = await upsert(post, now && pl.mode === 'at' ? pl.at : null, now && pl.mode === 'now');
-    if (o.ok) await writeFile(join(DIR, `${key}.json`), JSON.stringify({ ...d, link: o.link, status: o.status, id: o.id, at: o.status === 'future' ? pl.at : undefined }, null, 1));
+    if (o.ok) await writeFile(join(DIR, `${key}.json`), JSON.stringify({ ...d, link: o.status === 'future' ? `https://auleezip.com/${post.slug}/` : o.link, status: o.status, id: o.id, at: o.status === 'future' ? pl.at : undefined }, null, 1));
     console.log(`${o.ok ? '✓' : '✗'} ${o.status} ${o.link}${o.status === 'draft' || o.status === 'future' ? ` (미리보기 https://auleezip.com/?p=${o.id}&preview=true)` : ''}`);
     if (o.ok && o.status === 'publish') await verifyLive(o.link);
     if (o.ok && o.status === 'future') console.log(`게시 뒤 검수는 공개(${pl.at}) 뒤 매일 실행의 --verify all에서`);
