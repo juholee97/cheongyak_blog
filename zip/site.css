@@ -575,3 +575,15 @@ body:has(.az-deep-post) .az-head>*{max-width:880px}
 .az-prep li:first-child{border-top:0}
 .az-prep li::before{counter-increment:prep;content:counter(prep);position:absolute;left:0;top:10px;font-family:var(--az-serif);font-weight:700;font-size:15px;color:var(--az-blue)}
 .az-prep b{font-weight:600}
+/* 심층 분석 버튼: 표 맨 끝 칸, 검은 바탕에 차분한 금색 글자(2026-10-31 사용자) */
+.az-ft td.c7{width:1%;padding-left:4px;text-align:right;white-space:nowrap}
+.az-deepbtn{margin-top:0;padding:8px 14px;background:#17212b;border-color:#17212b;color:#cdb27a!important;letter-spacing:0.01em}
+.az-deepbtn:hover{background:#0d141b;border-color:#0d141b;color:#e3cb94!important}
+@media (max-width:900px){
+  .az-ft td.c7{grid-column:1/-1;width:auto;padding:4px 0 0;text-align:left}
+  .az-ft td.c7:empty{display:none}
+}
+.az-ft .az-dv{width:64px}
+.az-ft td,.az-ft th{padding-left:6px;padding-right:6px}
+.az-ft td.c1{min-width:150px}
+.az-ft .az-deepbtn{padding:7px 11px;font-size:12.5px}
