@@ -6,6 +6,7 @@
 // node zip/deep.mjs --lint <키>       글 자료 점검: 숫자가 리포트·공고 자료에 있는지, 금지 표현, 가족 정보, 해요체
 // node zip/deep.mjs --draft <키>      임시글로 올림(미리보기 링크)    --publish <키>  사용자 승인 뒤 공개(그 뒤 node zip/publish.mjs --go --pages로 메인 갱신)
 // 글 자료: { title, excerpt, card: [메인 카드 숫자 줄], blocks: [{h}|{p}|{ul}|{key}|{table:{head,rows}}|{note}|{grid:{cols,rows}}|{plan:[[구분,내용,상태]]}|{timeline}|{claims:{keep:[공고문과 맞는 주장 중 실을 것의 글귀]}}|{links:[[이름,주소]]}], sources: [[이름,주소]] }
+// 본문 글자 안 [[r:글귀]] 위험(빨강)·[[y:]] 주의(노랑)·[[b:]] 핵심(파랑)·[[g:]] 유리(초록) 배경색 — 한 항목에 한두 곳, 글 전반에. 쓰면 글 맨 위에 색 뜻 안내가 붙는다
 // 리포트 속 분석 의견은 공고문과 맞춰 본 결과만 싣는다(전망 숫자·채널 평가는 옮기지 않는다). 채널·영상 이름·링크는 쓰지 않고 「공개된 분석 의견」으로 포괄한다(2026-10-30 사용자 결정).
 import { readFile, writeFile, mkdir, readdir, stat } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -39,7 +40,7 @@ export function reportText(html) {
 }
 
 // 표 칸 글자를 한 덩어리로: 휴대폰 표(az-stack)는 칸이 flex라, keepUnits가 「60㎡」에 씌우는 span마다 따로 줄이 갈라진다
-const cv = (t) => { const [a, ...b] = String(t).split('\n'); return `<span>${esc(a)}${b.map((x) => `<small>${esc(x)}</small>`).join('')}</span>`; }; // 줄바꿈 뒤는 작은 글씨 둘째 줄
+const cv = (t) => { const [a, ...b] = String(t).split('\n'); return `<span>${tx(a)}${b.map((x) => `<small>${tx(x)}</small>`).join('')}</span>`; }; // 줄바꿈 뒤는 작은 글씨 둘째 줄
 // 괄호 밖의 구분자로만 자른다(「4억9,570만」의 쉼표·괄호 속 쪽수는 그대로)
 const splitTop = (s, sep) => { const out = []; let d = 0, cur = ''; for (let i = 0; i < s.length; i++) { const ch = s[i]; if (ch === '(') d++; if (ch === ')') d--; if (!d && s.startsWith(sep, i)) { out.push(cur); cur = ''; i += sep.length - 1; } else cur += ch; } return [...out, cur].map((x) => x.trim()).filter(Boolean); };
 // 대조표 공식 자료 칸: 「공고문 공급금액: A, B, C (9쪽)」 같은 나열은 한 줄에 하나씩(2026-10-30 사용자 지시 — 쉼표 나열보다 줄바꿈). 문장은 그대로
@@ -106,16 +107,24 @@ const altOf = (t) => (t.kind === 'money'
 const LINES = { 'GTX-A': '#9a6292', 경의중앙선: '#77c4a3', 수인분당선: '#f5a200', 신분당선: '#d4003b', 서해선: '#8fc31f', 인천1호선: '#7ca8d5', 인천2호선: '#ed8b00', '1호선': '#0052a4', '2호선': '#00a84d', '3호선': '#ef7c1c', '4호선': '#00a5de', '5호선': '#996cac', '6호선': '#cd7c2f', '7호선': '#747f00', '8호선': '#e6186c', '9호선': '#bdb092' };
 const LINE_RE = new RegExp(`(?<![0-9가-힣A-Za-z-])(${Object.keys(LINES).sort((a, b) => b.length - a.length).join('|')})`, 'g');
 const line = (h) => h.replace(LINE_RE, (m) => `<span class="az-line" style="--c:${LINES[m]}">${m}</span>`); // h: 이미 이스케이프한 글자
+// 키워드 배경색(2026-10-30 사용자 요청: 줄글은 키워드로 훑어 읽으니 위험·주의·핵심·유리를 색으로). 글 자료에 [[r:글귀]] 식으로 적는다 — 한 항목에 한두 곳, 짧은 글귀만
+const HL = { r: ['위험', '손해·자격 상실·돈이 크게 더 들 수 있는 것'], y: ['주의', '생활 불편·바뀔 수 있는 것·직접 확인할 것'], b: ['핵심', '꼭 알아야 할 조건과 숫자'], g: ['유리', '청약자에게 좋은 점'] };
+const HL_RE = /\[\[([rybg]):(.+?)\]\]/g;
+const hl = (h) => h.replace(HL_RE, (_, c, t) => `<mark class="az-hl ${c}">${t}</mark>`);
+const unhl = (t) => String(t).replace(HL_RE, '$2');
+const tx = (t) => hl(line(esc(t)));
+const lead = (h) => h.replace(/^([^:<]{1,16}):\s/, '<b>$1</b>: '); // 목록 앞머리 「지역 우선:」은 굵게
+const legend = () => `<p class="az-hl-legend">${Object.entries(HL).map(([c, [n, d]]) => `<span><mark class="az-hl ${c}">${n}</mark> ${d}</span>`).join('')}</p>`;
 // 입지 표: [구분, 내용, 상태] 줄을 구분별 묶음으로(좁은 구분 칸이 세로 글씨가 되지 않게). 상태 앞머리 「확정·계획·공고문」은 색 표시
 const STATE = { 확정: 'ok', 계획: 'plan', 공고문: 'na' };
 const planHtml = (rows) => {
   const groups = [];
   for (const [g, ...r] of rows) { if (groups.at(-1)?.[0] !== g) groups.push([g, []]); groups.at(-1)[1].push(r); }
   const st = (t) => { const m = t.match(/^(확정|계획|공고문)\s*[·:]\s*/); return m ? `<span class="az-chip ${STATE[m[1]]}">${m[1]}</span> ${esc(t.slice(m[0].length))}` : esc(t); };
-  return `<div class="az-plan">${groups.map(([g, r]) => `<section><p class="az-plan-h">${esc(g)}</p><ul>${r.map(([w, s]) => `<li><p class="w">${line(esc(w))}</p><p class="s">${st(s)}</p></li>`).join('')}</ul></section>`).join('')}</div>`;
+  return `<div class="az-plan">${groups.map(([g, r]) => `<section><p class="az-plan-h">${esc(g)}</p><ul>${r.map(([w, s]) => `<li><p class="w">${tx(w)}</p><p class="s">${st(s)}</p></li>`).join('')}</ul></section>`).join('')}</div>`;
 };
 // 기본 정보 그리드: 칸마다 이름, 3단지·4단지처럼 나란히 놓을 값. 두 값이 같으면 한 칸으로 합친다(「3단지·4단지 공통」 표시 — 한 칸인지 두 칸인지 헷갈리지 않게, 2026-10-30 사용자 지적)
-const gridHtml = ({ cols, rows }) => `<div class="az-grid" style="--n:${cols.length}"><div class="az-grid-r az-grid-h"><span></span>${cols.map((c) => `<span>${esc(c)}</span>`).join('')}</div>${rows.map(([k, ...v]) => `<div class="az-grid-r"><span class="k">${esc(k)}</span>${v.every((x) => x === v[0]) ? `<span class="all"><em class="az-both">${esc(cols.join('·'))} 공통</em>${line(esc(v[0]))}</span>` : v.map((x) => `<span>${line(esc(x))}</span>`).join('')}</div>`).join('')}</div>`;
+const gridHtml = ({ cols, rows }) => `<div class="az-grid" style="--n:${cols.length}"><div class="az-grid-r az-grid-h"><span></span>${cols.map((c) => `<span>${esc(c)}</span>`).join('')}</div>${rows.map(([k, ...v]) => `<div class="az-grid-r"><span class="k">${esc(k)}</span>${v.every((x) => x === v[0]) ? `<span class="all"><em class="az-both">${esc(cols.join('·'))} 공통</em>${tx(v[0])}</span>` : v.map((x) => `<span>${tx(x)}</span>`).join('')}</div>`).join('')}</div>`;
 
 export async function render(key, { local = false } = {}) {
   const d = await loadDeep(key), folder = await folderOf(key);
@@ -124,20 +133,21 @@ export async function render(key, { local = false } = {}) {
   const block = (b) => {
     if (b.h) return `<h2>${esc(b.h)}</h2>`;
     if (b.h3) return `<h3>${esc(b.h3)}</h3>`;
-    if (b.p) return `<p>${esc(b.p)}</p>`;
-    if (b.ul) return `<ul>${b.ul.map((t) => `<li>${esc(t)}</li>`).join('')}</ul>`;
-    if (b.key) return keyBox(b.key.map((t) => line(esc(t))), b.title || '한눈에 보기');
+    if (b.p) return `<p>${tx(b.p)}</p>`;
+    if (b.ul) return `<ul>${b.ul.map((t) => `<li>${lead(tx(t))}</li>`).join('')}</ul>`;
+    if (b.key) return keyBox(b.key.map(tx), b.title || '한눈에 보기');
     if (b.table) return table(b.table.head, b.table.rows.map((r) => r.map(cv)), { stack: !b.table.compact });
     if (b.grid) return gridHtml(b.grid);
     if (b.plan) return planHtml(b.plan);
     if (b.timeline) return `<figure class="az-fig"><img src="${esc(figs[b.timeline.kind])}" alt="${esc(altOf(b.timeline))}" width="720" loading="lazy">${b.timeline.caption ? `<figcaption>${esc(b.timeline.caption)}</figcaption>` : ''}</figure>`;
-    if (b.note) return note(esc(b.note));
-    if (b.src) return src(esc(b.src));
+    if (b.note) return note(tx(b.note));
+    if (b.src) return src(tx(b.src));
     if (b.links) return `<ul class="az-links">${b.links.map(([t, u]) => `<li><a href="${esc(u)}">${esc(t)}</a></li>`).join('')}</ul>`;
     if (b.claims) return claimsHtml(summary?.claim_checks, videos, b.claims.keep).join('\n');
     throw new Error(`모르는 블록 ${JSON.stringify(b).slice(0, 60)}`);
   };
   const html = [
+    JSON.stringify(d.blocks).includes('[[') ? legend() : '',
     ...d.blocks.map(block),
     '<h2>이 글의 자료</h2>',
     '<p>이 글은 입주자모집공고문과 청약홈·LH·교육청 같은 공식 자료를 기준으로, 온라인에 공개된 여러 분석 의견을 함께 찾아보고 aulee가 다시 정리한 결과입니다. 분석 의견은 여러 시선을 보려고 참고했고, 숫자와 조건은 공고문을 기준으로 적었습니다.</p>',
@@ -153,6 +163,9 @@ export async function check(key) {
   const { summary, videos } = await analyzerData(folder);
   const tl = (t) => (!t ? [] : [t.title, t.sub, t.caption, t.note, ...(t.items || []).flatMap((x) => [x.date, x.label, x.sub]), ...(t.cash || []).flatMap((c) => [c.date, c.label, won(c.amount)]), t.loan?.label, ...(t.loan?.dates || []), t.loan && won(t.loan.amount), t.interest?.label, t.total?.label, t.total?.value]);
   const texts = d.blocks.flatMap((b) => [b.h, b.h3, b.p, b.note, b.src, ...(b.ul || []), ...(b.key || []), ...(b.table ? [...b.table.head, ...b.table.rows.flat()] : []), ...(b.grid ? [...b.grid.cols, ...b.grid.rows.flat()] : []), ...(b.plan || []).flat(), ...tl(b.timeline)]).filter(Boolean).concat([d.title, d.excerpt, ...(d.card || [])]);
+  for (const t of texts) if (/\[\[|\]\]/.test(unhl(t))) issues.push(`색 표시 문법 틀림([[r:글귀]]·y·b·g만): 「${t.slice(0, 50)}」`);
+  for (const t of [d.title, d.excerpt, ...(d.card || [])]) if (/\[\[[rybg]:/.test(t ?? '')) issues.push(`제목·요약·카드에는 색 표시를 쓰지 않는다: 「${t.slice(0, 50)}」`);
+  texts.splice(0, texts.length, ...texts.map(unhl));
   const auto = d.blocks.some((b) => b.claims) ? claimRows(summary?.claim_checks).flatMap((c) => [c.claim, c.note, c.official]).filter(Boolean).map((t) => scrub(t, videos)) : []; // 대조표는 리포트 문장 그대로라 숫자 대조는 건너뛰고 표현만 본다
   const corpus = [await readFile(join(BASE, folder, '종합리포트.html'), 'utf8'), await readFile(join(BASE, folder, '_data/notice.json'), 'utf8').catch(() => ''),
     ...await Promise.all((await folders())[folder].map((n) => readFile(join(ROOT, 'data/zip_posts', `${n}.json`), 'utf8').catch(() => '')))].join('\n').replace(/(\d),(?=\d{3})/g, '$1');

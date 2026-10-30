@@ -300,6 +300,13 @@ a:hover{color:var(--az-ink)}
 }
 .az-stack td>span{min-width:0;overflow-wrap:break-word}
 .az-t td>span small{display:block;font-size:12.5px;color:var(--az-sub);font-weight:400}
+.az-hl{padding:1px 2px;border-radius:4px;font-weight:600;color:inherit;-webkit-box-decoration-break:clone;box-decoration-break:clone}
+.az-hl.r{background:#fadcd8;color:#7a1810}
+.az-hl.y{background:#fcefc2;color:#5c4300}
+.az-hl.b{background:#dce7f6;color:#173f73}
+.az-hl.g{background:#d5ede6;color:#0b5149}
+.az-hl-legend{display:flex;flex-wrap:wrap;gap:6px 16px;margin:0 0 18px;padding:10px 12px;border:1px solid var(--az-line);border-radius:8px;font-size:13px;line-height:1.5;color:var(--az-sub)}
+.az-hl-legend .az-hl{font-size:12.5px}
 .az-cl{margin:2px 0 0;padding-left:1.1em;list-style:disc}
 .az-cl li{margin:0;padding:0;line-height:1.55}
 .az-cl li::marker{color:var(--az-gray)}
