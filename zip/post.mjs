@@ -122,7 +122,9 @@ export function postOf(r, buzz, claims, ctx = {}) {
     { foot: [`${r.n}곳 중앙값`, '', '', `${num(r.med)}만원`] });
   const when = (r.phases || []).filter((p) => p.date).map((p) => [esc(label(r, p.k) || p.k), p.end && p.end !== p.date ? span(p.date, p.end) : md(p.date)]);
   // 심층 분석 글이 있으면 맨 앞에 — 「시세보다 N% 높습니다」만 보고 이유 없이 비싼 집으로 읽히지 않게(2026-10-30 사용자)
-  const deepHtml = ctx.deep ? `<a class="az-deeplink" href="${esc(ctx.deep)}"><span class="az-deeplink-t">심층 분석 · 숫자만으로는 알 수 없는 것</span><span>시세 비교만으로는 이 분양가가 어떻게 정해졌는지 알 수 없습니다. 입지·교통 계획, 주택형별 분양가와 필요한 돈, 공고문과 맞춰 본 분석 의견은 <b>${esc(name)} 심층 분석</b>에 정리했습니다. →</span></a>` : '';
+  // 심층 분석으로 넘어가는 카드(2026-10-31 사용자 요청: 안내문이 아니라 누르면 넘어가는 다른 글로 보이게 — 조감도 작은 그림 + 제목 + 「읽기」 버튼, 광고처럼 보이지 않게 흰 바탕)
+  const dp = ctx.deep;
+  const deepHtml = dp ? `<a class="az-deeplink" href="${esc(dp.link)}">${dp.img ? `<img src="${esc(dp.img)}" alt="" width="800" height="500" loading="lazy">` : ''}<span class="az-deeplink-b"><span class="az-deeplink-t">이어서 읽기 · 심층 분석</span><span class="az-deeplink-h">${esc(name)} 심층 분석</span><span class="az-deeplink-d">시세 비교만으로는 이 분양가가 어떻게 정해졌는지 알 수 없습니다. 입지·교통 계획, 주택형별 필요한 돈, 공고문과 맞춰 본 분석 의견을 정리했습니다.</span></span><span class="az-deeplink-go">읽기</span></a>` : '';
   const html = [
     ctx.closed ? banner(OPEN_URL) : '',
     deepHtml,
@@ -186,10 +188,10 @@ if (process.argv[1]?.endsWith('post.mjs')) {
   const list = [...seen.values()];
   const oi = process.argv.indexOf('--only'), only = oi > 0 ? process.argv[oi + 1].split(',') : null; // --only 공고번호: 그 글만 새로 쓴다(나머지 글 파일은 그대로)
   // 공개된 심층 분석 글(공고번호 → 주소). deep.mjs가 이 파일을 불러 쓰므로(순환) 자료 파일을 직접 읽는다
-  const fo = Object.values(JSON.parse(await readFile(join(ROOT, 'data/deep_folders.json'), 'utf8').catch(() => '{}'))), ddir = join(ROOT, 'data/zip_deep'), deepOf = {};
+  const fo = Object.values(JSON.parse(await readFile(join(ROOT, 'data/deep_folders.json'), 'utf8').catch(() => '{}'))), ddir = join(ROOT, 'data/zip_deep'), deepOf = {}, views = JSON.parse(await readFile(join(ROOT, 'data/zip_views.json'), 'utf8').catch(() => '{}'));
   for (const f of (await readdir(ddir).catch(() => [])).filter((x) => /^\d+\.json$/.test(x))) {
     const d = JSON.parse(await readFile(join(ddir, f), 'utf8')), key = f.slice(0, -5);
-    if (liveDeep(d)) for (const no of fo.find((n) => n.includes(key)) || [key]) deepOf[no] = d.link;
+    if (liveDeep(d)) for (const no of fo.find((n) => n.includes(key)) || [key]) deepOf[no] = { link: d.link, img: views[key]?.url };
   }
   for (const r of list) {
     if (only && !only.includes(r.no)) continue;

@@ -11,7 +11,7 @@ import { ROOT } from '../tistory/common.mjs';
 import { upsert, upsertPage, uploadMedia, wp } from './wp.mjs';
 import { closedOf, planOf, liveDeep } from './post.mjs';
 export { planOf }; // zip/sh_write.mjs가 여기서 불러 쓴다
-import { openPage, methodPage, aboutPage, privacyPage, saleList } from './pages.mjs';
+import { openPage, methodPage, aboutPage, privacyPage, saleList, deepList, rentList } from './pages.mjs';
 import { allDeep, folders as deepFolders } from './deep.mjs';
 import { loadViews } from './views.mjs';
 import { loadLog, saveLog, applyLog } from './revlog.mjs';
@@ -83,18 +83,21 @@ if (process.argv.includes('--check')) {
     }
     await (await import('node:fs/promises')).writeFile(join(ROOT, 'data/zip_views.json'), JSON.stringify(views, null, 1));
     for (const r of Object.values(reg)) { const j = JSON.parse(await readFile(join(ROOT, 'data/zip_posts', `${r.slug || r.no}.json`), 'utf8').catch(() => 'null')); if (j) posts[r.no] = { title: j.title, excerpt: j.excerpt, link: `https://auleezip.com/${j.slug}/` }; }
-    const [cat] = await wp(`categories?slug=${encodeURIComponent('분양-시세비교')}`);
-    if (cat) {
+    // 「심층 분석」·「임대 시세비교」 목록도 같은 방식(오른쪽 카드 — pages.mjs deepList·rentList)
+    const lists = [['분양-시세비교', saleList(Object.values(reg), today, res, posts, views)], ['심층-분석', deepList(deeps, Object.values(reg), today, views)], ['임대-시세비교', rentList(Object.values(reg), today, posts, sh)]];
+    for (const [catSlug, html] of lists) {
+      const [cat] = await wp(`categories?slug=${encodeURIComponent(catSlug)}`);
+      if (!cat) continue;
       const slug = `category-${cat.id}`, content = `<!-- wp:template-part {"slug":"header","theme":"twentytwentyfive"} /-->
 <!-- wp:html -->
 <main class="az-main"><div class="az-head"><h1 class="az-title">${cat.name}</h1></div><div class="az-content"><div class="az az-page">
-${saleList(Object.values(reg), today, res, posts, views)}
+${html}
 </div></div></main>
 <!-- /wp:html -->
 <!-- wp:template-part {"slug":"footer","theme":"twentytwentyfive"} /-->`;
       const old = await wp(`templates/twentytwentyfive//${slug}?context=edit`).catch(() => null);
       const t = old ? await wp(`templates/twentytwentyfive//${slug}`, { method: 'POST', body: { content } }) : await wp('templates', { method: 'POST', body: { slug, title: `${cat.name} 목록`, content } });
-      console.log(`${t?.content?.raw === content ? '✓' : '✗'} 목록 템플릿 ${slug} (조감도 ${Object.values(views).filter((v) => v.url).length}곳)`);
+      console.log(`${t?.content?.raw === content ? '✓' : '✗'} 목록 템플릿 ${slug} ${cat.name}`);
     }
     console.log('캐시 비우기', (await purge()) ? '✓' : '✗'); // 이 사이트는 글을 고쳐도 캐시를 자동으로 안 비운다
   }

@@ -122,6 +122,47 @@ export function saleList(list, today, res = {}, posts = {}, views = {}) {
   ].filter(Boolean).join('\n');
 }
 
+// 「심층 분석」·「임대 시세비교」 목록(2026-10-31 사용자 요청): 분양 시세비교처럼 오른쪽에 카드. 글자는 그림에 굽지 않고 HTML로 얹는다(선명하고 휴대폰에서도 같은 글).
+// 심층 분석 카드 = 공식 조감도 위에 한 줄 훅(data/zip_deep/<key>.json의 hook: [작은 줄, 큰 줄, 노란 줄] — 글에 있는 사실만), 임대 카드 = 가장 낮은 월세와 주변 월세 대비 비율
+const statusOf = (phases, today) => { const rc = receiptOf(phases); return !rc ? '' : closedOf(phases, today) ? '접수 마감' : today < rc.start ? `D-${days(today, rc.start)}` : '접수 중'; };
+// 접수 중·곧 열리는 것 먼저(첫 접수일 순), 마감된 것은 뒤로
+const order = (r, today) => (!r ? 9e12 : (closedOf(r.phases, today) ? 5e12 : 0) + Date.parse(receiptOf(r.phases)?.start || '2999-01-01'));
+const metaOf = (parts, status) => [...parts, status ? `<span class="az-status${status === '접수 마감' ? ' end' : ''}">${status}</span>` : ''].filter(Boolean).join(' · ');
+const listItem = (meta, title, link, excerpt, card) => `<li class="az-vitem az-wide"><div class="az-vtext"><p class="az-vmeta">${meta}</p><h2><a href="${esc(link)}">${esc(title)}</a></h2><p class="az-vex">${esc(excerpt)}</p></div>${card}</li>`;
+
+export function deepList(deeps, list, today, views = {}) {
+  const reg = Object.fromEntries(list.map((r) => [r.no, r]));
+  const item = (d) => {
+    const r = d.nos.map((n) => reg[n]).find(Boolean), v = views[d.key], h = d.hook || [d.card?.[1] || '', shortName(r?.name || d.title), ''];
+    const label = esc(v?.label || '조감도'), site = esc(v?.site || '분양 홈페이지'), href = v?.page || v?.homepage;
+    const card = `<figure class="az-thumb-f"><a class="az-thumb deep" href="${esc(d.link)}" tabindex="-1" aria-hidden="true">${v?.url ? `<img src="${esc(v.url)}" alt="" width="800" height="500" loading="lazy">` : ''}<span class="k">${esc(h[0])}</span><span class="t">${esc(h[1])}${h[2] ? `<em>${esc(h[2])}</em>` : ''}</span></a>${v?.url ? `<figcaption>${label} · ${href ? `<a href="${esc(href)}" rel="nofollow noopener">${site}</a>` : site}</figcaption>` : ''}</figure>`;
+    return listItem(metaOf([r ? esc(areaOf(r)) : '', '심층 분석'], r ? statusOf(r.phases, today) : ''), d.title, d.link, d.excerpt, card);
+  };
+  return [
+    `<p class="az-vlead">시세 비교만으로는 보이지 않는 것 — 입지·교통 계획, 주택형별 분양가와 필요한 돈, 공고문과 맞춰 본 공개된 분석 의견을 단지마다 정리했습니다. ${esc(today.replaceAll('-', '.'))} 기준입니다.</p>`,
+    `<ul class="az-vlist">${deeps.map((d) => [d, d.nos.map((n) => reg[n]).find(Boolean)]).sort(([, a], [, b]) => order(a, today) - order(b, today)).map(([d]) => item(d)).join('')}</ul>`,
+    src('카드의 조감도·투시도는 사업주체 분양 홈페이지, LH 청약플러스 공고, 입주자모집공고문 같은 공식 자료에서 정보 제공을 위해 옮긴 그림으로, 실제와 다를 수 있습니다. 카드 문구는 각 글의 내용을 줄인 것입니다.'),
+  ].join('\n');
+}
+
+// units: data/sh_rent.json(호별 보증금·월세, 만원). 비율은 비교 거래가 충분한 호만
+export function rentList(list, today, posts = {}, units = []) {
+  const items = list.filter((r) => r.source === 'sh' && posts[r.no]);
+  const item = (r) => {
+    const p = posts[r.no], us = units.filter((u) => u.id === r.no), low = us.reduce((a, u) => (!a || u.rent < a.rent ? u : a), null);
+    const rs = us.filter((u) => u.result && !u.result.insufficient).map((u) => Math.round(u.result.ratio * 100)), lo = Math.min(...rs), hi = Math.max(...rs);
+    const areas = us.map((u) => Math.round(u.area)), ar = Math.min(...areas) === Math.max(...areas) ? `${areas[0]}㎡` : `${Math.min(...areas)}~${Math.max(...areas)}㎡`;
+    const badge = rs.length ? `<span class="b${hi < 100 ? ' dn' : ''}">주변 월세의 ${lo === hi ? lo : `${lo}~${hi}`}%</span>` : '<span class="b">주변 비교 거래 부족</span>';
+    const card = low ? `<figure class="az-thumb-f"><a class="az-thumb rent" href="${esc(p.link)}" tabindex="-1" aria-hidden="true"><span class="k">서울 ${esc(r.district || '')} · ${esc(r.kind || 'SH 임대')}</span><span class="t"><small>월세</small>${esc(Math.round(low.rent))}만원<small>부터</small></span><span class="s">보증금 ${esc(won(low.deposit))} · ${ar} · ${us.length}호</span>${low.result && !low.result.insufficient && low.result.ratio < 1 ? `<span class="s">주변 비슷한 집 월세 <s>${esc(Math.round(low.result.market))}만원</s></span>` : ''}${badge}</a></figure>` : '';
+    return listItem(metaOf([`서울 ${esc(r.district || '')}`, '임대'], statusOf(r.phases, today)), p.title, p.link, p.excerpt, card);
+  };
+  return [
+    `<p class="az-vlead">SH 임대 공고마다 호별 보증금·월세를 같은 구의 비슷한 면적·층·보증금 전월세 실거래와 비교합니다. ${esc(today.replaceAll('-', '.'))} 기준입니다.</p>`,
+    `<ul class="az-vlist">${items.map(item).join('')}</ul>`,
+    src('카드의 월세는 공고문의 호별 임대조건 중 가장 낮은 값이고, 비율은 주변 월세 거래 중앙값과 견준 값입니다(비교 거래가 모자란 호는 뺐습니다). 계산 방법은 비교 기준에 있습니다.'),
+  ].join('\n');
+}
+
 // 비교 기준: zip/deals.mjs(분양)·zip/sh_rent.mjs(임대)·zip/ui.mjs(눈금)가 실제로 하는 그대로 적는다 — 코드를 바꾸면 이 글도 같이 고친다
 export const methodPage = () => page([
   '<p>우리의 집 글이 숫자를 어떻게 고르고 계산하는지 한곳에 적었습니다. 글마다 쓴 기간과 단지 수는 각 글의 「이 글의 자료」에 있습니다.</p>',
