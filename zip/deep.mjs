@@ -100,8 +100,8 @@ const planHtml = (rows) => {
   const st = (t) => { const m = t.match(/^(확정|계획|공고문)\s*[·:]\s*/); return m ? `<span class="az-chip ${STATE[m[1]]}">${m[1]}</span> ${esc(t.slice(m[0].length))}` : esc(t); };
   return `<div class="az-plan">${groups.map(([g, r]) => `<section><p class="az-plan-h">${esc(g)}</p><ul>${r.map(([w, s]) => `<li><p class="w">${line(esc(w))}</p><p class="s">${st(s)}</p></li>`).join('')}</ul></section>`).join('')}</div>`;
 };
-// 기본 정보 그리드: 칸마다 이름, 3단지·4단지처럼 나란히 놓을 값. 두 값이 같으면 한 칸으로 합친다
-const gridHtml = ({ cols, rows }) => `<div class="az-grid" style="--n:${cols.length}"><div class="az-grid-r az-grid-h"><span></span>${cols.map((c) => `<span>${esc(c)}</span>`).join('')}</div>${rows.map(([k, ...v]) => `<div class="az-grid-r"><span class="k">${esc(k)}</span>${v.every((x) => x === v[0]) ? `<span class="all">${line(esc(v[0]))}</span>` : v.map((x) => `<span>${line(esc(x))}</span>`).join('')}</div>`).join('')}</div>`;
+// 기본 정보 그리드: 칸마다 이름, 3단지·4단지처럼 나란히 놓을 값. 두 값이 같으면 한 칸으로 합친다(「3단지·4단지 공통」 표시 — 한 칸인지 두 칸인지 헷갈리지 않게, 2026-10-30 사용자 지적)
+const gridHtml = ({ cols, rows }) => `<div class="az-grid" style="--n:${cols.length}"><div class="az-grid-r az-grid-h"><span></span>${cols.map((c) => `<span>${esc(c)}</span>`).join('')}</div>${rows.map(([k, ...v]) => `<div class="az-grid-r"><span class="k">${esc(k)}</span>${v.every((x) => x === v[0]) ? `<span class="all"><em class="az-both">${esc(cols.join('·'))} 공통</em>${line(esc(v[0]))}</span>` : v.map((x) => `<span>${line(esc(x))}</span>`).join('')}</div>`).join('')}</div>`;
 
 export async function render(key, { local = false } = {}) {
   const d = await loadDeep(key), folder = await folderOf(key);
