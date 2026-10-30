@@ -543,3 +543,35 @@ body:has(.az-deep-post) .az-head>*{max-width:880px}
 }
 /* 첫 화면 요약 칸·오른쪽 「낮게 나온 공고」의 %도 흐리게(2026-10-31 사용자 요청) — 단지 이름을 눌러 글에서 본다 */
 .az-blur{display:inline-block;font-style:normal;filter:blur(4px);user-select:none}
+/* 첫 화면 맨 위 심층 분석 격자(pages.mjs deepGrid, 2026-10-31 시험) */
+.az-dgrid{margin-top:24px}
+.az-dgrid ul{list-style:none;margin:10px 0 0!important;padding:0!important;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:22px 20px}
+.az-dgrid li{margin:0;padding:0!important;min-width:0}
+.az-dgrid .az-thumb .t{font-size:19px}
+.az-dgrid .az-thumb-f figcaption{display:none}
+.az-dgrid .az-vmeta{margin:8px 0 0}
+.az-dgrid h3{font-size:15px;line-height:1.45;margin:3px 0 0;font-weight:600;letter-spacing:-0.01em}
+.az-dgrid h3 a{color:var(--az-ink);text-decoration:none}
+.az-dgrid h3 a:hover{color:var(--az-blue);text-decoration:underline}
+.az-dgrid+.az-sum{margin-top:30px}
+@media (max-width:1100px){.az-dgrid ul{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:900px){.az-dgrid ul{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:640px){
+  .az-dgrid ul{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:12px;padding-bottom:6px!important}
+  .az-dgrid li{flex:0 0 80%;scroll-snap-align:start}
+}
+.az-dgrid ul{grid-template-columns:repeat(3,minmax(0,1fr));gap:26px 24px}
+.az-dgrid .az-thumb .t{font-size:21px}
+@media (max-width:1100px){.az-dgrid ul{grid-template-columns:repeat(2,minmax(0,1fr))}}
+/* 첫 화면 표: 단지 이름 아래 심층 분석 리포트로 가는 버튼(작은 꼬리표 대신, 2026-10-31 사용자) */
+.az-deepbtn{display:inline-flex;align-items:center;gap:6px;margin-top:7px;padding:5px 12px;border:1px solid var(--az-ink);background:var(--az-ink);color:#fff!important;font-size:13px;font-weight:600;line-height:1.4;text-decoration:none!important;white-space:nowrap}
+.az-deepbtn::after{content:"→"}
+.az-deepbtn:hover{background:var(--az-blue);border-color:var(--az-blue)}
+/* 오른쪽 칸: 마감이 가까운 순·청약 전에 챙길 것(2026-10-31) */
+.az-rls li>span b{font-weight:600;color:var(--az-ink)}
+.az-rls li>span{text-align:right;line-height:1.45;font-size:13px}
+.az-prep ul{list-style:none;margin:8px 0 0!important;padding:0!important;counter-reset:prep}
+.az-prep li{position:relative;margin:0;padding:9px 0 9px 26px!important;border-top:1px solid var(--az-line);font-size:13.5px;line-height:1.6;color:var(--az-ink)}
+.az-prep li:first-child{border-top:0}
+.az-prep li::before{counter-increment:prep;content:counter(prep);position:absolute;left:0;top:10px;font-family:var(--az-serif);font-weight:700;font-size:15px;color:var(--az-blue)}
+.az-prep b{font-weight:600}
