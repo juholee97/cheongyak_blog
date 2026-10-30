@@ -243,6 +243,30 @@ a:hover{color:var(--az-ink)}
 .az-vimg figcaption a{color:inherit}
 .az-vph{display:grid;place-items:center;aspect-ratio:16/10;border-radius:6px;background:var(--az-panel);color:var(--az-sub);font-size:14px;font-weight:600;text-align:center;padding:16px;line-height:1.4}
 .az-status.end{color:var(--az-sub)}
+
+/* 첫 화면 맨 위 「심층 분석」(zip/pages.mjs deepCards): 접수가 가장 가까운 글을 크게, 나머지는 목록 */
+.az-deep{margin:0 0 40px;padding-bottom:8px;border-bottom:3px solid var(--az-ink)}
+.az-deep-head h2{font-size:clamp(20px,0.6vw + 17px,23px);margin:0}
+.az-deep-head p{font-size:14.5px;color:var(--az-sub);margin:4px 0 0;max-width:720px}
+.az-deep-lead{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:32px;margin:18px 0 0;padding-bottom:24px;align-items:start}
+.az-deep-img img{display:block;width:100%;height:auto;aspect-ratio:16/10;object-fit:cover;border-radius:6px;background:var(--az-panel)}
+.az-deep-cap{font-size:11.5px;color:var(--az-sub);margin:5px 0 0;line-height:1.4}
+.az-deep-cap a{color:inherit}
+.az-deep-body h3{font-size:clamp(19px,0.6vw + 16px,22px);line-height:1.45;margin:6px 0 0}
+.az-deep-body h3 a{color:var(--az-ink);text-decoration:none}
+.az-deep-body h3 a:hover{color:var(--az-blue)}
+.az-deep-facts{list-style:none;margin:14px 0 0;padding:12px 16px;background:var(--az-panel);border-radius:6px}
+.az-deep-facts li{font-size:14.5px;line-height:1.6;padding-left:14px;position:relative}
+.az-deep-facts li::before{content:"";position:absolute;left:0;top:.7em;width:5px;height:5px;border-radius:50%;background:var(--az-blue)}
+.az-deep-facts li+li{margin-top:4px}
+.az-deep-go{margin:14px 0 0;font-size:15px;font-weight:600}
+.az-deep-go a::after{content:" →"}
+.az-deep .az-vlist{border-top:1px solid var(--az-line)}
+.az-more{margin:12px 0 0}
+.az-more summary{cursor:pointer;font-size:15px;font-weight:600;color:var(--az-blue)}
+@media (max-width:820px){
+  .az-deep-lead{grid-template-columns:minmax(0,1fr);gap:16px}
+}
 @media (max-width:640px){
   .az-vitem{grid-template-columns:minmax(0,1fr) 104px;gap:14px;padding:18px 0}
   .az-vimg img{aspect-ratio:1/1}

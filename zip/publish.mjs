@@ -9,7 +9,8 @@ import { join } from 'node:path';
 import { ROOT } from '../tistory/common.mjs';
 import { upsert, upsertPage, uploadMedia, wp } from './wp.mjs';
 import { closedOf } from './post.mjs';
-import { openPage, methodPage, aboutPage, privacyPage, saleList } from './pages.mjs';
+import { openPage, methodPage, aboutPage, privacyPage, saleList, deepCards } from './pages.mjs';
+import { allDeep } from './deep.mjs';
 import { loadViews } from './views.mjs';
 import { loadLog, saveLog, applyLog } from './revlog.mjs';
 import { purge } from './site.mjs';
@@ -69,7 +70,9 @@ if (process.argv.includes('--check')) {
     const sh = JSON.parse(await readFile(join(ROOT, 'data/sh_rent.json'), 'utf8').catch(() => '[]')), by = {};
     for (const u of sh) if (u.result && !u.result.insufficient) (by[u.id] ||= []).push(Math.round(u.result.ratio * 100));
     for (const [id, rs] of Object.entries(by)) { const lo = Math.min(...rs), hi = Math.max(...rs); res[id] = { text: `월세가 주변 거래의 ${lo === hi ? lo : `${lo}~${hi}`}%` }; }
-    const pages = [['open-notices', '현재 열린 공고', openPage(Object.values(reg), today, res)], ['method', '비교 기준', methodPage()], ['about', '소개', aboutPage()], ['privacy', '개인정보처리방침', privacyPage()]];
+    // 첫 화면 맨 위 「심층 분석」 카드(zip/deep.mjs로 공개한 글)
+    const deep = deepCards(await allDeep(), Object.values(reg), today, await loadViews());
+    const pages = [['open-notices', '현재 열린 공고', openPage(Object.values(reg), today, res, deep)], ['method', '비교 기준', methodPage()], ['about', '소개', aboutPage()], ['privacy', '개인정보처리방침', privacyPage()]];
     let openId;
     for (const [slug, title, html] of pages) { const o = await upsertPage({ slug, title, html }); if (slug === 'open-notices') openId = o.id; console.log(`${o.ok ? '✓' : '✗'} 페이지 ${slug} ${o.link}`); }
     // 첫 화면을 「현재 열린 공고」로: 방문자가 사이트 안을 돌게 한다

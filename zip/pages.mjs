@@ -10,7 +10,29 @@ const page = (html) => `<!-- wp:html -->\n<div class="az az-page">\n${html}\n</d
 const days = (a, b) => Math.round((new Date(b + 'T00:00:00Z') - new Date(a + 'T00:00:00Z')) / 864e5);
 
 // list: 장부(data/zip_registry.json)의 공고들. res: 공고번호 → { d(분양가가 비교 시세보다 높으면 + %), leasehold } | { text }
-export function openPage(list, today, res = {}) {
+// 첫 화면 맨 위 「심층 분석」(2026-10-30 사용자 지시: 심층 분석 글을 메인 콘텐츠로). deeps: 공개된 zip/deep.mjs 글 자료 { key, link, title, excerpt, card },
+// 접수 중·예정 공고가 위, 그중 접수가 가장 가까운 글을 크게. 그림은 분양 시세비교 목록과 같은 조감도(views)
+export function deepCards(deeps, list, today, views = {}) {
+  const reg = Object.fromEntries(list.map((r) => [r.no, r]));
+  const items = deeps.filter((d) => d.status === 'publish' && reg[d.key]).map((d) => ({ ...d, r: reg[d.key], rc: receiptOf(reg[d.key].phases) }));
+  if (!items.length) return '';
+  const open = items.filter((x) => !closedOf(x.r.phases, today)).sort((a, b) => ((a.rc?.start || '9') < (b.rc?.start || '9') ? -1 : 1));
+  const done = items.filter((x) => closedOf(x.r.phases, today));
+  const status = (x) => (!x.rc ? '' : closedOf(x.r.phases, today) ? '<span class="az-status end">접수 마감</span>' : today < x.rc.start ? `<span class="az-status">D-${days(today, x.rc.start)}</span>` : '<span class="az-status">접수 중</span>');
+  const meta = (x) => [esc(areaOf(x.r)), x.rc ? `접수 ${span(x.rc.start, x.rc.end)}` : '', status(x)].filter(Boolean).join(' · ');
+  const img = (x, cls) => { const v = views[x.key]; return v?.url ? `<a class="${cls}" href="${esc(x.link)}" tabindex="-1" aria-hidden="true"><img src="${esc(v.url)}" alt="" width="800" height="500"${cls === 'az-deep-img' ? '' : ' loading="lazy"'}></a>` : ''; };
+  const cap = (x) => { const v = views[x.key], href = v?.page || v?.homepage, site = esc(v?.site || '분양 홈페이지'); return v?.url ? `<p class="az-deep-cap">${esc(v.label || '조감도')} · ${href ? `<a href="${esc(href)}" rel="nofollow noopener">${site}</a>` : site}</p>` : ''; };
+  const [lead, ...rest] = [...open, ...done];
+  return [
+    '<section class="az-deep" aria-labelledby="az-deep-h">',
+    '<div class="az-deep-head"><h2 id="az-deep-h">심층 분석</h2><p>공고문, 공식 자료, 유튜브 영상 여러 편을 함께 정리해 자격·필요한 현금·쟁점을 한 글로 묶었습니다.</p></div>',
+    `<article class="az-deep-lead"><div>${img(lead, 'az-deep-img')}${cap(lead)}</div><div class="az-deep-body"><p class="az-vmeta">${meta(lead)}</p><h3><a href="${esc(lead.link)}">${esc(lead.title)}</a></h3><p class="az-vex">${esc(lead.excerpt)}</p>${lead.card?.length ? `<ul class="az-deep-facts">${lead.card.map((t) => `<li>${esc(t)}</li>`).join('')}</ul>` : ''}<p class="az-deep-go"><a href="${esc(lead.link)}">심층 분석 읽기</a></p></div></article>`,
+    rest.length ? `<ul class="az-vlist">${rest.map((x) => `<li class="az-vitem"><div class="az-vtext"><p class="az-vmeta">${meta(x)}</p><h2><a href="${esc(x.link)}">${esc(x.title)}</a></h2><p class="az-vex">${esc(x.excerpt)}</p></div>${img(x, 'az-vimg') ? `<figure class="az-vimg">${img(x, '')}</figure>` : ''}</li>`).join('')}</ul>` : '',
+    '</section>',
+  ].join('\n');
+}
+
+export function openPage(list, today, res = {}, deep = '') {
   const status = (r) => { const rc = receiptOf(r.phases); if (!rc) return ''; if (today < rc.start) return `<span class="az-status">D-${days(today, rc.start)}</span>`; return rc.end >= today ? '<span class="az-status">접수 중</span>' : ''; };
   const result = (r) => { const x = res[r.no]; if (!x) return '-'; if (x.text) return `<span class="az-cmp-t">${esc(x.text)}</span>`; if (x.leasehold) return '<span class="az-cmp-t">토지임대부라 땅값이 빠진 분양가입니다</span>'; return cmpBar(x.d); };
   const row = (r) => { const rc = receiptOf(r.phases); return [`${link(`https://auleezip.com/${r.slug || 'apt-' + r.no}/`, shortName(r.name))} ${status(r)}`, esc(areaOf(r)), r.source === 'sh' ? esc(r.kind) : r.kind === '무순위' ? '무순위' : '분양', rc ? span(rc.start, rc.end) : '-', result(r)]; };
@@ -19,7 +41,8 @@ export function openPage(list, today, res = {}) {
   const done = list.filter((r) => closedOf(r.phases, today)).sort((a, b) => ((receiptOf(a.phases)?.end || '') < (receiptOf(b.phases)?.end || '') ? 1 : -1));
   const head = ['단지', '지역', '구분', { t: '접수', n: true }, '분양가와 주변 시세'];
   return page([
-    `<p>청약 공고마다 분양가(임대 공고는 임대료)를 주변 단지 실거래와 맞춰 본 글을 모았습니다. 막대는 분양가가 비교 단지 시세보다 얼마나 높거나 낮은지입니다. ${esc(today.replaceAll('-', '.'))} 기준이고 매일 아침 다시 만듭니다.</p>`,
+    deep,
+    `${deep ? '<h2>현재 열린 공고</h2>' : ''}<p>청약 공고마다 분양가(임대 공고는 임대료)를 주변 단지 실거래와 맞춰 본 글을 모았습니다. 막대는 분양가가 비교 단지 시세보다 얼마나 높거나 낮은지입니다. ${esc(today.replaceAll('-', '.'))} 기준이고 매일 아침 다시 만듭니다.</p>`,
     `<h2>접수 중·예정 공고 ${open.length}곳</h2>`,
     open.length ? table(head, open.map(row)) : '<p>지금 열려 있는 공고가 없습니다.</p>',
     `<h2>접수가 끝난 공고 ${done.length}곳</h2>`,
