@@ -65,14 +65,14 @@ async function analyzerData(folder) {
 
 // 실을 주장: 가족 맞춤 문장과 가격 전망(전망·검증불가)은 뺀다
 // 이름을 잘못 적거나 잘못 들은 것뿐인 주장도 뺀다(「물현기초」 → 물향기초: 내용은 맞고 표기만 틀림, 2026-10-30 사용자 지시). 금액이 걸린 주장은 남긴다
-const TYPO = /오인식|오타|잘못 (적|표기|들|읽)/, MONEY = /\d\s*(만|억)?\s*원/;
+const TYPO = /오인식|오타|오기|잘못 (적|표기|들|읽)/, MONEY = /\d\s*(만|억)?\s*원/;
 const claimRows = (checks) => (checks || []).filter((c) => c.verdict !== '전망·검증불가' && !FAMILY.test(c.claim + c.note + c.official) && !(TYPO.test(c.note) && !MONEY.test(c.claim)));
 // 출처 매체를 밝히지 않는다(2026-10-30 사용자 결정: 채널·영상 이름을 쓰면 특정인을 깎아내린다는 다툼이 생길 수 있다 — 「공개된 분석 의견을 찾아본 결과」로 포괄해서 쓴다).
 // 리포트 문장에 남은 영상 번호·재생 시각·채널 이름을 지우고 「영상」을 「분석 의견」으로 바꾼다. 남은 흔적은 --lint가 잡는다
 export const scrub = (t, videos = []) => {
   let s = String(t || '').replace(/\s*\((?=[^()]*(?:t=\d|s_\d|\b[A-Za-z0-9_-]{11}\b))[^()]*\)/g, '');
   for (const v of videos) { s = s.replace(new RegExp(`${v.id.slice(0, 4).replace(/-/g, '\\-')}[A-Za-z0-9_-]*,?\\s*`, 'g'), ''); if (v.channel) s = s.split(v.channel).join('다른 분석'); } // 영상 번호는 앞 네 글자만 적힌 곳도 있다
-  return s.replace(/출연자의? 의견/g, '개인 의견').replace(/출연자/g, '의견을 낸 쪽').replace(/로 들리는/g, '로 적힌').replace(/자막 오인식/g, '잘못 적은 이름').replace(/자막/g, '표기').replace(/영상/g, '분석 의견').replace(/\s{2,}/g, ' ').trim();
+  return s.replace(/출연자의? 의견/g, '개인 의견').replace(/출연자/g, '의견을 낸 쪽').replace(/로 들리는/g, '로 적힌').replace(/자막 오인식/g, '잘못 적은 이름').replace(/자막/g, '표기').replace(/영상/g, '분석 의견').replace(/가장 확실하다/g, '가장 정확하다').replace(/\s{2,}/g, ' ').trim();
 };
 // 분석 의견 대조표: 다른 것·공식 자료로 확인 못 한 것을 먼저. 공고문과 맞는 것은 keep(주장 글귀 일부)에 적은 것만 — 글 다른 절과 겹치는 당연한 내용은 뺀다(2026-10-30 사용자 지시)
 const keptOk = (ch, keep) => ch.filter((c) => c.verdict === '맞음' && (!keep || keep.some((k) => c.claim.includes(k))));
