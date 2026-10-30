@@ -14,7 +14,7 @@ import { join } from 'node:path';
 import { ROOT } from '../tistory/common.mjs';
 import { esc } from '../posts/weekly.mjs';
 import { BANNED } from '../posts/check.mjs';
-import { wrap } from './post.mjs';
+import { wrap, planOf, liveDeep } from './post.mjs';
 import { table, keyBox, note, src, chip, keepUnits } from './ui.mjs';
 import { won } from './timeline.mjs';
 
@@ -237,7 +237,7 @@ if (process.argv[1]?.endsWith('deep.mjs')) {
     process.exitCode = issues.length ? 1 : 0;
   } else if (arg('--verify')) {
     // 공개된 심층 분석 글 검수: --verify <키> | --verify all
-    const k = arg('--verify'), all = (await allDeep()).filter((d) => d.status === 'publish' && d.link && (k === 'all' || d.key === k));
+    const k = arg('--verify'), all = (await allDeep()).filter((d) => liveDeep(d) && (k === 'all' || d.key === k));
     for (const d of all) await verifyLive(d.link);
   } else if (arg('--preview')) {
     // 올리기 전 화면 확인용: 사이트 CSS를 입힌 글 한 편 → data/deep/<키>.html
@@ -254,11 +254,17 @@ if (process.argv[1]?.endsWith('deep.mjs')) {
     if (bad.length) { console.log(`올리기 전 검수 실패\n${bad.join('\n')}`); process.exit(1); }
     const img = join(ROOT, 'data/zip_views', `${key}.jpg`);
     post.featured = await uploadMedia(img, `deep-${key}.jpg`, `${post.title}`).catch(() => undefined);
-    const o = await upsert(post, null, now);
-    const d = await loadDeep(key);
-    if (o.ok) await writeFile(join(DIR, `${key}.json`), JSON.stringify({ ...d, link: o.link, status: o.status, id: o.id }, null, 1));
-    console.log(`${o.ok ? '✓' : '✗'} ${o.status} ${o.link}${o.status === 'draft' ? ` (미리보기 https://auleezip.com/?p=${o.id}&preview=true)` : ''}`);
+    // 공개 시각(2026-10-30 사용자 결정): 첫 접수일 7일 전 06:00 예약, 그 시각이 지났으면 바로. 이미 공개된 글은 고쳐도 공개 그대로
+    const d = await loadDeep(key), nos = Object.values(await folders()).find((n) => n.includes(key)) || [key];
+    const { items } = JSON.parse(await readFile(join(ROOT, 'data/deals.json'), 'utf8').catch(() => '{"items":[]}'));
+    const today = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
+    const pl = now && d.status !== 'publish' ? planOf(items.filter((x) => nos.includes(x.no)).flatMap((x) => x.phases || []), today, { lead: 7, time: '06:00' }) : { mode: 'now', why: '이미 공개된 글' };
+    if (now) console.log(`공개 계획: ${pl.mode === 'at' ? `${pl.at} 예약` : '바로'} · ${pl.why}`);
+    const o = await upsert(post, now && pl.mode === 'at' ? pl.at : null, now && pl.mode === 'now');
+    if (o.ok) await writeFile(join(DIR, `${key}.json`), JSON.stringify({ ...d, link: o.link, status: o.status, id: o.id, at: o.status === 'future' ? pl.at : undefined }, null, 1));
+    console.log(`${o.ok ? '✓' : '✗'} ${o.status} ${o.link}${o.status === 'draft' || o.status === 'future' ? ` (미리보기 https://auleezip.com/?p=${o.id}&preview=true)` : ''}`);
     if (o.ok && o.status === 'publish') await verifyLive(o.link);
+    if (o.ok && o.status === 'future') console.log(`게시 뒤 검수는 공개(${pl.at}) 뒤 매일 실행의 --verify all에서`);
   } else {
     for (const [folder, nos] of Object.entries(await folders())) {
       const prog = await readFile(join(BASE, folder, '진행상황.txt'), 'utf8').catch(() => '');

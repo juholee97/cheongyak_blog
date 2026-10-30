@@ -3,7 +3,7 @@
 // node zip/wp.mjs --ping                     연결·권한만 확인
 // node zip/wp.mjs post.json                  임시글(draft)로 올림 — 같은 slug가 있으면 그 글을 고친다
 // node zip/wp.mjs post.json --at "YYYY-MM-DD HH:MM"   그 시각 예약(future)
-// 즉시 공개(--now)는 zip/publish.mjs가 사용자 승인 뒤에만 쓴다(2026-10-28: 접수 1주일 전 예약 글 말고는 즉시 발행)
+// 즉시 공개(--now)는 zip/publish.mjs가 사용자 승인 뒤에만 쓴다(2026-10-30: 시세 비교·임대 글은 바로, 심층 분석 글만 접수 7일 전 06:00 예약)
 // post.json: { slug, title, html, excerpt?, tags?[], categories?[] }  (zip/post.mjs가 만든다)
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -65,7 +65,7 @@ export async function upsert(post, at, now = false) {
   if (u.hit) return { id: u.hit.id, link: u.hit.link, status: u.hit.status, ok: true, skipped: true };
   const [old] = await wp(`posts?slug=${encodeURIComponent(post.slug)}&status=draft,future,publish&context=edit`);
   if (old?.status === 'publish' && !at && !now) throw new Error(`이미 공개된 글(${old.link}) — 고치려면 --at 없이 따로 결정`);
-  const body = { slug: post.slug, title: post.title, content: post.html, excerpt: post.excerpt || '', tags: await termIds('tags', post.tags), categories: await termIds('categories', post.categories), ...(post.featured ? { featured_media: post.featured } : {}), status: at ? 'future' : now ? 'publish' : 'draft', ...(at ? { date: at.replace(' ', 'T') + ':00' } : {}) };
+  const body = { slug: post.slug, title: post.title, content: post.html, excerpt: post.excerpt || '', tags: await termIds('tags', post.tags), categories: await termIds('categories', post.categories), ...(post.featured ? { featured_media: post.featured } : {}), status: at ? 'future' : now ? 'publish' : 'draft', ...(at ? { date: at.replace(' ', 'T') + ':00' } : now && old?.status === 'future' ? { date: new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 19) } : {}) }; // 예약 글을 바로 공개할 때는 날짜도 지금으로(미래 날짜가 남으면 워드프레스가 예약 상태로 둔다)
   const res = await wp(old ? `posts/${old.id}` : 'posts', { method: 'POST', body });
   // 확인: 다시 불러와 제목·본문 길이·상태 대조
   const back = await wp(`posts/${res.id}?context=edit`);

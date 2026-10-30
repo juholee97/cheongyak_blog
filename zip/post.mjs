@@ -50,6 +50,23 @@ export function claimsHtml(cs) {
     src('기사·영상에서 자주 나온 이야기를 정부·지자체·사업주체 공식 자료와 맞춰 본 결과입니다. 공식 자료가 없는 이야기는 사실이 아니라는 뜻이 아니라 확인되지 않았다는 뜻입니다.')];
 }
 
+// 공개 규칙(2026-10-30 사용자 결정 — 10-28의 「접수 7일 전 예약」을 바꿈): 시세 비교·임대 글은 공고가 나오면 바로,
+// 심층 분석 글만 첫 접수일(특별공급·1순위 중 이른 날) lead일 전 time에 예약. 그 시각이 지났거나 접수가 끝났으면 바로.
+// → { mode: 'now' | 'at', at?, why }
+export function planOf(phases, today, { lead = 0, time = '09:00' } = {}) {
+  const dates = (phases || []).filter((p) => ['sp', 'p1'].includes(p.k) && p.date).map((p) => p.date).sort();
+  if (!dates.length) return { mode: 'now', why: '접수일 없음 — 즉시' };
+  if (closedOf(phases, today)) return { mode: 'now', why: '접수 마감 표시로 공개' };
+  if (!lead) return { mode: 'now', why: `접수 ${dates[0]} — 공고가 나와 즉시` };
+  const d = new Date(dates[0] + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() - lead);
+  const when = d.toISOString().slice(0, 10);
+  if (when > today) return { mode: 'at', at: `${when} ${time}`, why: `접수 ${dates[0]} — ${lead}일 전 예약` };
+  return { mode: 'now', why: `접수 ${dates[0]} — ${lead}일 안이라 즉시` };
+}
+// 심층 분석 글이 지금 공개돼 있는지: 공개, 또는 예약 시각(KST 'YYYY-MM-DD HH:MM')이 지난 예약 글(워드프레스가 그 시각에 공개한다)
+export const kstNow = () => new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 16).replace('T', ' ');
+export const liveDeep = (d, now = kstNow()) => !!d.link && (d.status === 'publish' || (d.status === 'future' && !!d.at && d.at <= now));
+
 // 접수 마감 여부: 접수(특별공급·1순위 등) 날짜가 모두 지났으면 마감
 export function closedOf(phases, today) {
   const r = receiptOf(phases); // 접수 기간(date~end)은 끝나는 날이 지나야 마감
@@ -172,7 +189,7 @@ if (process.argv[1]?.endsWith('post.mjs')) {
   const fo = Object.values(JSON.parse(await readFile(join(ROOT, 'data/deep_folders.json'), 'utf8').catch(() => '{}'))), ddir = join(ROOT, 'data/zip_deep'), deepOf = {};
   for (const f of (await readdir(ddir).catch(() => [])).filter((x) => /^\d+\.json$/.test(x))) {
     const d = JSON.parse(await readFile(join(ddir, f), 'utf8')), key = f.slice(0, -5);
-    if (d.status === 'publish' && d.link) for (const no of fo.find((n) => n.includes(key)) || [key]) deepOf[no] = d.link;
+    if (liveDeep(d)) for (const no of fo.find((n) => n.includes(key)) || [key]) deepOf[no] = d.link;
   }
   for (const r of list) {
     if (only && !only.includes(r.no)) continue;

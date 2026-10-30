@@ -1,4 +1,5 @@
-// auleezip.com 공개 규칙(2026-10-28 사용자 결정): 접수까지 7일 넘게 남은 공고만 접수 7일 전 09:00 예약, 나머지는 즉시 발행.
+// auleezip.com 공개 규칙(2026-10-30 사용자 결정): 시세 비교·임대 글은 공고가 나오면 바로 발행(예전 「접수 7일 전 09:00 예약」은 폐기).
+// 심층 분석 글만 첫 접수일 7일 전 06:00 예약(zip/deep.mjs, 규칙은 zip/post.mjs planOf) — 06:00이라 07:00 매일 실행이 그날 첫 화면·시세 비교 글에 연결한다.
 // 접수가 끝난 공고도 글에 「접수 마감」 표시를 달아 계속 공개한다(현재 열린 공고 페이지로 보내 사이트 안을 돌게 한다).
 // node zip/publish.mjs          계획만 출력(올리지 않음)
 // node zip/publish.mjs --go     계획대로 올리고 다시 불러와 대조 + 고정 페이지(열린 공고·비교 기준·소개·개인정보) 갱신 + 캐시 비우기
@@ -8,7 +9,8 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { ROOT } from '../tistory/common.mjs';
 import { upsert, upsertPage, uploadMedia, wp } from './wp.mjs';
-import { closedOf } from './post.mjs';
+import { closedOf, planOf, liveDeep } from './post.mjs';
+export { planOf }; // zip/sh_write.mjs가 여기서 불러 쓴다
 import { openPage, methodPage, aboutPage, privacyPage, saleList } from './pages.mjs';
 import { allDeep, folders as deepFolders } from './deep.mjs';
 import { loadViews } from './views.mjs';
@@ -17,25 +19,18 @@ import { purge } from './site.mjs';
 
 const kst = () => new Date(Date.now() + 9 * 3600e3);
 const ymd = (d) => d.toISOString().slice(0, 10);
-const addDays = (s, n) => { const d = new Date(s + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return ymd(d); };
-
-// 공고 → 공개 계획: { mode: 'now' | 'at', at?, why }
-export function planOf(phases, today) {
-  const dates = (phases || []).filter((p) => ['sp', 'p1'].includes(p.k) && p.date).map((p) => p.date).sort();
-  if (!dates.length) return { mode: 'now', why: '접수일 없음 — 즉시' };
-  if (closedOf(phases, today)) return { mode: 'now', why: '접수 마감 표시로 공개' };
-  const when = addDays(dates[0], -7);
-  if (when > today) return { mode: 'at', at: `${when} 09:00`, why: `접수 ${dates[0]} — 1주일 전 예약` };
-  return { mode: 'now', why: `접수 ${dates[0]} — 1주일 안이라 즉시` };
-}
 
 if (process.argv.includes('--check')) {
   const assert = (await import('node:assert/strict')).default;
   const P = (d) => [{ k: 'p1', date: d }];
-  assert.equal(planOf(P('2026-11-20'), '2026-10-28').at, '2026-11-13 09:00');
-  assert.equal(planOf(P('2026-11-04'), '2026-10-28').mode, 'now'); // 정확히 7일 전이면 오늘이 그날이라 즉시
-  assert.equal(planOf(P('2026-11-05'), '2026-10-28').mode, 'at'); // 8일 남음 → 내일 09:00 예약
-  assert.equal(planOf(P('2026-10-27'), '2026-10-28').why, '접수 마감 표시로 공개'); // 끝난 공고도 공개
+  const D = { lead: 7, time: '06:00' }; // 심층 분석 글
+  assert.equal(planOf(P('2026-11-20'), '2026-10-28').mode, 'now'); // 시세 비교 글은 접수가 멀어도 바로
+  assert.equal(planOf(P('2026-11-20'), '2026-10-28', D).at, '2026-11-13 06:00');
+  assert.equal(planOf(P('2026-11-04'), '2026-10-28', D).mode, 'now'); // 정확히 7일 전이면 오늘이 그날이라 즉시
+  assert.equal(planOf(P('2026-11-05'), '2026-10-28', D).mode, 'at'); // 8일 남음 → 내일 06:00 예약
+  assert.equal(planOf(P('2026-10-27'), '2026-10-28', D).why, '접수 마감 표시로 공개'); // 끝난 공고도 공개
+  assert.equal(liveDeep({ link: 'x', status: 'future', at: '2026-11-13 06:00' }, '2026-11-13 05:59'), false);
+  assert.equal(liveDeep({ link: 'x', status: 'future', at: '2026-11-13 06:00' }, '2026-11-13 07:00'), true); // 예약 시각이 지나면 공개된 것으로
   const { eventsOf } = await import('./pages.mjs'); // 첫 화면 일정: 기간 접수는 주말을 빼고 날마다, 무순위 접수는 「접수」
   assert.deepEqual(Object.keys(eventsOf({ kind: 'APT', phases: [{ k: 'p1', date: '2026-11-06', end: '2026-11-09' }] })), ['2026-11-06', '2026-11-09']);
   assert.deepEqual(eventsOf({ kind: '무순위', phases: [{ k: 'p1', date: '2026-11-02' }, { k: 'win', date: '2026-11-02' }] })['2026-11-02'], ['접수', '발표']);
@@ -74,7 +69,7 @@ if (process.argv.includes('--check')) {
     for (const u of sh) if (u.result && !u.result.insufficient) (by[u.id] ||= []).push(Math.round(u.result.ratio * 100));
     for (const [id, rs] of Object.entries(by)) { const lo = Math.min(...rs), hi = Math.max(...rs); res[id] = { text: `월세가 주변 거래의 ${lo === hi ? lo : `${lo}~${hi}`}%` }; }
     // 첫 화면 오른쪽 「심층 분석」(zip/deep.mjs로 공개한 글 — 다루는 공고번호는 data/deep_folders.json)
-    const fo = Object.values(await deepFolders()), deeps = (await allDeep()).filter((d) => d.status === 'publish').map((d) => ({ ...d, nos: fo.find((n) => n[0] === d.key) || [d.key] }));
+    const fo = Object.values(await deepFolders()), deeps = (await allDeep()).filter((d) => liveDeep(d)).map((d) => ({ ...d, nos: fo.find((n) => n[0] === d.key) || [d.key] }));
     const pages = [['open-notices', '현재 열린 공고', openPage(Object.values(reg), today, res, deeps, await loadViews())], ['method', '비교 기준', methodPage()], ['about', '소개', aboutPage()], ['privacy', '개인정보처리방침', privacyPage()]];
     let openId;
     for (const [slug, title, html] of pages) { const o = await upsertPage({ slug, title, html }); if (slug === 'open-notices') openId = o.id; console.log(`${o.ok ? '✓' : '✗'} 페이지 ${slug} ${o.link}`); }
