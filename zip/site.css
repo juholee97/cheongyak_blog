@@ -343,10 +343,11 @@ a:hover{color:var(--az-ink)}
 .az-front p,.az-front h2,.az-front h3,.az-front ul{margin:0}
 .az-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 .az-flead{font-size:14.5px;color:var(--az-sub)}
-.az-front .az-sum{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));margin-top:18px;border-top:2px solid var(--az-ink);border-bottom:1px solid #c9d2da}
+.az-fdate{color:var(--az-blue);font-weight:600;font-variant-numeric:tabular-nums}
+.az-front .az-sum{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));margin-top:18px;border-top:2px solid var(--az-blue);border-bottom:1px solid #c9d2da}
 .az-sum>div{padding:14px 18px;border-left:1px solid var(--az-line)}
 .az-sum>div:first-child{border-left:0;padding-left:0}
-.az-sum .lb{font-size:12.5px;color:var(--az-sub)}
+.az-sum .lb{font-size:12.5px;font-weight:600;color:var(--az-blue)}
 .az-sum .num{font-size:28px;font-weight:600;line-height:1.25;margin-top:2px}
 .az-sum ul{list-style:none;margin:8px 0 0!important;padding:0!important;font-size:13px;line-height:1.5}
 .az-sum li{display:flex;gap:8px;margin:0;padding-left:0!important;justify-content:space-between;align-items:baseline;padding:3px 0;border-top:1px dashed var(--az-line)}

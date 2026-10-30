@@ -81,7 +81,7 @@ export function openPage(list, today, res = {}, deeps = [], views = {}) {
   return page([
     `<style>${dayCss}</style>`,
     '<form class="az-front" action="#">',
-    `<p class="az-flead">청약 공고마다 분양가(임대는 임대료)를 주변 단지 실거래와 맞춰 봤습니다. ${esc(today.replaceAll('-', '.'))} 기준이고 매일 아침 다시 만듭니다.</p>`,
+    `<p class="az-flead">청약 공고마다 분양가(임대는 임대료)를 주변 단지 실거래와 맞춰 봤습니다. <time class="az-fdate" datetime="${today}">${esc(today.replaceAll('-', '.'))} 기준</time>이고 매일 아침 다시 만듭니다.</p>`,
     `<div class="az-sum">${sum}</div>`,
     `<section class="az-days" aria-labelledby="az-days-h"><div class="az-days-head"><h2 id="az-days-h">청약 일정 2주</h2><p>날짜를 누르면 그날 일정이 있는 공고만 봅니다 · 전체 일정은 ${link(CAL_URL, '우리의 청약달력')}</p>${opt('az-d', 'az-d0', '날짜 해제', 'az-dclear', true)}</div><div class="az-days-row" role="radiogroup" aria-label="청약 일정 날짜">${dayList.map(day).join('')}</div></section>`,
     '<div class="az-fgrid"><section class="az-fmain" aria-label="공고 목록">',
