@@ -51,7 +51,9 @@ async function analyzerData(folder) {
 }
 
 // 실을 주장: 가족 맞춤 문장과 가격 전망(전망·검증불가)은 뺀다
-const claimRows = (checks) => (checks || []).filter((c) => c.verdict !== '전망·검증불가' && !FAMILY.test(c.claim + c.note + c.official));
+// 이름을 잘못 적거나 잘못 들은 것뿐인 주장도 뺀다(「물현기초」 → 물향기초: 내용은 맞고 표기만 틀림, 2026-10-30 사용자 지시). 금액이 걸린 주장은 남긴다
+const TYPO = /오인식|오타|잘못 (적|표기|들|읽)/, MONEY = /\d\s*(만|억)?\s*원/;
+const claimRows = (checks) => (checks || []).filter((c) => c.verdict !== '전망·검증불가' && !FAMILY.test(c.claim + c.note + c.official) && !(TYPO.test(c.note) && !MONEY.test(c.claim)));
 // 출처 매체를 밝히지 않는다(2026-10-30 사용자 결정: 채널·영상 이름을 쓰면 특정인을 깎아내린다는 다툼이 생길 수 있다 — 「공개된 분석 의견을 찾아본 결과」로 포괄해서 쓴다).
 // 리포트 문장에 남은 영상 번호·재생 시각·채널 이름을 지우고 「영상」을 「분석 의견」으로 바꾼다. 남은 흔적은 --lint가 잡는다
 export const scrub = (t, videos = []) => {
