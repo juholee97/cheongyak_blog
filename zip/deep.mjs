@@ -74,10 +74,11 @@ export const scrub = (t, videos = []) => {
   let s = String(t || '').replace(/\s*\((?=[^()]*(?:t=\d|s_\d|\b[A-Za-z0-9_-]{11}\b))[^()]*\)/g, '');
   for (const v of videos) { // 영상 번호는 앞 네 글자만 적힌 곳도 있다. 조사가 바로 붙은 번호(「…에도 나온다」)는 「다른 분석 의견」으로 바꾸고 조사를 맞춘다
     const id = `${v.id.slice(0, 4).replace(/-/g, '\\-')}[A-Za-z0-9_-]*`;
-    s = s.replace(new RegExp(`(?:영상\\s*)?${id}(는|가|를|와|에도|도|의|에서|에)`, 'g'), (_, j) => `다른 분석 의견${{ 는: '은', 가: '이', 를: '을', 와: '과' }[j] || j}`).replace(new RegExp(`${id},?\\s*`, 'g'), '');
+    const at = '(?:\\s*\\([^()]*초\\))?'; // 번호 뒤에 붙은 재생 시점 「(539초)」
+    s = s.replace(new RegExp(`(?:영상\\s*)?${id}${at}(는|가|를|와|에도|도|의|에서|에)`, 'g'), (_, j) => `다른 분석 의견${{ 는: '은', 가: '이', 를: '을', 와: '과' }[j] || j}`).replace(new RegExp(`${id}${at},?\\s*`, 'g'), '');
     if (v.channel) s = s.split(v.channel).join('다른 분석');
   }
-  return s.replace(/출연자의? 의견/g, '개인 의견').replace(/출연자/g, '의견을 낸 쪽').replace(/로 들리는/g, '로 적힌').replace(/자막 오인식/g, '잘못 적은 이름').replace(/자막/g, '표기').replace(/영상/g, '분석 의견').replace(/가장 확실하다/g, '가장 정확하다').replace(/\s{2,}/g, ' ').trim();
+  return s.replace(/출연자의? 의견/g, '개인 의견').replace(/출연자/g, '의견을 낸 쪽').replace(/로 들리는/g, '로 적힌').replace(/자막 오인식/g, '잘못 적은 이름').replace(/자막/g, '표기').replace(/영상/g, '분석 의견').replace(/가장 확실하다/g, '가장 정확하다').replace(/\bnotice(?:_[0-9a-f]+)?/g, '공고문').replace(/공고문·공고문/g, '공고문') // 리포트의 내부 파일 이름(notice_849f1ea1 = 공고문 원문).replace(/\s{2,}/g, ' ').trim();
 };
 // 분석 의견 대조표: 다른 것·공식 자료로 확인 못 한 것을 먼저. 공고문과 맞는 것은 keep(주장 글귀 일부)에 적은 것만 — 글 다른 절과 겹치는 당연한 내용은 뺀다(2026-10-30 사용자 지시)
 const keptOk = (ch, keep) => ch.filter((c) => c.verdict === '맞음' && (!keep || keep.some((k) => c.claim.includes(k))));
@@ -172,7 +173,7 @@ export async function render(key, { local = false } = {}) {
 export function leftovers(html) {
   const t = String(html).replace(/<(script|style)[\s\S]*?<\/\1>/g, ' ').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n))
     .replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
-  const pats = [[/\*\*|__/g, '굵게 표시(** __)가 그대로 보임'], [/\[\[|\]\]/g, '색 표시([[ ]])가 그대로 보임'], [/&#?[A-Za-z0-9]+;/g, '문자 코드(&#…;)가 그대로 보임'], [/(^|\s)#{1,6}\s/g, '제목 표시(#)가 그대로 보임'], [/\\n/g, '줄바꿈 \\n이 글자로 보임'], [/\b(undefined|NaN|null)\b|\[object /g, '빈 값(undefined·NaN·null)']];
+  const pats = [[/\*\*|__/g, '굵게 표시(** __)가 그대로 보임'], [/\[\[|\]\]/g, '색 표시([[ ]])가 그대로 보임'], [/&#?[A-Za-z0-9]+;/g, '문자 코드(&#…;)가 그대로 보임'], [/(^|\s)#{1,6}\s/g, '제목 표시(#)가 그대로 보임'], [/\\n/g, '줄바꿈 \\n이 글자로 보임'], [/\b(undefined|NaN|null)\b|\[object /g, '빈 값(undefined·NaN·null)'], [/\(\d+초\)|\bnotice\b|장면 s_\d/g, '리포트 안쪽 표시(재생 시점·notice·장면 번호)가 남음']];
   return pats.flatMap(([re, m]) => [...t.matchAll(re)].slice(0, 3).map((x) => `${m}: 「${t.slice(Math.max(0, x.index - 18), x.index + 22).replace(/\s+/g, ' ').trim()}」`));
 }
 
@@ -221,6 +222,8 @@ if (process.argv[1]?.endsWith('deep.mjs')) {
     assert.deepEqual([g.lead, g.head, g.items.length], ['공고문에는 GTX 관련 서술이 없다.', '웹 자료', 3]);
     assert.equal(listItems('공고문: 3단지 주차 779대 / 472세대, 4단지 724대 / 472세대').items[0], '3단지 주차 779대 / 472세대');
     assert.equal(scrub('같은 주장이 NEwy2SruxEA(t=827)에도 나온다', [{ id: 'NEwy2SruxEA' }]), '같은 주장이 다른 분석 의견에도 나온다');
+    assert.equal(scrub('iqwICfKxfTg(539초)는 같은 사실을 지적했다', [{ id: 'iqwICfKxfTg' }]), '다른 분석 의견은 같은 사실을 지적했다');
+    assert.equal(scrub('무순위 공고문·notice 정리, notice_849f1ea1 38쪽'), '무순위 공고문 정리, 공고문 38쪽');
     assert.ok(leftovers('<p>(가칭)계양2초 **개교시기 미정**으로</p>').length > 0);
     assert.ok(leftovers('<p>a &amp;#34; b</p>').length > 0);
     assert.equal(leftovers('<p>개교 <b>시기 미정</b>, 21% 높음</p><style>a{b:c}</style>').length, 0);
