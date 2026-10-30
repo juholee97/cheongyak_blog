@@ -24,6 +24,8 @@ node zip\sh_write.mjs --publish --live >> data\logs\zip_daily.log 2>&1
 node zip\publish.mjs --go >> data\logs\zip_daily.log 2>&1
 rem auleezip deep-analysis posts: re-check published pages for leftover markup (scheduled posts go live 06:00, 7 days before first receipt) (2026-10-30)
 node zip\deep.mjs --verify all >> data\logs\zip_daily.log 2>&1
+rem auleezip deep-analysis targets (2026-10-31 user decision): sale notices (APT, unranked, random) in the capital area or key regional districts, receipt 3+ days away -> analyzer folder + data\deep_folders.json
+node zip\deep_targets.mjs --make >> data\logs\zip_daily.log 2>&1
 rem SH notices whose schedule is only in attachments: read the viewer page images with OCR (tools\ocr_venv) -> crawler\sh_attach.json (commit it to reach the calendar) (2026-10-28)
 node crawler\sh_attach.mjs >> data\logs\sh_attach.log 2>&1
 call crawler\push_attach.bat

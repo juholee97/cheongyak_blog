@@ -408,7 +408,6 @@ a.az-bd.deep{background:var(--az-ink);color:#fff}
 .az-front:has(#az-g1:checked) .az-ft tbody tr:not([data-g="서울"]),.az-front:has(#az-g2:checked) .az-ft tbody tr:not([data-g="경기"]),.az-front:has(#az-g3:checked) .az-ft tbody tr:not([data-g="인천"]),.az-front:has(#az-g4:checked) .az-ft tbody tr:not([data-g="지방"]){display:none!important}
 .az-front:has(#az-k1:checked) .az-ft tbody tr:not([data-k="분양"]),.az-front:has(#az-k2:checked) .az-ft tbody tr:not([data-k="무순위"]),.az-front:has(#az-k3:checked) .az-ft tbody tr:not([data-k="임대"]){display:none!important}
 .az-front:has(#az-d0:checked):not(:has(#az-c:checked)) .az-ft tr.cl{display:none!important}
-.az-front:has(#az-s1:checked) .az-ft tbody.s0,.az-front:has(#az-s2:checked) .az-ft tbody.s0,.az-front:not(:has(#az-s1:checked)) .az-ft tbody.s1,.az-front:not(:has(#az-s2:checked)) .az-ft tbody.s2{display:none}
 .az-ft{counter-reset:azn}
 .az-ft tbody tr{counter-increment:azn}
 .az-ft tfoot td{border-bottom:0;padding-top:10px;font-size:13px;color:var(--az-sub)}
@@ -587,3 +586,23 @@ body:has(.az-deep-post) .az-head>*{max-width:880px}
 .az-ft td,.az-ft th{padding-left:6px;padding-right:6px}
 .az-ft td.c1{min-width:150px}
 .az-ft .az-deepbtn{padding:7px 11px;font-size:12.5px}
+/* 글이 없는 공고: 비교 칸에 공고 원문 링크(2026-10-31) */
+.az-orig{font-size:13px;color:var(--az-sub);text-decoration:underline;text-underline-offset:3px;white-space:nowrap}
+.az-orig::after{content:"\00a0↗"}
+/* 공고 표 한 벌 + 정렬 순번(2026-10-31): 줄을 grid로 그려 tbody(flex) 안에서 order로 정렬한다(pages.mjs rank1·rank2). 표를 세 벌 그리면 글이 커져 502 */
+.az-ft tbody{display:flex;flex-direction:column}
+.az-front:has(#az-s1:checked) .az-ft tbody tr{order:var(--o1)}
+.az-front:has(#az-s2:checked) .az-ft tbody tr{order:var(--o2)}
+.az-front:has(#az-s1:checked) .az-ft tbody tr:not(.o1),.az-front:has(#az-s2:checked) .az-ft tbody tr:not(.o2){display:none!important}
+@media (min-width:901px){
+  .az-ft,.az-ft thead,.az-ft tfoot{display:block}
+  .az-ft tr{display:grid;grid-template-columns:minmax(150px,1fr) 88px 80px 152px 124px 112px 90px;align-items:center;border-bottom:1px solid #c9d2da}
+  .az-ft thead tr{background:var(--az-panel);border-top:2px solid var(--az-ink);border-bottom:1px solid var(--az-ink)}
+  .az-ft th{background:none;border:0}
+  .az-ft td{border-bottom:0}
+  .az-ft td.c1{min-width:0}
+  .az-ft td.c7{width:auto}
+  .az-ft tr.cl{background:#fafbfc}
+  .az-ft tfoot tr{display:block;border:0}
+}
+.az-fnm>a.az-ext::after{content:"\00a0↗";font-weight:400;color:var(--az-sub);font-size:.85em}
