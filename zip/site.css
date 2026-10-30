@@ -262,23 +262,8 @@ a:hover{color:var(--az-ink)}
 .az-status.end{color:var(--az-sub)}
 
 /* 첫 화면 맨 위 「심층 분석」(zip/pages.mjs deepCards): 접수가 가장 가까운 글을 크게, 나머지는 목록 */
-.az-deep{margin:0 0 40px;padding-bottom:8px;border-bottom:3px solid var(--az-ink)}
-.az-deep-head h2{font-size:clamp(20px,0.6vw + 17px,23px);margin:0}
-.az-deep-head p{font-size:14.5px;color:var(--az-sub);margin:4px 0 0;max-width:720px}
-.az-deep-lead{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:32px;margin:18px 0 0;padding-bottom:24px;align-items:start}
-.az-deep-img img{display:block;width:100%;height:auto;aspect-ratio:16/10;object-fit:cover;border-radius:6px;background:var(--az-panel)}
 .az-deep-cap{font-size:11.5px;color:var(--az-sub);margin:5px 0 0;line-height:1.4}
 .az-deep-cap a{color:inherit}
-.az-deep-body h3{font-size:clamp(19px,0.6vw + 16px,22px);line-height:1.45;margin:6px 0 0}
-.az-deep-body h3 a{color:var(--az-ink);text-decoration:none}
-.az-deep-body h3 a:hover{color:var(--az-blue)}
-.az-deep-facts{list-style:none;margin:14px 0 0;padding:12px 16px;background:var(--az-panel);border-radius:6px}
-.az-deep-facts li{font-size:14.5px;line-height:1.6;padding-left:14px;position:relative}
-.az-deep-facts li::before{content:"";position:absolute;left:0;top:.7em;width:5px;height:5px;border-radius:50%;background:var(--az-blue)}
-.az-deep-facts li+li{margin-top:4px}
-.az-deep-go{margin:14px 0 0;font-size:15px;font-weight:600}
-.az-deep-go a::after{content:" →"}
-.az-deep .az-vlist{border-top:1px solid var(--az-line)}
 /* 심층 분석 글: 기본 정보 그리드(이름 | 3단지 | 4단지, 같은 값은 한 칸) · 타임라인 그림 */
 .az-grid{margin:16px 0 0;border-top:2px solid var(--az-ink)}
 .az-grid-r{display:grid;grid-template-columns:132px repeat(var(--n),minmax(0,1fr));gap:0 16px;padding:11px 0;border-bottom:1px solid var(--az-line);font-size:15.5px;line-height:1.6}
@@ -316,9 +301,6 @@ a:hover{color:var(--az-ink)}
   .az-claims .az-stack td::before{display:block;margin-bottom:2px}
 }
 .az-more summary{cursor:pointer;font-size:15px;font-weight:600;color:var(--az-blue)}
-@media (max-width:820px){
-  .az-deep-lead{grid-template-columns:minmax(0,1fr);gap:16px}
-}
 @media (max-width:640px){
   .az-vitem{grid-template-columns:minmax(0,1fr) 104px;gap:14px;padding:18px 0}
   .az-vimg img{aspect-ratio:1/1}
@@ -326,4 +308,127 @@ a:hover{color:var(--az-ink)}
   .az-vph{aspect-ratio:1/1;font-size:11.5px;padding:8px}
   .az-vex{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;font-size:14px}
   .az-vtext h2{font-size:16.5px}
+}
+
+/* 첫 화면(현재 열린 공고, 2026-10-30 승인 시안): 넓은 두 단 + 골라 보기. .home은 첫 화면에만 붙는다 */
+.home .az-head,.home .az-content,.home .az-header-in,.home .az-footer-in{max-width:1280px;padding-left:32px;padding-right:32px}
+.home .az-head>*,.home .az-content>:not(.az){max-width:none}
+.az-front{display:block;min-width:0}
+.az-front p,.az-front h2,.az-front h3,.az-front ul{margin:0}
+.az-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.az-flead{font-size:14.5px;color:var(--az-sub)}
+.az-front .az-sum{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));margin-top:18px;border-top:2px solid var(--az-ink);border-bottom:1px solid #c9d2da}
+.az-sum>div{padding:14px 18px;border-left:1px solid var(--az-line)}
+.az-sum>div:first-child{border-left:0;padding-left:0}
+.az-sum .lb{font-size:12.5px;color:var(--az-sub)}
+.az-sum .num{font-size:24px;font-weight:600;line-height:1.3;margin-top:2px}
+.az-front .az-days{margin-top:26px}
+.az-days-head{display:flex;justify-content:space-between;align-items:baseline;gap:6px 14px;flex-wrap:wrap}
+.az-days-head h2{font-size:17px}
+.az-days-head p{font-size:12.5px;color:var(--az-sub)}
+.az-days-row{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:6px;margin-top:10px}
+.az-day{display:block;box-sizing:border-box;width:100%;min-height:58px;text-align:left;border:1px solid var(--az-line);border-radius:6px;background:#fff;padding:8px 10px;cursor:pointer;font:inherit;color:inherit}
+.az-day:hover{border-color:var(--az-gray)}
+.az-day.wk{border-left:3px solid var(--az-gray)}
+.az-day .dt{display:block;font-size:14px;font-weight:600}
+.az-day .dt small{font-size:12px;color:var(--az-sub);font-weight:400;margin-left:3px}
+.az-day .ct{display:block;font-size:11.5px;color:var(--az-sub);line-height:1.45;margin-top:3px}
+.az-fgrid{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:40px;margin-top:28px;align-items:start}
+.az-fbar{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;padding-bottom:12px;border-bottom:1px solid var(--az-line)}
+.az-fg{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+.az-fg>span{font-size:12.5px;color:var(--az-sub);margin-right:4px}
+.az-fc{border:1px solid #c9d2da;background:#fff;border-radius:999px;padding:0 12px;height:32px;font:inherit;font-size:13.5px;color:var(--az-ink);cursor:pointer;white-space:nowrap}
+.az-fc:hover{border-color:var(--az-sub)}
+.az-fck{display:flex;align-items:center;gap:6px;font-size:13.5px;color:var(--az-sub);cursor:pointer}
+.az-fck input{width:16px;height:16px;accent-color:var(--az-blue)}
+.az-fres{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:12px;font-size:13px;color:var(--az-sub)}
+.az-fres b{color:var(--az-ink)}
+.az-fres button{border:0;background:none;padding:0;font:inherit;font-size:13px;color:var(--az-blue);text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.az-ft{width:100%;border-collapse:collapse;margin-top:8px;font-size:14.5px;line-height:1.5}
+.az-ft th{font-size:12.5px;font-weight:600;color:var(--az-sub);text-align:left;padding:9px 8px;background:var(--az-panel);border-top:2px solid var(--az-ink);border-bottom:1px solid var(--az-ink);white-space:nowrap}
+.az-ft .n{text-align:right;white-space:nowrap}
+.az-ft td{padding:12px 8px;border-bottom:1px solid #c9d2da;vertical-align:middle}
+.az-ft td.c2,.az-ft td.c3,.az-ft td.c4{color:var(--az-sub);white-space:nowrap}
+.az-ft td.c5 small{font-size:12px;color:var(--az-sub);margin-left:4px}
+.az-ft td.c1{min-width:180px}
+.az-ft .az-dv{width:110px}
+.az-ft tr.cl td{background:#fafbfc}
+.az-fnm{font-weight:600}
+.az-fnm>a:first-child{color:var(--az-ink);text-decoration:none}
+.az-fnm>a:first-child:hover{color:var(--az-blue);text-decoration:underline}
+.az-bd{display:inline-block;font-size:11.5px;font-weight:600;padding:0 6px;border-radius:4px;line-height:1.7;margin-left:6px;vertical-align:1px;white-space:nowrap;text-decoration:none}
+.az-bd.d{background:#dbe5f2;color:#173f73}
+.az-bd.now{background:var(--az-dn-soft);color:#0b5a53}
+.az-bd.end{background:#eceff2;color:var(--az-sub)}
+a.az-bd.deep{background:var(--az-ink);color:#fff}
+.az-fev{display:none;font-size:11.5px;color:var(--az-up);background:var(--az-up-soft);padding:0 6px;border-radius:4px;line-height:1.7;margin-top:3px}
+.az-fmain .az-src{margin-top:12px}
+.az-front input:checked+label.az-fc{background:var(--az-ink);border-color:var(--az-ink);color:#fff}
+.az-front input:checked+label.az-day{border-color:var(--az-blue);background:#dbe5f2}
+.az-front input:disabled+label.az-day{cursor:default;color:var(--az-sub);background:var(--az-panel)}
+.az-front input:focus-visible+label{outline:2px solid var(--az-blue);outline-offset:2px}
+.az-fc{display:inline-flex;align-items:center}
+.az-dclear{display:none;font-size:12.5px;color:var(--az-blue);text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.az-front:has(.az-days input.az-x:checked) .az-dclear{display:inline}
+.az-fres button{display:none}
+.az-front:has(.az-x:checked) .az-fres button{display:inline}
+.az-front:has(#az-g1:checked) .az-ft tbody tr:not([data-g="서울"]),.az-front:has(#az-g2:checked) .az-ft tbody tr:not([data-g="경기"]),.az-front:has(#az-g3:checked) .az-ft tbody tr:not([data-g="인천"]),.az-front:has(#az-g4:checked) .az-ft tbody tr:not([data-g="지방"]){display:none!important}
+.az-front:has(#az-k1:checked) .az-ft tbody tr:not([data-k="분양"]),.az-front:has(#az-k2:checked) .az-ft tbody tr:not([data-k="무순위"]),.az-front:has(#az-k3:checked) .az-ft tbody tr:not([data-k="임대"]){display:none!important}
+.az-front:has(#az-d0:checked):not(:has(#az-c:checked)) .az-ft tr.cl{display:none!important}
+.az-front:has(#az-s1:checked) .az-ft tbody.s0,.az-front:has(#az-s2:checked) .az-ft tbody.s0,.az-front:not(:has(#az-s1:checked)) .az-ft tbody.s1,.az-front:not(:has(#az-s2:checked)) .az-ft tbody.s2{display:none}
+.az-ft{counter-reset:azn}
+.az-ft tbody tr{counter-increment:azn}
+.az-ft tfoot td{border-bottom:0;padding-top:10px;font-size:13px;color:var(--az-sub)}
+.az-fcount::before{content:"조건에 맞는 공고 " counter(azn) "곳"}
+.az-frail{display:flex;flex-direction:column;gap:24px}
+.az-rbox{border-top:2px solid var(--az-ink);padding-top:12px}
+.az-rbox h2{font-size:15px;display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.az-rbox h2 a{font-size:12.5px;font-weight:400}
+.az-rdeep article+article{margin-top:18px;padding-top:16px;border-top:1px solid var(--az-line)}
+.az-rdeep img{display:block;width:100%;height:auto;aspect-ratio:16/10;object-fit:cover;border-radius:6px;margin-top:10px;background:var(--az-panel)}
+.az-front .az-rdeep h3{font-size:16px;line-height:1.45;margin-top:10px}
+.az-rdeep h3 a{color:var(--az-ink);text-decoration:none}
+.az-rdeep h3 a:hover{color:var(--az-blue);text-decoration:underline}
+.az-front .az-rdeep ul{list-style:none;margin-top:10px;padding:10px 12px;background:var(--az-panel);border-radius:6px}
+.az-rdeep li{font-size:13px;line-height:1.55;padding-left:12px;position:relative}
+.az-rdeep li::before{content:"";position:absolute;left:0;top:.62em;width:4px;height:4px;background:var(--az-blue)}
+.az-front .az-rdeep .go{margin-top:10px;font-size:14px;font-weight:600}
+.az-rdeep .go a::after{content:" →"}
+.az-front .az-rls{list-style:none;padding:0}
+.az-rls li{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--az-line);font-size:13.5px}
+.az-rls li a{color:var(--az-ink);font-weight:600;text-decoration:none}
+.az-rls li a:hover{color:var(--az-blue);text-decoration:underline}
+.az-rls small{display:block;font-size:12px;color:var(--az-sub)}
+.az-rls b,.az-rls li>span{white-space:nowrap;font-size:13px}
+.az-rls b.dn{color:#0b5a53}
+.az-rls li>span{color:var(--az-sub)}
+@media (max-width:1280px){
+  .az-fgrid{grid-template-columns:minmax(0,1fr)}
+  .az-frail{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+  .az-days-row{grid-template-columns:repeat(5,minmax(0,1fr))}
+}
+@media (max-width:900px){
+  .home .az-head,.home .az-content{padding-left:16px;padding-right:16px}
+  .az-front .az-sum{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .az-sum>div{padding:11px 0 11px 14px}
+  .az-sum>div:nth-child(3){border-left:0;padding-left:0}
+  .az-sum>div:nth-child(n+3){border-top:1px solid var(--az-line)}
+  .az-sum .num{font-size:20px}
+  .az-days-row{display:flex;overflow-x:auto;padding-bottom:4px}
+  .az-day{flex:0 0 96px}
+  .az-fbar{flex-direction:column;align-items:stretch;gap:8px}
+  .az-fg{flex-wrap:nowrap;overflow-x:auto}
+  .az-fc{flex:none}
+  .az-ft thead{display:none}
+  .az-ft,.az-ft tbody{display:block}
+  .az-ft tr{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;padding:12px 0;border-bottom:1px solid #c9d2da}
+  .az-ft td{padding:0;border:0;background:none!important}
+  .az-ft td.c1,.az-ft td.c6{grid-column:1/-1}
+  .az-ft td.c2,.az-ft td.c4{font-size:12.5px}
+  .az-ft td.c3{display:none}
+  .az-ft td.c4{text-align:right}
+  .az-ft td.c5{text-align:left;font-size:13.5px}
+  .az-ft td.c1{min-width:0}
+  .az-ft .az-na{display:none}
+  .az-frail{grid-template-columns:minmax(0,1fr)}
 }

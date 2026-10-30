@@ -4,53 +4,91 @@ import { shortName, areaOf } from '../posts/analysis_post.mjs';
 import { closedOf, receiptOf, span, OPEN_URL, CAL_URL, METHOD_URL } from './post.mjs';
 import { table, cmpBar, note, src } from './ui.mjs';
 import { GAP, RATE } from './deals.mjs';
+import { won } from './timeline.mjs';
 
 const link = (u, t) => `<a href="${esc(u)}">${esc(t)}</a>`;
 const page = (html) => `<!-- wp:html -->\n<div class="az az-page">\n${html}\n</div>\n<!-- /wp:html -->`;
+const DEEP_URL = 'https://auleezip.com/category/%EC%8B%AC%EC%B8%B5-%EB%B6%84%EC%84%9D/';
 const days = (a, b) => Math.round((new Date(b + 'T00:00:00Z') - new Date(a + 'T00:00:00Z')) / 864e5);
 
-// list: 장부(data/zip_registry.json)의 공고들. res: 공고번호 → { d(분양가가 비교 시세보다 높으면 + %), leasehold } | { text }
-// 첫 화면 맨 위 「심층 분석」(2026-10-30 사용자 지시: 심층 분석 글을 메인 콘텐츠로). deeps: 공개된 zip/deep.mjs 글 자료 { key, link, title, excerpt, card },
-// 접수 중·예정 공고가 위, 그중 접수가 가장 가까운 글을 크게. 그림은 분양 시세비교 목록과 같은 조감도(views)
-export function deepCards(deeps, list, today, views = {}) {
-  const reg = Object.fromEntries(list.map((r) => [r.no, r]));
-  const items = deeps.filter((d) => d.status === 'publish' && reg[d.key]).map((d) => ({ ...d, r: reg[d.key], rc: receiptOf(reg[d.key].phases) }));
-  if (!items.length) return '';
-  const open = items.filter((x) => !closedOf(x.r.phases, today)).sort((a, b) => ((a.rc?.start || '9') < (b.rc?.start || '9') ? -1 : 1));
-  const done = items.filter((x) => closedOf(x.r.phases, today));
-  const status = (x) => (!x.rc ? '' : closedOf(x.r.phases, today) ? '<span class="az-status end">접수 마감</span>' : today < x.rc.start ? `<span class="az-status">D-${days(today, x.rc.start)}</span>` : '<span class="az-status">접수 중</span>');
-  const meta = (x) => [esc(areaOf(x.r)), x.rc ? `접수 ${span(x.rc.start, x.rc.end)}` : '', status(x)].filter(Boolean).join(' · ');
-  const img = (x, cls) => { const v = views[x.key]; return v?.url ? `<a class="${cls}" href="${esc(x.link)}" tabindex="-1" aria-hidden="true"><img src="${esc(v.url)}" alt="" width="800" height="500"${cls === 'az-deep-img' ? '' : ' loading="lazy"'}></a>` : ''; };
-  const cap = (x) => { const v = views[x.key], href = v?.page || v?.homepage, site = esc(v?.site || '분양 홈페이지'); return v?.url ? `<p class="az-deep-cap">${esc(v.label || '조감도')} · ${href ? `<a href="${esc(href)}" rel="nofollow noopener">${site}</a>` : site}</p>` : ''; };
-  const [lead, ...rest] = [...open, ...done];
-  return [
-    '<section class="az-deep" aria-labelledby="az-deep-h">',
-    '<div class="az-deep-head"><h2 id="az-deep-h">심층 분석</h2><p>공고문과 공식 자료를 기준으로 공개된 여러 분석 의견을 함께 찾아보고, 사실에 가까운 것과 아닌 것을 가려 자격·필요한 현금·쟁점을 한 글로 정리했습니다.</p></div>',
-    `<article class="az-deep-lead"><div>${img(lead, 'az-deep-img')}${cap(lead)}</div><div class="az-deep-body"><p class="az-vmeta">${meta(lead)}</p><h3><a href="${esc(lead.link)}">${esc(lead.title)}</a></h3><p class="az-vex">${esc(lead.excerpt)}</p>${lead.card?.length ? `<ul class="az-deep-facts">${lead.card.map((t) => `<li>${esc(t)}</li>`).join('')}</ul>` : ''}<p class="az-deep-go"><a href="${esc(lead.link)}">심층 분석 읽기</a></p></div></article>`,
-    rest.length ? `<ul class="az-vlist">${rest.map((x) => `<li class="az-vitem"><div class="az-vtext"><p class="az-vmeta">${meta(x)}</p><h2><a href="${esc(x.link)}">${esc(x.title)}</a></h2><p class="az-vex">${esc(x.excerpt)}</p></div>${img(x, 'az-vimg') ? `<figure class="az-vimg">${img(x, '')}</figure>` : ''}</li>`).join('')}</ul>` : '',
-    '</section>',
-  ].join('\n');
+// 첫 화면(현재 열린 공고) — 2026-10-30 사용자 승인 시안(넓은 두 단, 눌러서 골라 보기): 요약 4칸 → 청약 일정 2주(날짜를 누르면 그날 일정 공고만)
+// → 왼쪽 공고 표(지역·구분·정렬·마감 포함) + 오른쪽 심층 분석·시세보다 낮은 공고·이번 주 발표. 표는 서버에서 다 그린다(검색엔진에도 보임).
+// 골라 보기는 스크립트 없이 라디오·체크박스 + CSS :has()로 줄을 숨긴다 — 사이트 방화벽(NinjaFirewall)이 글 안의 <script>를 막는다(10-30 실측 403).
+// 정렬은 순서가 다른 tbody 세 벌 중 하나만 보인다. 고정 규칙은 site.css, 날짜별 규칙은 날마다 바뀌어 글 안 <style>. 넓은 틀은 site.css의 .home 규칙(첫 화면에만).
+// list: 장부(data/zip_registry.json)의 공고들. res: 공고번호 → { d(분양가가 비교 시세보다 높으면 + %), leasehold, p(주력 최고가 만원), m(주력 면적) } | { text }
+// deeps: 공개된 심층 분석 { key, link, title, card, nos(다루는 공고번호들) }. views: 조감도(분양 시세비교 목록과 같은 그림)
+const DOW = '일월화수목금토';
+const addDays = (s, n) => new Date(Date.parse(`${s}T00:00:00Z`) + n * 864e5).toISOString().slice(0, 10);
+const weekday = (s) => { const d = new Date(`${s}T00:00:00Z`).getUTCDay(); return d > 0 && d < 6; };
+const mdd = (s) => `${+s.slice(5, 7)}.${+s.slice(8, 10)}`;
+const dowOf = (s) => DOW[new Date(`${s}T00:00:00Z`).getUTCDay()];
+const kindOf = (r) => (r.source === 'sh' ? '임대' : r.kind === '무순위' ? '무순위' : '분양');
+const regionOf = (r) => (['서울', '경기', '인천'].includes(r.region) ? r.region : '지방');
+const postUrl = (r) => `https://auleezip.com/${r.slug || 'apt-' + r.no}/`;
+// 공고 일정 → 날짜별 할 일(주말은 뺀다). 무순위·임대의 접수는 「접수」
+export function eventsOf(r) {
+  const name = { sp: '특공', p1: kindOf(r) === '분양' ? '1순위' : '접수', p2: '2순위', win: '발표' }, ev = {};
+  for (const p of r.phases || []) {
+    const k = name[p.k];
+    if (!k || !p.date) continue;
+    for (let s = p.date; s <= (p.end || p.date); s = addDays(s, 1)) if (weekday(s)) { ev[s] ||= []; if (!ev[s].includes(k)) ev[s].push(k); }
+  }
+  return ev;
 }
 
-export function openPage(list, today, res = {}, deep = '') {
-  const status = (r) => { const rc = receiptOf(r.phases); if (!rc) return ''; if (today < rc.start) return `<span class="az-status">D-${days(today, rc.start)}</span>`; return rc.end >= today ? '<span class="az-status">접수 중</span>' : ''; };
-  const result = (r) => { const x = res[r.no]; if (!x) return '-'; if (x.text) return `<span class="az-cmp-t">${esc(x.text)}</span>`; if (x.leasehold) return '<span class="az-cmp-t">토지임대부라 땅값이 빠진 분양가입니다</span>'; return cmpBar(x.d); };
-  const row = (r) => { const rc = receiptOf(r.phases); return [`${link(`https://auleezip.com/${r.slug || 'apt-' + r.no}/`, shortName(r.name))} ${status(r)}`, esc(areaOf(r)), r.source === 'sh' ? esc(r.kind) : r.kind === '무순위' ? '무순위' : '분양', rc ? span(rc.start, rc.end) : '-', result(r)]; };
+export function openPage(list, today, res = {}, deeps = [], views = {}) {
   const start = (r) => receiptOf(r.phases)?.start || '9999';
   const open = list.filter((r) => !closedOf(r.phases, today)).sort((a, b) => (start(a) < start(b) ? -1 : 1));
   const done = list.filter((r) => closedOf(r.phases, today)).sort((a, b) => ((receiptOf(a.phases)?.end || '') < (receiptOf(b.phases)?.end || '') ? 1 : -1));
-  const head = ['단지', '지역', '구분', { t: '접수', n: true }, '분양가와 주변 시세'];
+  const deepOf = Object.fromEntries(deeps.flatMap((d) => (d.nos || [d.key]).map((n) => [n, d])));
+  const ev = Object.fromEntries(list.map((r) => [r.no, eventsOf(r)]));
+  const low = open.filter((r) => res[r.no] && !res[r.no].text && !res[r.no].leasehold && res[r.no].d < 0).sort((a, b) => res[a.no].d - res[b.no].d);
+  const soon = open.filter((r) => start(r) >= today && start(r) <= addDays(today, 7));
+  const dayList = []; for (let s = today; dayList.length < 10; s = addDays(s, 1)) if (weekday(s)) dayList.push(s);
+  const wins = list.flatMap((r) => Object.entries(ev[r.no]).filter(([d, ks]) => ks.includes('발표') && d >= today && d <= addDays(today, 7)).map(([d]) => ({ r, d }))).sort((a, b) => (a.d < b.d ? -1 : 1));
+
+  const sum = [['접수 중·예정 공고', open.length], ['7일 안에 청약 시작', soon.length], ['주변 시세보다 낮은 분양가', low.length], ['심층 분석', deeps.length]]
+    .map(([t, n]) => `<div><p class="lb">${t}</p><p class="num">${n}</p></div>`).join('');
+  // 고르는 칸: 라디오 + 이름표. 기본값이 아닌 칸(az-x)을 고르면 「조건 지우기」가 보인다. 번호는 site.css 고정 규칙과 맞춘다(g1 서울 … k3 임대, s1 시세 대비, s2 분양가)
+  const opt = (name, id, label, cls, on = false, extra = '') => `<input type="radio" class="az-sr${on ? '' : ' az-x'}" name="${name}" id="${id}"${on ? ' checked' : ''}${extra}><label for="${id}" class="${cls}">${label}</label>`;
+  const day = (s, i) => {
+    const hit = list.filter((r) => ev[r.no][s]), cnt = (ks) => hit.filter((r) => ev[r.no][s].some((k) => ks.includes(k))).length;
+    const parts = [['특공', cnt(['특공'])], ['청약', cnt(['1순위', '2순위', '접수'])], ['발표', cnt(['발표'])]].filter(([, n]) => n).map(([t, n]) => `${t} ${n}`);
+    return opt('az-d', `az-d${i + 1}`, `<span class="dt">${mdd(s)}<small>${s === today ? '오늘' : dowOf(s)}</small></span><span class="ct">${parts.join(' · ') || '일정 없음'}</span>`, `az-day${i && dowOf(s) === '월' ? ' wk' : ''}`, false, hit.length ? '' : ' disabled');
+  };
+  const chips = (name, label, vals) => `<div class="az-fg" role="radiogroup" aria-label="${label}"><span>${label}</span>${vals.map((t, i) => opt(name, `${name}${i}`, t, 'az-fc', i === 0)).join('')}</div>`;
+  const dayCss = dayList.map((s, i) => `.az-front:has(#az-d${i + 1}:checked) .az-ft tbody tr:not([data-ev~="${s}"]){display:none!important}.az-front:has(#az-d${i + 1}:checked) .az-fev[data-day="${s}"]{display:inline-block}`).join('');
+  const badge = (r) => { const rc = receiptOf(r.phases); return closedOf(r.phases, today) ? '<span class="az-bd end">접수 마감</span>' : !rc ? '' : today < rc.start ? `<span class="az-bd d">D-${days(today, rc.start)}</span>` : '<span class="az-bd now">접수 중</span>'; };
+  const row = (r) => {
+    const rc = receiptOf(r.phases), x = res[r.no] || {}, closed = closedOf(r.phases, today), dp = deepOf[r.no];
+    const cmp = x.text ? `<span class="az-cmp-t">${esc(x.text)}</span>` : x.leasehold ? '<span class="az-cmp-t">토지임대부라 땅값이 빠진 분양가입니다</span>' : typeof x.d === 'number' ? cmpBar(x.d) : '-';
+    const evs = Object.entries(ev[r.no]).filter(([d]) => dayList.includes(d)).map(([d, ks]) => `<span class="az-fev" data-day="${d}">${mdd(d)} ${ks.join('·')}</span>`).join('');
+    return `<tr${closed ? ' class="cl"' : ''} data-g="${regionOf(r)}" data-k="${kindOf(r)}" data-ev="${Object.keys(ev[r.no]).join(' ')}"><td class="c1"><p class="az-fnm">${link(postUrl(r), shortName(r.name))}${badge(r)}${dp ? `<a class="az-bd deep" href="${esc(dp.link)}">심층 분석</a>` : ''}</p>${evs}</td><td class="c2">${esc(areaOf(r))}</td><td class="c3">${kindOf(r)}</td><td class="c4 n">${rc ? span(rc.start, rc.end) : '-'}</td><td class="c5 n">${x.p ? `${won(x.p)}<small>${x.m}㎡</small>` : '<span class="az-na">-</span>'}</td><td class="c6">${cmp}</td></tr>`;
+  };
+  const all = [...open, ...done], num = (v) => (typeof v === 'number' ? v : Infinity);
+  const dOf = (r) => { const x = res[r.no]; return x && !x.text && !x.leasehold ? x.d : undefined; };
+  const by = (f) => [...all].sort((a, b) => num(f(a)) - num(f(b)));
+  const img = (d) => { const v = views[d.key], href = v?.page || v?.homepage, site = esc(v?.site || '분양 홈페이지'); return v?.url ? `<a href="${esc(d.link)}" tabindex="-1" aria-hidden="true"><img src="${esc(v.url)}" alt="" width="800" height="500" loading="lazy"></a><p class="az-deep-cap">${esc(v.label || '조감도')} · ${href ? `<a href="${esc(href)}" rel="nofollow noopener">${site}</a>` : site}</p>` : ''; };
+  const deepBox = deeps.length ? `<section class="az-rbox az-rdeep"><h2>심층 분석<a href="${esc(DEEP_URL)}">전체 보기</a></h2>${deeps.map((d) => `<article>${img(d)}<h3><a href="${esc(d.link)}">${esc(d.title)}</a></h3>${d.card?.length ? `<ul>${d.card.map((t) => `<li>${esc(t)}</li>`).join('')}</ul>` : ''}<p class="go"><a href="${esc(d.link)}">심층 분석 읽기</a></p></article>`).join('')}</section>` : '';
+  const item = (r, right) => `<li><div>${link(postUrl(r), shortName(r.name))}<small>${esc(areaOf(r))} · ${kindOf(r)}</small></div>${right}</li>`;
   return page([
-    deep,
-    `${deep ? '<h2>현재 열린 공고</h2>' : ''}<p>청약 공고마다 분양가(임대 공고는 임대료)를 주변 단지 실거래와 맞춰 본 글을 모았습니다. 막대는 분양가가 비교 단지 시세보다 얼마나 높거나 낮은지입니다. ${esc(today.replaceAll('-', '.'))} 기준이고 매일 아침 다시 만듭니다.</p>`,
-    `<h2>접수 중·예정 공고 ${open.length}곳</h2>`,
-    open.length ? table(head, open.map(row)) : '<p>지금 열려 있는 공고가 없습니다.</p>',
-    `<h2>접수가 끝난 공고 ${done.length}곳</h2>`,
-    done.length ? table(head, done.map(row)) : '<p>아직 없습니다.</p>',
-    src(`막대는 ±40%까지 그립니다. 분양가는 주력 주택형 최고가, 주변 시세는 비교 단지 실거래 중앙값을 같은 면적으로 환산한 값입니다. 계산 방법은 ${link(METHOD_URL, '비교 기준')}에 있습니다. 청약 일정 전체는 ${link(CAL_URL, '우리의 청약달력')}에서 볼 수 있습니다. 접수 일정은 입주자모집공고 기준이며 사업주체 사정에 따라 바뀔 수 있으니, 신청 전 공고문을 확인하시기 바랍니다.`),
+    `<style>${dayCss}</style>`,
+    '<form class="az-front" action="#">',
+    `<p class="az-flead">청약 공고마다 분양가(임대는 임대료)를 주변 단지 실거래와 맞춰 봤습니다. ${esc(today.replaceAll('-', '.'))} 기준이고 매일 아침 다시 만듭니다.</p>`,
+    `<div class="az-sum">${sum}</div>`,
+    `<section class="az-days" aria-labelledby="az-days-h"><div class="az-days-head"><h2 id="az-days-h">청약 일정 2주</h2><p>날짜를 누르면 그날 일정이 있는 공고만 봅니다 · 전체 일정은 ${link(CAL_URL, '우리의 청약달력')}</p>${opt('az-d', 'az-d0', '날짜 해제', 'az-dclear', true)}</div><div class="az-days-row" role="radiogroup" aria-label="청약 일정 날짜">${dayList.map(day).join('')}</div></section>`,
+    '<div class="az-fgrid"><section class="az-fmain" aria-label="공고 목록">',
+    `<div class="az-fbar">${chips('az-g', '지역', ['전체', '서울', '경기', '인천', '지방'])}${chips('az-k', '구분', ['전체', '분양', '무순위', '임대'])}${chips('az-s', '정렬', ['접수 빠른 순', '시세 대비 낮은 순', '분양가 낮은 순'])}<label class="az-fck"><input type="checkbox" id="az-c" class="az-x">접수 끝난 공고도 보기</label></div>`,
+    '<div class="az-fres"><p>기본은 접수 중·예정 공고입니다. 날짜를 고르면 접수가 끝난 공고의 발표 일정도 함께 보입니다.</p><button type="reset">조건 지우기</button></div>',
+    `<table class="az-ft"><thead><tr><th>단지</th><th>지역</th><th>구분</th><th class="n">접수</th><th class="n">주력 최고가</th><th>분양가와 주변 시세</th></tr></thead>${[['s0', all], ['s1', by(dOf)], ['s2', by((r) => res[r.no]?.p)]].map(([c, rs]) => `<tbody class="${c}">${rs.map(row).join('')}</tbody>`).join('')}<tfoot><tr><td colspan="6" class="az-fcount"></td></tr></tfoot></table>`,
+    src(`막대는 주력 주택형 최고 분양가가 비교 단지 실거래 중앙값(같은 면적 환산)보다 얼마나 높거나 낮은지이고 ±40%까지 그립니다. 계산 방법은 ${link(METHOD_URL, '비교 기준')}에 있습니다. 접수 일정은 입주자모집공고 기준이며 사업주체 사정에 따라 바뀔 수 있으니, 신청 전 공고문을 확인하시기 바랍니다.`),
+    '</section><aside class="az-frail" aria-label="함께 보기">',
+    deepBox,
+    low.length ? `<section class="az-rbox"><h2>주변 시세보다 낮게 나온 공고</h2><ul class="az-rls">${low.map((r) => item(r, `<b class="dn">−${Math.round(-res[r.no].d)}%</b>`)).join('')}</ul></section>` : '',
+    wins.length ? `<section class="az-rbox"><h2>7일 안에 당첨자 발표</h2><ul class="az-rls">${wins.map(({ r, d }) => item(r, `<span>${mdd(d)}(${dowOf(d)})</span>`)).join('')}</ul></section>` : '',
+    '</aside></div></form>',
   ].join('\n'));
 }
-
 // 「분양 시세비교」 목록(카테고리 템플릿 category-5에 들어간다): 글마다 왼쪽 글, 오른쪽 조감도(2026-10-29 사용자 요청 — 정보 제공용, 출처는 사업주체 분양 홈페이지).
 // posts: 공고번호 → { title, excerpt, link }. views: 공고번호 → { url, homepage }(조감도가 없으면 단지 이름 칸으로 자리만 채운다)
 export function saleList(list, today, res = {}, posts = {}, views = {}) {

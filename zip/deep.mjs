@@ -1,6 +1,6 @@
 // 우리의 집 「심층 분석」 글(2026-10-30 사용자 지시): 글을 처음부터 직접 쓰지 않는다. D:\부동산_청약분석\<단지 폴더>에 유튜브 분석기(D:\dev\apt_youtube_analyzer)가
 // 영상 여러 편·공고문·웹 공식 자료를 여러 시선으로 정리한 종합리포트.html을 만들면, 세션에서 그 리포트를 읽고 data/zip_deep/<키>.json(글 자료)을 쓴 뒤 이 스크립트로 올린다.
-// 키 = 첫 공고번호. 폴더 → 공고번호는 data/deep_folders.json. 글은 메인(현재 열린 공고) 맨 위 「심층 분석」 칸에 보인다(zip/pages.mjs deepCards).
+// 키 = 첫 공고번호. 폴더 → 공고번호는 data/deep_folders.json. 글은 첫 화면(현재 열린 공고) 오른쪽 「심층 분석」 칸에 보인다(zip/pages.mjs openPage).
 // node zip/deep.mjs                  폴더별 리포트 상태
 // node zip/deep.mjs --read <키>       리포트 글자 → data/deep/<키>.txt(세션이 읽는다). 가족 맞춤 절(우리집_정보 기반)은 빼고 옮긴다 — 글에 쓰지 않는다
 // node zip/deep.mjs --lint <키>       글 자료 점검: 숫자가 리포트·공고 자료에 있는지, 금지 표현, 가족 정보, 해요체
