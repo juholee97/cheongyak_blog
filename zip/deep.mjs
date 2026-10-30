@@ -125,6 +125,8 @@ const HL = { r: ['위험', '손해·자격 상실·돈이 크게 더 들 수 있
 const HL_RE = /\[\[([rybg]):(.+?)\]\]/g;
 const hl = (h) => h.replace(HL_RE, (_, c, t) => `<mark class="az-hl ${c}">${t}</mark>`);
 const unhl = (t) => String(t).replace(HL_RE, '$2');
+// 「2억 1,262만 5,000원」 → 21262.5(만원)
+const manwon = (s) => { const m = String(s).replace(/,/g, '').match(/(?:(\d+)억)?\s*(?:(\d+)만)?\s*(?:(\d+)원)?/); return (+m[1] || 0) * 1e4 + (+m[2] || 0) + (+m[3] || 0) / 1e4; };
 const tx = (t) => hl(line(esc(t)));
 const lead = (h) => h.replace(/^([^:<]{1,16}):\s/, '<b>$1</b>: '); // 목록 앞머리 「지역 우선:」은 굵게
 const legend = () => `<p class="az-hl-legend">${Object.entries(HL).map(([c, [n, d]]) => `<span><mark class="az-hl ${c}">${n}</mark> ${d}</span>`).join('')}</p>`;
@@ -205,8 +207,16 @@ export async function check(key) {
   const corpus = [await readFile(join(BASE, folder, '종합리포트.html'), 'utf8'), await readFile(join(BASE, folder, '_data/notice.json'), 'utf8').catch(() => ''),
     ...await Promise.all((await folders())[folder].map((n) => readFile(join(ROOT, 'data/zip_posts', `${n}.json`), 'utf8').catch(() => '')))].join('\n').replace(/(\d),(?=\d{3})/g, '$1');
   for (const k of d.blocks.find((b) => b.claims)?.claims.keep || []) if (!keptOk(claimRows(summary?.claim_checks), [k]).length) issues.push(`대조표 keep 「${k}」 — 공고문과 맞는 주장 중에 없음(리포트가 새로 만들어졌으면 다시 고른다)`);
+  // 공고문 금액으로 계산한 숫자(잔금 30% 등): calc [[보이는 금액, 만원 단위 식]] — 식의 바탕 숫자가 자료에 있고 계산이 맞으면 통과(2026-10-31)
+  let calcOk = '';
+  for (const [shown, expr] of d.calc || []) {
+    const miss = (expr.match(/\d+(?:\.\d+)?/g) || []).filter((n) => +n >= 100 && !corpus.includes(n) && !(n >= 1e4 && corpus.includes(`${Math.floor(n / 1e4)}억 ${n % 1e4}만`))), v = Function(`return ${expr.replace(/[^\d.+\-*/() ]/g, '')}`)();
+    if (miss.length) issues.push(`계산 ${expr} — 바탕 숫자 ${miss.join('·')}가 자료에 없음`);
+    else if (Math.abs(v - manwon(shown)) > 0.51) issues.push(`계산 ${expr} = ${v}만원인데 글에는 「${shown}」`);
+    else calcOk += ` ${shown.replace(/(\d),(?=\d{3})/g, '$1')}`;
+  }
   for (const t of [...texts, ...auto]) {
-    if (!auto.includes(t)) for (const m of t.replace(/(\d),(?=\d{3})/g, '$1').match(/\d{2,}(?:\.\d+)?/g) || []) if (!corpus.includes(m)) issues.push(`숫자 ${m} — 리포트·공고 자료에 없음: 「${t.slice(0, 50)}」`);
+    if (!auto.includes(t)) for (const m of t.replace(/(\d),(?=\d{3})/g, '$1').match(/\d{2,}(?:\.\d+)?/g) || []) if (!corpus.includes(m) && !calcOk.includes(m)) issues.push(`숫자 ${m} — 리포트·공고 자료에 없음: 「${t.slice(0, 50)}」`);
     for (const w of BANNED) if (t.replace(/기관추천|수익공유(?:형)?/g, '').includes(w)) issues.push(`금지 표현 「${w}」: 「${t.slice(0, 50)}」`); // 공식 제도 이름(기관추천 특별공급, 신혼희망타운 수익공유형 모기지)은 금지 표현에서 뺀다
     if (FAMILY.test(t)) issues.push(`가족 정보: 「${t.slice(0, 50)}」`);
     if (/유튜브|영상|채널|출연자|자막|구독|조회수/.test(t) || videos.some((v) => t.includes(v.id.slice(0, 4)) || chNames(v).some((c) => t.includes(c)))) issues.push(`매체 흔적(채널·영상을 밝히지 않는다): 「${t.slice(0, 50)}」`);
@@ -221,6 +231,7 @@ if (process.argv[1]?.endsWith('deep.mjs')) {
     const assert = (await import('node:assert/strict')).default;
     const t = reportText('<h2>종합 판단</h2><p>좋은 점</p><h2>우리 가족 청약 자격</h2><p>혼인 정보</p><h2>영상별 의견 비교</h2><p>우리 가족 기준 한 줄</p><p>영상 A</p><img src="data:image/png;base64,AAAA">');
     assert.ok(t.includes('좋은 점') && t.includes('영상 A') && !t.includes('혼인 정보') && !t.includes('우리 가족') && !t.includes('base64'));
+    assert.deepEqual(['2억 1,262만 5,000원', '6,087만 5,000원', '4억 2,525만원', '9,684만원'].map(manwon), [21262.5, 6087.5, 42525, 9684]);
     const r = listItems('공고문 공급금액: 3단지 60형 4억9,570만~5억8,900만원, 84A 6억7,270만~7억9,800만원, 88형 6억9,000만~8억4,100만원 (3단지 9·10쪽)');
     assert.deepEqual([r.head, r.items.length, r.items[1], r.cite], ['공고문 공급금액', 3, '84A 6억7,270만~7억9,800만원', '(3단지 9·10쪽)']);
     assert.equal(listItems('공고문: 우선공급(3단지 135세대, 4단지 114세대) 대상자는 청약을 하지 않고, 서류만 제출한다').items.length, 1);
