@@ -207,7 +207,7 @@ export async function check(key) {
   for (const k of d.blocks.find((b) => b.claims)?.claims.keep || []) if (!keptOk(claimRows(summary?.claim_checks), [k]).length) issues.push(`대조표 keep 「${k}」 — 공고문과 맞는 주장 중에 없음(리포트가 새로 만들어졌으면 다시 고른다)`);
   for (const t of [...texts, ...auto]) {
     if (!auto.includes(t)) for (const m of t.replace(/(\d),(?=\d{3})/g, '$1').match(/\d{2,}(?:\.\d+)?/g) || []) if (!corpus.includes(m)) issues.push(`숫자 ${m} — 리포트·공고 자료에 없음: 「${t.slice(0, 50)}」`);
-    for (const w of BANNED) if (t.replace(/기관추천/g, '').includes(w)) issues.push(`금지 표현 「${w}」: 「${t.slice(0, 50)}」`);
+    for (const w of BANNED) if (t.replace(/기관추천|수익공유(?:형)?/g, '').includes(w)) issues.push(`금지 표현 「${w}」: 「${t.slice(0, 50)}」`); // 공식 제도 이름(기관추천 특별공급, 신혼희망타운 수익공유형 모기지)은 금지 표현에서 뺀다
     if (FAMILY.test(t)) issues.push(`가족 정보: 「${t.slice(0, 50)}」`);
     if (/유튜브|영상|채널|출연자|자막|구독|조회수/.test(t) || videos.some((v) => t.includes(v.id.slice(0, 4)) || chNames(v).some((c) => t.includes(c)))) issues.push(`매체 흔적(채널·영상을 밝히지 않는다): 「${t.slice(0, 50)}」`);
     if (/(해요|에요|예요|세요|어요|아요|네요|죠)[.!?]/.test(t)) issues.push(`해요체: 「${t.slice(0, 50)}」`);
