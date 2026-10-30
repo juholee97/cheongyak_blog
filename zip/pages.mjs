@@ -53,7 +53,7 @@ export function openPage(list, today, res = {}, deeps = [], views = {}) {
   const sum = [
     ['접수 중·예정 공고', open.length, `<p class="ds">접수 중 ${now} · 예정 ${open.length - now}</p>`],
     ['7일 안에 청약 시작', soon.length, sub(soon.map((r) => [r, mdd(start(r))]))],
-    ['주변 시세보다 낮은 분양가', low.length, sub(low.map((r) => [r, `−${Math.round(-res[r.no].d)}%`]))],
+    ['주변 시세보다 낮은 분양가', low.length, sub(low.map((r) => [r, `<i class="az-blur">−${Math.round(-res[r.no].d)}%</i>`]))],
     ['심층 분석', deeps.length, deeps.length ? `<ul>${deeps.slice(0, 2).map((d) => `<li><a href="${esc(d.link)}">${esc(nameOf(d) ? shortName(nameOf(d).name) : d.title)}</a></li>`).join('')}</ul>` : ''],
   ].map(([t, n, x]) => `<div><p class="lb">${t}</p><p class="num">${n}</p>${x}</div>`).join('');
   // 고르는 칸: 라디오 + 이름표. 기본값이 아닌 칸(az-x)을 고르면 「조건 지우기」가 보인다. 번호는 site.css 고정 규칙과 맞춘다(g1 서울 … k3 임대, s1 시세 대비, s2 분양가)
@@ -65,7 +65,7 @@ export function openPage(list, today, res = {}, deeps = [], views = {}) {
   };
   const chips = (name, label, vals) => `<div class="az-fg" role="radiogroup" aria-label="${label}"><span>${label}</span>${vals.map((t, i) => opt(name, `${name}${i}`, t, 'az-fc', i === 0)).join('')}</div>`;
   const dayCss = dayList.map((s, i) => `.az-front:has(#az-d${i + 1}:checked) .az-ft tbody tr:not([data-ev~="${s}"]){display:none!important}.az-front:has(#az-d${i + 1}:checked) .az-fev[data-day="${s}"]{display:inline-block}`).join('');
-  const badge = (r) => { const rc = receiptOf(r.phases); return closedOf(r.phases, today) ? '<span class="az-bd end">접수 마감</span>' : !rc ? '' : today < rc.start ? `<span class="az-bd d">접수 D-${days(today, rc.start)}</span>` : '<span class="az-bd now">접수 중</span>'; };
+  const badge = (r) => { const rc = receiptOf(r.phases); return closedOf(r.phases, today) ? '<span class="az-bd end">접수 마감</span>' : !rc ? '' : `<span class="az-bd ${today < rc.start ? 'd' : 'now'}">${recLabel(rc, today)}</span>`; };
   const row = (r) => {
     const rc = receiptOf(r.phases), x = res[r.no] || {}, closed = closedOf(r.phases, today), dp = deepOf[r.no];
     const cmp = x.text ? `<span class="az-cmp-t">${esc(x.text)}</span>` : x.leasehold ? '<span class="az-cmp-t">토지임대부라 땅값이 빠진 분양가입니다</span>' : typeof x.d === 'number' ? cmpBar(x.d) : '-';
@@ -93,7 +93,7 @@ export function openPage(list, today, res = {}, deeps = [], views = {}) {
     src(`막대는 주력 주택형 최고 분양가가 비교 단지 실거래 중앙값(같은 면적 환산)보다 얼마나 높거나 낮은지이고 ±40%까지 그립니다. 계산 방법은 ${link(METHOD_URL, '비교 기준')}에 있습니다. 접수 일정은 입주자모집공고 기준이며 사업주체 사정에 따라 바뀔 수 있으니, 신청 전 공고문을 확인하시기 바랍니다.`),
     '</section><aside class="az-frail" aria-label="함께 보기">',
     deepBox,
-    low.length ? `<section class="az-rbox"><h2>주변 시세보다 낮게 나온 공고</h2><ul class="az-rls">${low.map((r) => item(r, `<b class="dn">−${Math.round(-res[r.no].d)}%</b>`)).join('')}</ul></section>` : '',
+    low.length ? `<section class="az-rbox"><h2>주변 시세보다 낮게 나온 공고</h2><ul class="az-rls">${low.map((r) => item(r, `<b class="dn az-blur">−${Math.round(-res[r.no].d)}%</b>`)).join('')}</ul></section>` : '',
     wins.length ? `<section class="az-rbox"><h2>7일 안에 당첨자 발표</h2><ul class="az-rls">${wins.map(({ r, d }) => item(r, `<span>${mdd(d)}(${dowOf(d)})</span>`)).join('')}</ul></section>` : '',
     '</aside></div></form>',
   ].join('\n'));
@@ -107,7 +107,7 @@ export function saleList(list, today, res = {}, posts = {}, views = {}) {
   const done = items.filter((r) => closedOf(r.phases, today)).sort((a, b) => ((receiptOf(a.phases)?.end || '') < (receiptOf(b.phases)?.end || '') ? 1 : -1));
   const item = (r) => {
     const p = posts[r.no], v = views[r.no], rc = receiptOf(r.phases), x = res[r.no];
-    const status = !rc ? '' : closedOf(r.phases, today) ? '접수 마감' : today < rc.start ? `접수 D-${days(today, rc.start)}` : '접수 중';
+    const status = !rc ? '' : closedOf(r.phases, today) ? '접수 마감' : recLabel(rc, today);
     const meta = [esc(areaOf(r)), r.kind === '무순위' ? '무순위' : '분양', rc ? `접수 ${span(rc.start, rc.end)}` : '', status ? `<span class="az-status${status === '접수 마감' ? ' end' : ''}">${status}</span>` : ''].filter(Boolean).join(' · ');
     // 그림 밑 출처: 그림 이름(조감도·투시도) · 그림이 있던 곳(기본 분양 홈페이지 — LH 공고·공고문에서 받은 것은 그 이름, zip/views.mjs의 label·site)
     const label = esc(v?.label || '조감도'), site = esc(v?.site || '분양 홈페이지'), href = v?.page || v?.homepage;
@@ -126,7 +126,9 @@ export function saleList(list, today, res = {}, posts = {}, views = {}) {
 
 // 「심층 분석」·「임대 시세비교」 목록(2026-10-31 사용자 요청): 분양 시세비교처럼 오른쪽에 카드. 글자는 그림에 굽지 않고 HTML로 얹는다(선명하고 휴대폰에서도 같은 글).
 // 심층 분석 카드 = 공식 조감도 위에 한 줄 훅(data/zip_deep/<key>.json의 hook: [작은 줄, 큰 줄, 노란 줄] — 글에 있는 사실만), 임대 카드 = 가장 낮은 월세와 주변 월세 대비 비율
-const statusOf = (phases, today) => { const rc = receiptOf(phases); return !rc ? '' : closedOf(phases, today) ? '접수 마감' : today < rc.start ? `접수 D-${days(today, rc.start)}` : '접수 중'; };
+// 「D-2」만으로는 시작인지 마감인지 모른다(2026-10-31 사용자) — 시작 전은 「2일 뒤 접수 시작」, 접수 중은 마감일까지 적는다
+const recLabel = (rc, today) => { const n = days(today, rc.start), end = rc.end || rc.start; return n > 0 ? (n === 1 ? '내일 접수 시작' : `${n}일 뒤 접수 시작`) : end === today ? '오늘 접수 마감' : `접수 중 · ${mdd(end)} 마감`; };
+const statusOf = (phases, today) => { const rc = receiptOf(phases); return !rc ? '' : closedOf(phases, today) ? '접수 마감' : recLabel(rc, today); };
 // 접수 중·곧 열리는 것 먼저(첫 접수일 순), 마감된 것은 뒤로
 const order = (r, today) => (!r ? 9e12 : (closedOf(r.phases, today) ? 5e12 : 0) + Date.parse(receiptOf(r.phases)?.start || '2999-01-01'));
 const metaOf = (parts, status) => [...parts, status ? `<span class="az-status${status === '접수 마감' ? ' end' : ''}">${status}</span>` : ''].filter(Boolean).join(' · ');

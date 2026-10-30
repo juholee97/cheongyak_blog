@@ -541,3 +541,5 @@ body:has(.az-deep-post) .az-head>*{max-width:880px}
   .az-days-row>label:nth-of-type(n+6){border-top:0}
   .az-days-row>label:nth-of-type(6){border-left:3px double #9aa6b1}
 }
+/* 첫 화면 요약 칸·오른쪽 「낮게 나온 공고」의 %도 흐리게(2026-10-31 사용자 요청) — 단지 이름을 눌러 글에서 본다 */
+.az-blur{display:inline-block;font-style:normal;filter:blur(4px);user-select:none}
