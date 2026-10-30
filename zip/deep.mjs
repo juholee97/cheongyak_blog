@@ -4,6 +4,7 @@
 // node zip/deep.mjs                  폴더별 리포트 상태
 // node zip/deep.mjs --read <키>       리포트 글자 → data/deep/<키>.txt(세션이 읽는다). 가족 맞춤 절(우리집_정보 기반)은 빼고 옮긴다 — 글에 쓰지 않는다
 // node zip/deep.mjs --lint <키>       글 자료 점검: 숫자가 리포트·공고 자료에 있는지, 금지 표현, 가족 정보, 해요체
+// node zip/deep.mjs --verify <키>|all  공개된 글을 받아 화면에 남은 표시(** [[ ]] &#…;) 검수 — --publish 끝에 자동으로도 돈다
 // node zip/deep.mjs --draft <키>      임시글로 올림(미리보기 링크)    --publish <키>  사용자 승인 뒤 공개(그 뒤 node zip/publish.mjs --go --pages로 메인 갱신)
 // 글 자료: { title, excerpt, card: [메인 카드 숫자 줄], blocks: [{h}|{p}|{ul}|{key}|{table:{head,rows}}|{note}|{grid:{cols,rows}}|{plan:[[구분,내용,상태]]}|{timeline}|{claims:{keep:[공고문과 맞는 주장 중 실을 것의 글귀]}}|{links:[[이름,주소]]}], sources: [[이름,주소]] }
 // 본문 글자 안 [[r:글귀]] 위험(빨강)·[[y:]] 주의(노랑)·[[b:]] 핵심(파랑)·[[g:]] 유리(초록) 배경색 — 한 항목에 한두 곳, 글 전반에. 쓰면 글 맨 위에 색 뜻 안내가 붙는다
@@ -155,7 +156,24 @@ export async function render(key, { local = false } = {}) {
     `<ul class="az-links">${(d.sources || []).map(([t, u]) => `<li><a href="${esc(u)}" rel="nofollow noopener">${esc(t)}</a></li>`).join('')}</ul>`,
     src('분석 의견은 aulee가 확인한 사실이 아니며, 공고문과 맞춰 본 결과만 옮겼습니다. 이 글은 청약 판단을 돕는 정보이고 청약이나 투자를 권하지 않습니다. 자격·분양가·일정은 청약 전에 청약홈 입주자모집공고 원문으로 다시 확인하시기 바랍니다.'),
   ].filter(Boolean).join('\n');
-  return { slug: `deep-${key}`, title: d.title, html: wrap(keepUnits(html)), excerpt: d.excerpt, categories: [CAT_DEEP], tags: d.tags || [] };
+  return { slug: `deep-${key}`, title: d.title, html: wrap(keepUnits(html.replace(/\*\*([^*<>]+?)\*\*/g, '<b>$1</b>'))), excerpt: d.excerpt, categories: [CAT_DEEP], tags: d.tags || [] };
+}
+
+// 화면에 남은 표시 찾기(2026-10-30 사용자 지시: 「**개교시기 미정**」처럼 굵게 하려다 실패한 흔적을 작성·게시 뒤 항상 검수). 태그를 걷어낸 글자에서 찾는다
+export function leftovers(html) {
+  const t = String(html).replace(/<(script|style)[\s\S]*?<\/\1>/g, ' ').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n))
+    .replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+  const pats = [[/\*\*|__/g, '굵게 표시(** __)가 그대로 보임'], [/\[\[|\]\]/g, '색 표시([[ ]])가 그대로 보임'], [/&#?[A-Za-z0-9]+;/g, '문자 코드(&#…;)가 그대로 보임'], [/(^|\s)#{1,6}\s/g, '제목 표시(#)가 그대로 보임'], [/\\n/g, '줄바꿈 \\n이 글자로 보임'], [/\b(undefined|NaN|null)\b|\[object /g, '빈 값(undefined·NaN·null)']];
+  return pats.flatMap(([re, m]) => [...t.matchAll(re)].slice(0, 3).map((x) => `${m}: 「${t.slice(Math.max(0, x.index - 18), x.index + 22).replace(/\s+/g, ' ').trim()}」`));
+}
+
+// 게시 뒤 검수: 실제 페이지를 받아 본문 칸(entry-content~꼬리 줄)에 남은 표시가 없는지. 머리의 CSS에도 클래스 이름이 있어 실제 본문 칸부터 자른다
+export async function verifyLive(link) {
+  const r = await fetch(`${link}?check=${Date.now()}`, { headers: { 'User-Agent': 'Mozilla/5.0' } }).catch(() => null), page = r?.ok ? await r.text() : '';
+  const i = page.indexOf('<div class="entry-content'), j = page.indexOf('class="wp-block-group az-footer'), body = i > 0 ? page.slice(i, j > i ? j : undefined) : '', live = body ? leftovers(body) : null;
+  console.log(!live ? `게시 뒤 검수 못 함: 페이지 응답 ${r?.status ?? '없음'} — 브라우저로 직접 확인` : live.length ? `게시 뒤 검수 실패 ${link}\n${live.join('\n')}` : `✓ 게시 뒤 검수 통과(남은 표시 없음) ${link}`);
+  if (!live || live.length) process.exitCode = 1;
+  return live;
 }
 
 // 점검: 글 숫자가 리포트·공고 자료에 있는지(지어낸 숫자 막기), 금지 표현, 가족 정보, 해요체(워드프레스는 합쇼체)
@@ -193,6 +211,9 @@ if (process.argv[1]?.endsWith('deep.mjs')) {
     const g = listItems('공고문에는 GTX 관련 서술이 없다. 웹 자료: 운정중앙~서울역 개통, 서울역~수서 2026년 개통 예정(삼성역 무정차 통과), 삼성역 포함 전 구간 2028년 예정');
     assert.deepEqual([g.lead, g.head, g.items.length], ['공고문에는 GTX 관련 서술이 없다.', '웹 자료', 3]);
     assert.equal(listItems('공고문: 3단지 주차 779대 / 472세대, 4단지 724대 / 472세대').items[0], '3단지 주차 779대 / 472세대');
+    assert.ok(leftovers('<p>(가칭)계양2초 **개교시기 미정**으로</p>').length > 0);
+    assert.ok(leftovers('<p>a &amp;#34; b</p>').length > 0);
+    assert.equal(leftovers('<p>개교 <b>시기 미정</b>, 21% 높음</p><style>a{b:c}</style>').length, 0);
     console.log('deep 점검 통과');
   } else if (arg('--read')) {
     const key = arg('--read'), folder = await folderOf(key);
@@ -204,6 +225,10 @@ if (process.argv[1]?.endsWith('deep.mjs')) {
     const issues = await check(arg('--lint'));
     console.log(issues.length ? issues.join('\n') : '✓ 점검 통과');
     process.exitCode = issues.length ? 1 : 0;
+  } else if (arg('--verify')) {
+    // 공개된 심층 분석 글 검수: --verify <키> | --verify all
+    const k = arg('--verify'), all = (await allDeep()).filter((d) => d.status === 'publish' && d.link && (k === 'all' || d.key === k));
+    for (const d of all) await verifyLive(d.link);
   } else if (arg('--preview')) {
     // 올리기 전 화면 확인용: 사이트 CSS를 입힌 글 한 편 → data/deep/<키>.html
     const { previewHtml } = await import('./post.mjs'), key = arg('--preview'), out = join(ROOT, 'data/deep', `${key}.html`);
@@ -215,13 +240,15 @@ if (process.argv[1]?.endsWith('deep.mjs')) {
     const issues = await check(key);
     if (issues.length) { console.log(issues.join('\n')); process.exit(1); }
     const { upsert, uploadMedia } = await import('./wp.mjs');
-    const post = await render(key);
+    const post = await render(key), bad = leftovers(post.html);
+    if (bad.length) { console.log(`올리기 전 검수 실패\n${bad.join('\n')}`); process.exit(1); }
     const img = join(ROOT, 'data/zip_views', `${key}.jpg`);
     post.featured = await uploadMedia(img, `deep-${key}.jpg`, `${post.title}`).catch(() => undefined);
     const o = await upsert(post, null, now);
     const d = await loadDeep(key);
     if (o.ok) await writeFile(join(DIR, `${key}.json`), JSON.stringify({ ...d, link: o.link, status: o.status, id: o.id }, null, 1));
     console.log(`${o.ok ? '✓' : '✗'} ${o.status} ${o.link}${o.status === 'draft' ? ` (미리보기 https://auleezip.com/?p=${o.id}&preview=true)` : ''}`);
+    if (o.ok && o.status === 'publish') await verifyLive(o.link);
   } else {
     for (const [folder, nos] of Object.entries(await folders())) {
       const prog = await readFile(join(BASE, folder, '진행상황.txt'), 'utf8').catch(() => '');
