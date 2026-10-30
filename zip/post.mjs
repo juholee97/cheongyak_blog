@@ -2,7 +2,7 @@
 // node zip/post.mjs              비교된 공고마다 data/zip_posts/{공고번호}.json + 미리보기 data/zip_posts/preview.html(사이트 CSS를 붙여 실제 화면처럼)
 // 모든 공고는 「분양 시세비교」, 기준(2억원·20%)을 넘은 곳은 「꿀분양」 카테고리도 함께.
 // 화면 구성(2026-10-29 디자인): 비교 결과 눈금 → 주요 내용 → 이 글의 자료 → 점 그래프 → 비교 단지 표 → 분석 → 일정 → 확인표 → 관심도 → 고친 기록. 조각은 zip/ui.mjs, 모양은 zip/site.css
-import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { readFile, writeFile, mkdir, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { ROOT } from '../tistory/common.mjs';
 import { esc, md, label, DISCLAIMER } from '../posts/weekly.mjs';
@@ -104,8 +104,11 @@ export function postOf(r, buzz, claims, ctx = {}) {
     r.refs.map((g) => [`${esc(g.apt)}${g.kind ? `<span class="az-kind">${g.kind === 'silv' ? '분양권' : '오피스텔'}</span>` : ''}<small>${out(g)}${esc(g.why)}</small>`, g.built ? `${g.built}년` : '-', g.d != null ? km(g.d) : '-', `${num(g.perPy)}만원`]),
     { foot: [`${r.n}곳 중앙값`, '', '', `${num(r.med)}만원`] });
   const when = (r.phases || []).filter((p) => p.date).map((p) => [esc(label(r, p.k) || p.k), p.end && p.end !== p.date ? span(p.date, p.end) : md(p.date)]);
+  // 심층 분석 글이 있으면 맨 앞에 — 「시세보다 N% 높습니다」만 보고 이유 없이 비싼 집으로 읽히지 않게(2026-10-30 사용자)
+  const deepHtml = ctx.deep ? `<a class="az-deeplink" href="${esc(ctx.deep)}"><span class="az-deeplink-t">심층 분석 · 숫자만으로는 알 수 없는 것</span><span>시세 비교만으로는 이 분양가가 어떻게 정해졌는지 알 수 없습니다. 입지·교통 계획, 주택형별 분양가와 필요한 돈, 공고문과 맞춰 본 분석 의견은 <b>${esc(name)} 심층 분석</b>에 정리했습니다. →</span></a>` : '';
   const html = [
     ctx.closed ? banner(OPEN_URL) : '',
+    deepHtml,
     verdictHtml,
     keyBox(keys),
     railHtml,
@@ -165,6 +168,12 @@ if (process.argv[1]?.endsWith('post.mjs')) {
   const pub = JSON.parse(await readFile(join(ROOT, 'posts/published.json'), 'utf8').catch(() => '{}'));
   const list = [...seen.values()];
   const oi = process.argv.indexOf('--only'), only = oi > 0 ? process.argv[oi + 1].split(',') : null; // --only 공고번호: 그 글만 새로 쓴다(나머지 글 파일은 그대로)
+  // 공개된 심층 분석 글(공고번호 → 주소). deep.mjs가 이 파일을 불러 쓰므로(순환) 자료 파일을 직접 읽는다
+  const fo = Object.values(JSON.parse(await readFile(join(ROOT, 'data/deep_folders.json'), 'utf8').catch(() => '{}'))), ddir = join(ROOT, 'data/zip_deep'), deepOf = {};
+  for (const f of (await readdir(ddir).catch(() => [])).filter((x) => /^\d+\.json$/.test(x))) {
+    const d = JSON.parse(await readFile(join(ddir, f), 'utf8')), key = f.slice(0, -5);
+    if (d.status === 'publish' && d.link) for (const no of fo.find((n) => n.includes(key)) || [key]) deepOf[no] = d.link;
+  }
   for (const r of list) {
     if (only && !only.includes(r.no)) continue;
     const closed = closedOf(r.phases, today);
@@ -175,7 +184,7 @@ if (process.argv[1]?.endsWith('post.mjs')) {
     // 같은 지역의 다른 시세 비교 글 최대 2편(열린 공고 먼저)
     for (const o of list.filter((x) => x.no !== r.no && x.region === r.region).sort((a, b) => closedOf(a.phases, today) - closedOf(b.phases, today)).slice(0, 2)) more.push({ url: `https://auleezip.com/apt-${o.no}/`, label: `${shortName(o.name)} 시세 비교` });
     more.push({ url: OPEN_URL, label: '현재 열린 공고 보기' }, { url: CAL_URL, label: '청약 일정 달력 (우리의 청약달력)' });
-    const p = postOf(r, buzz[r.no], claims[r.no], { closed, more, analysis: analysis[r.no] }), issues = checkPost(p);
+    const p = postOf(r, buzz[r.no], claims[r.no], { closed, more, analysis: analysis[r.no], deep: [r.no, ...items.filter((x) => r.links.includes(x.applyhomeUrl)).map((x) => x.no)].map((no) => deepOf[no]).find(Boolean) }), issues = checkPost(p);
     if (issues.length) { console.log(`✗ ${r.name}: ${issues.join(', ')}`); continue; }
     await writeFile(join(dir, `${r.no}.json`), JSON.stringify(p, null, 2));
     posts.push(p);

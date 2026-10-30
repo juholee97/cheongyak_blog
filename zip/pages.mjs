@@ -47,8 +47,15 @@ export function openPage(list, today, res = {}, deeps = [], views = {}) {
   const dayList = []; for (let s = today; dayList.length < 10; s = addDays(s, 1)) if (weekday(s)) dayList.push(s);
   const wins = list.flatMap((r) => Object.entries(ev[r.no]).filter(([d, ks]) => ks.includes('발표') && d >= today && d <= addDays(today, 7)).map(([d]) => ({ r, d }))).sort((a, b) => (a.d < b.d ? -1 : 1));
 
-  const sum = [['접수 중·예정 공고', open.length], ['7일 안에 청약 시작', soon.length], ['주변 시세보다 낮은 분양가', low.length], ['심층 분석', deeps.length]]
-    .map(([t, n]) => `<div><p class="lb">${t}</p><p class="num">${n}</p></div>`).join('');
+  // 요약 칸마다 해당 공고 이름 2곳까지(2026-10-30 사용자: 숫자만 있어 휑함)
+  const now = open.filter((r) => start(r) <= today).length, nameOf = (d) => list.find((r) => (d.nos || [d.key]).includes(r.no));
+  const sub = (rows) => rows.length ? `<ul>${rows.slice(0, 2).map(([r, t]) => `<li>${link(postUrl(r), shortName(r.name))}<span>${t}</span></li>`).join('')}</ul>` : '';
+  const sum = [
+    ['접수 중·예정 공고', open.length, `<p class="ds">접수 중 ${now} · 예정 ${open.length - now}</p>`],
+    ['7일 안에 청약 시작', soon.length, sub(soon.map((r) => [r, mdd(start(r))]))],
+    ['주변 시세보다 낮은 분양가', low.length, sub(low.map((r) => [r, `−${Math.round(-res[r.no].d)}%`]))],
+    ['심층 분석', deeps.length, deeps.length ? `<ul>${deeps.slice(0, 2).map((d) => `<li><a href="${esc(d.link)}">${esc(nameOf(d) ? shortName(nameOf(d).name) : d.title)}</a></li>`).join('')}</ul>` : ''],
+  ].map(([t, n, x]) => `<div><p class="lb">${t}</p><p class="num">${n}</p>${x}</div>`).join('');
   // 고르는 칸: 라디오 + 이름표. 기본값이 아닌 칸(az-x)을 고르면 「조건 지우기」가 보인다. 번호는 site.css 고정 규칙과 맞춘다(g1 서울 … k3 임대, s1 시세 대비, s2 분양가)
   const opt = (name, id, label, cls, on = false, extra = '') => `<input type="radio" class="az-sr${on ? '' : ' az-x'}" name="${name}" id="${id}"${on ? ' checked' : ''}${extra}><label for="${id}" class="${cls}">${label}</label>`;
   const day = (s, i) => {
