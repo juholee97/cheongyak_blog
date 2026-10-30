@@ -72,7 +72,11 @@ const claimRows = (checks) => (checks || []).filter((c) => c.verdict !== '전망
 // 리포트 문장에 남은 영상 번호·재생 시각·채널 이름을 지우고 「영상」을 「분석 의견」으로 바꾼다. 남은 흔적은 --lint가 잡는다
 export const scrub = (t, videos = []) => {
   let s = String(t || '').replace(/\s*\((?=[^()]*(?:t=\d|s_\d|\b[A-Za-z0-9_-]{11}\b))[^()]*\)/g, '');
-  for (const v of videos) { s = s.replace(new RegExp(`${v.id.slice(0, 4).replace(/-/g, '\\-')}[A-Za-z0-9_-]*,?\\s*`, 'g'), ''); if (v.channel) s = s.split(v.channel).join('다른 분석'); } // 영상 번호는 앞 네 글자만 적힌 곳도 있다
+  for (const v of videos) { // 영상 번호는 앞 네 글자만 적힌 곳도 있다. 조사가 바로 붙은 번호(「…에도 나온다」)는 「다른 분석 의견」으로 바꾸고 조사를 맞춘다
+    const id = `${v.id.slice(0, 4).replace(/-/g, '\\-')}[A-Za-z0-9_-]*`;
+    s = s.replace(new RegExp(`(?:영상\\s*)?${id}(는|가|를|와|에도|도|의|에서|에)`, 'g'), (_, j) => `다른 분석 의견${{ 는: '은', 가: '이', 를: '을', 와: '과' }[j] || j}`).replace(new RegExp(`${id},?\\s*`, 'g'), '');
+    if (v.channel) s = s.split(v.channel).join('다른 분석');
+  }
   return s.replace(/출연자의? 의견/g, '개인 의견').replace(/출연자/g, '의견을 낸 쪽').replace(/로 들리는/g, '로 적힌').replace(/자막 오인식/g, '잘못 적은 이름').replace(/자막/g, '표기').replace(/영상/g, '분석 의견').replace(/가장 확실하다/g, '가장 정확하다').replace(/\s{2,}/g, ' ').trim();
 };
 // 분석 의견 대조표: 다른 것·공식 자료로 확인 못 한 것을 먼저. 공고문과 맞는 것은 keep(주장 글귀 일부)에 적은 것만 — 글 다른 절과 겹치는 당연한 내용은 뺀다(2026-10-30 사용자 지시)
@@ -132,8 +136,13 @@ export async function render(key, { local = false } = {}) {
   const d = await loadDeep(key), folder = await folderOf(key);
   if (!d) throw new Error(`data/zip_deep/${key}.json 없음`);
   const { summary, videos } = await analyzerData(folder), figs = await figures(key, d.blocks, local);
+  // PC 오른쪽 안내 칸(2026-10-30 사용자: PC에서는 PC답게 널널하게): 목차·핵심 숫자·함께 볼 글. 휴대폰에서는 숨긴다(site.css .az-deep-post)
+  const heads = [...d.blocks.filter((b) => b.h).map((b) => b.h), '이 글의 자료'];
+  let hn = 0;
+  const more = d.blocks.find((b) => b.links && b.links.some(([, u]) => u.includes('/apt-')))?.links || [];
+  const rail = `<aside class="az-drail" aria-label="이 글 안내"><div><p class="az-drail-h">목차</p><ol>${heads.map((t, i) => `<li><a href="#s${i + 1}">${esc(t)}</a></li>`).join('')}</ol>${d.card?.length ? `<p class="az-drail-h">핵심 숫자</p><ul>${d.card.map((t) => `<li>${esc(t)}</li>`).join('')}</ul>` : ''}${more.length ? `<p class="az-drail-h">함께 보기</p><ul class="az-drail-links">${more.map(([t, u]) => `<li><a href="${esc(u)}">${esc(t)}</a></li>`).join('')}</ul>` : ''}</div></aside>`;
   const block = (b) => {
-    if (b.h) return `<h2>${esc(b.h)}</h2>`;
+    if (b.h) return `<h2 id="s${++hn}">${esc(b.h)}</h2>`;
     if (b.h3) return `<h3>${esc(b.h3)}</h3>`;
     if (b.p) return `<p>${tx(b.p)}</p>`;
     if (b.ul) return `<ul>${b.ul.map((t) => `<li>${lead(tx(t))}</li>`).join('')}</ul>`;
@@ -151,12 +160,12 @@ export async function render(key, { local = false } = {}) {
   const html = [
     JSON.stringify(d.blocks).includes('[[') ? legend() : '',
     ...d.blocks.map(block),
-    '<h2>이 글의 자료</h2>',
+    `<h2 id="s${heads.length}">이 글의 자료</h2>`,
     '<p>이 글은 입주자모집공고문과 청약홈·LH·교육청 같은 공식 자료를 기준으로, 온라인에 공개된 여러 분석 의견을 함께 찾아보고 aulee가 다시 정리한 결과입니다. 분석 의견은 여러 시선을 보려고 참고했고, 숫자와 조건은 공고문을 기준으로 적었습니다.</p>',
     `<ul class="az-links">${(d.sources || []).map(([t, u]) => `<li><a href="${esc(u)}" rel="nofollow noopener">${esc(t)}</a></li>`).join('')}</ul>`,
     src('분석 의견은 aulee가 확인한 사실이 아니며, 공고문과 맞춰 본 결과만 옮겼습니다. 이 글은 청약 판단을 돕는 정보이고 청약이나 투자를 권하지 않습니다. 자격·분양가·일정은 청약 전에 청약홈 입주자모집공고 원문으로 다시 확인하시기 바랍니다.'),
   ].filter(Boolean).join('\n');
-  return { slug: `deep-${key}`, title: d.title, html: wrap(keepUnits(html.replace(/\*\*([^*<>]+?)\*\*/g, '<b>$1</b>'))), excerpt: d.excerpt, categories: [CAT_DEEP], tags: d.tags || [] };
+  return { slug: `deep-${key}`, title: d.title, html: wrap(keepUnits(html.replace(/\*\*([^*<>]+?)\*\*/g, '<b>$1</b>')) + rail).replace('<div class="az">', '<div class="az az-deep-post">'), excerpt: d.excerpt, categories: [CAT_DEEP], tags: d.tags || [] };
 }
 
 // 화면에 남은 표시 찾기(2026-10-30 사용자 지시: 「**개교시기 미정**」처럼 굵게 하려다 실패한 흔적을 작성·게시 뒤 항상 검수). 태그를 걷어낸 글자에서 찾는다
@@ -211,6 +220,7 @@ if (process.argv[1]?.endsWith('deep.mjs')) {
     const g = listItems('공고문에는 GTX 관련 서술이 없다. 웹 자료: 운정중앙~서울역 개통, 서울역~수서 2026년 개통 예정(삼성역 무정차 통과), 삼성역 포함 전 구간 2028년 예정');
     assert.deepEqual([g.lead, g.head, g.items.length], ['공고문에는 GTX 관련 서술이 없다.', '웹 자료', 3]);
     assert.equal(listItems('공고문: 3단지 주차 779대 / 472세대, 4단지 724대 / 472세대').items[0], '3단지 주차 779대 / 472세대');
+    assert.equal(scrub('같은 주장이 NEwy2SruxEA(t=827)에도 나온다', [{ id: 'NEwy2SruxEA' }]), '같은 주장이 다른 분석 의견에도 나온다');
     assert.ok(leftovers('<p>(가칭)계양2초 **개교시기 미정**으로</p>').length > 0);
     assert.ok(leftovers('<p>a &amp;#34; b</p>').length > 0);
     assert.equal(leftovers('<p>개교 <b>시기 미정</b>, 21% 높음</p><style>a{b:c}</style>').length, 0);
