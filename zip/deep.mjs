@@ -30,7 +30,7 @@ export async function allDeep() {
 }
 
 // 리포트 HTML → 글자. 그림(data:)·스크립트는 버리고, 가족 맞춤 절은 뺀다
-const FAMILY = /우리 가족|우리 아기|우리집_정보|예비 신혼부부인|우리 기준/;
+const FAMILY = /우리 가족|우리 아기|우리집_정보|예비 신혼부부인|우리 기준|우리 부부|아기 계획|두 분(?!석)/; // 리포트의 가족 맞춤 문장(「우리 부부의 직장 주소」, 「곧 아기 계획」)
 export function reportText(html) {
   let s = html.replace(/<(script|style)[^>]*>[\s\S]*?<\/\1>/g, '').replace(/src="data:[^"]+"/g, '');
   s = s.replace(/<br\s*\/?>|<\/(p|div|h\d|li|tr|section|table)>/g, '\n').replace(/<[^>]+>/g, '');
@@ -70,15 +70,21 @@ const TYPO = /오인식|오타|오기|잘못 (적|표기|들|읽)/, MONEY = /\d\
 const claimRows = (checks) => (checks || []).filter((c) => c.verdict !== '전망·검증불가' && !FAMILY.test(c.claim + c.note + c.official) && !(TYPO.test(c.note) && !MONEY.test(c.claim)));
 // 출처 매체를 밝히지 않는다(2026-10-30 사용자 결정: 채널·영상 이름을 쓰면 특정인을 깎아내린다는 다툼이 생길 수 있다 — 「공개된 분석 의견을 찾아본 결과」로 포괄해서 쓴다).
 // 리포트 문장에 남은 영상 번호·재생 시각·채널 이름을 지우고 「영상」을 「분석 의견」으로 바꾼다. 남은 흔적은 --lint가 잡는다
+// 채널 이름은 파일 이름 그대로(「돈다방(Money-Cafe)」)와 괄호 앞 이름(「돈다방」) 둘 다 리포트에 나온다
+const chNames = (v) => [...new Set([v.channel, (v.channel || '').split(/[(\[]/)[0].trim()].filter((c) => c && c.length > 1))].sort((a, b) => b.length - a.length);
 export const scrub = (t, videos = []) => {
   let s = String(t || '').replace(/\s*\((?=[^()]*(?:t=\d|s_\d|\b[A-Za-z0-9_-]{11}\b))[^()]*\)/g, '');
   for (const v of videos) { // 영상 번호는 앞 네 글자만 적힌 곳도 있다. 조사가 바로 붙은 번호(「…에도 나온다」)는 「다른 분석 의견」으로 바꾸고 조사를 맞춘다
     const id = `${v.id.slice(0, 4).replace(/-/g, '\\-')}[A-Za-z0-9_-]*`;
     const at = '(?:\\s*\\([^()]*초\\))?'; // 번호 뒤에 붙은 재생 시점 「(539초)」
     s = s.replace(new RegExp(`(?:영상\\s*)?${id}${at}(는|가|를|와|에도|도|의|에서|에)`, 'g'), (_, j) => `다른 분석 의견${{ 는: '은', 가: '이', 를: '을', 와: '과' }[j] || j}`).replace(new RegExp(`${id}${at},?\\s*`, 'g'), '');
-    if (v.channel) s = s.split(v.channel).join('다른 분석');
+    for (const c of chNames(v)) s = s.split(c).join('다른 분석 의견');
   }
-  return s.replace(/출연자의? 의견/g, '개인 의견').replace(/출연자/g, '의견을 낸 쪽').replace(/로 들리는/g, '로 적힌').replace(/자막 오인식/g, '잘못 적은 이름').replace(/자막/g, '표기').replace(/영상/g, '분석 의견').replace(/가장 확실하다/g, '가장 정확하다').replace(/\bnotice(?:_[0-9a-f]+)?/g, '공고문').replace(/공고문·공고문/g, '공고문') // 리포트의 내부 파일 이름(notice_849f1ea1 = 공고문 원문).replace(/\s{2,}/g, ' ').trim();
+  // 채널 이름 자리: 따옴표·재생 시점을 걷고 조사를 맞춘다. 「A와 B도」처럼 둘이 이어지면 「다른 분석 의견들도」
+  s = s.replace(/\s*\(\d+(?:~\d+)?초[^()]*\)/g, '').replace(/'다른 분석 의견'/g, '다른 분석 의견')
+    .replace(/다른 분석 의견(?:와|과) 다른 분석 의견(이|가|도|은|는)?/g, (_, j) => `다른 분석 의견들${{ 가: '이', 는: '은' }[j] || j || ''}`)
+    .replace(/다른 분석 의견(는|가|를|와)(?![가-힣])/g, (_, j) => `다른 분석 의견${{ 는: '은', 가: '이', 를: '을', 와: '과' }[j]}`);
+  return s.replace(/출연자의? 의견/g, '개인 의견').replace(/출연자/g, '의견을 낸 쪽').replace(/로 들리는/g, '로 적힌').replace(/자막 오인식/g, '잘못 적은 이름').replace(/자막/g, '표기').replace(/영상/g, '분석 의견').replace(/가장 확실하다/g, '가장 정확하다').replace(/시세차익/g, '차익').replace(/오를 수/g, '인상될 수').replace(/\bnotice(?:_[0-9a-f]+)?/g, '공고문').replace(/공고문·공고문/g, '공고문') // 리포트의 내부 파일 이름(notice_849f1ea1 = 공고문 원문).replace(/\s{2,}/g, ' ').trim();
 };
 // 분석 의견 대조표: 다른 것·공식 자료로 확인 못 한 것을 먼저. 공고문과 맞는 것은 keep(주장 글귀 일부)에 적은 것만 — 글 다른 절과 겹치는 당연한 내용은 뺀다(2026-10-30 사용자 지시)
 const keptOk = (ch, keep) => ch.filter((c) => c.verdict === '맞음' && (!keep || keep.some((k) => c.claim.includes(k))));
@@ -203,7 +209,7 @@ export async function check(key) {
     if (!auto.includes(t)) for (const m of t.replace(/(\d),(?=\d{3})/g, '$1').match(/\d{2,}(?:\.\d+)?/g) || []) if (!corpus.includes(m)) issues.push(`숫자 ${m} — 리포트·공고 자료에 없음: 「${t.slice(0, 50)}」`);
     for (const w of BANNED) if (t.replace(/기관추천/g, '').includes(w)) issues.push(`금지 표현 「${w}」: 「${t.slice(0, 50)}」`);
     if (FAMILY.test(t)) issues.push(`가족 정보: 「${t.slice(0, 50)}」`);
-    if (/유튜브|영상|채널|출연자|자막|구독|조회수/.test(t) || videos.some((v) => t.includes(v.id.slice(0, 4)) || (v.channel && t.includes(v.channel)))) issues.push(`매체 흔적(채널·영상을 밝히지 않는다): 「${t.slice(0, 50)}」`);
+    if (/유튜브|영상|채널|출연자|자막|구독|조회수/.test(t) || videos.some((v) => t.includes(v.id.slice(0, 4)) || chNames(v).some((c) => t.includes(c)))) issues.push(`매체 흔적(채널·영상을 밝히지 않는다): 「${t.slice(0, 50)}」`);
     if (/(해요|에요|예요|세요|어요|아요|네요|죠)[.!?]/.test(t)) issues.push(`해요체: 「${t.slice(0, 50)}」`);
   }
   return issues;
@@ -224,6 +230,8 @@ if (process.argv[1]?.endsWith('deep.mjs')) {
     assert.equal(scrub('같은 주장이 NEwy2SruxEA(t=827)에도 나온다', [{ id: 'NEwy2SruxEA' }]), '같은 주장이 다른 분석 의견에도 나온다');
     assert.equal(scrub('iqwICfKxfTg(539초)는 같은 사실을 지적했다', [{ id: 'iqwICfKxfTg' }]), '다른 분석 의견은 같은 사실을 지적했다');
     assert.equal(scrub('무순위 공고문·notice 정리, notice_849f1ea1 38쪽'), '무순위 공고문 정리, 공고문 38쪽');
+    assert.equal(scrub("'돈다방'은 오히려 낮게 본다", [{ id: 'ccccccccccc', channel: '돈다방(Money-Cafe)' }]), '다른 분석 의견은 오히려 낮게 본다');
+    assert.equal(scrub("'가나TV'(325초)와 '다라'(293초)도 단서를 강조한다", [{ id: 'aaaaaaaaaaa', channel: '가나TV' }, { id: 'bbbbbbbbbbb', channel: '다라' }]), '다른 분석 의견들도 단서를 강조한다');
     assert.ok(leftovers('<p>(가칭)계양2초 **개교시기 미정**으로</p>').length > 0);
     assert.ok(leftovers('<p>a &amp;#34; b</p>').length > 0);
     assert.equal(leftovers('<p>개교 <b>시기 미정</b>, 21% 높음</p><style>a{b:c}</style>').length, 0);
