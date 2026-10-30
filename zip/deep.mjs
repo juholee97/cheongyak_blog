@@ -6,7 +6,7 @@
 // node zip/deep.mjs --lint <키>       글 자료 점검: 숫자가 리포트·공고 자료에 있는지, 금지 표현, 가족 정보, 해요체
 // node zip/deep.mjs --draft <키>      임시글로 올림(미리보기 링크)    --publish <키>  사용자 승인 뒤 공개(그 뒤 node zip/publish.mjs --go --pages로 메인 갱신)
 // 글 자료: { title, excerpt, card: [메인 카드 숫자 줄], blocks: [{h}|{p}|{ul}|{key}|{table:{head,rows}}|{note}|{claims:true}|{links:[[이름,주소]]}], sources: [[이름,주소]] }
-// 리포트 속 영상 주장은 공고문과 맞춰 본 결과만 싣는다(채널 평가·전망 숫자는 옮기지 않는다). 영상은 링크·채널 이름만, 금지 표현이 든 제목은 싣지 않는다.
+// 리포트 속 분석 의견은 공고문과 맞춰 본 결과만 싣는다(전망 숫자·채널 평가는 옮기지 않는다). 채널·영상 이름·링크는 쓰지 않고 「공개된 분석 의견」으로 포괄한다(2026-10-30 사용자 결정).
 import { readFile, writeFile, mkdir, readdir, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { ROOT } from '../tistory/common.mjs';
@@ -51,18 +51,25 @@ async function analyzerData(folder) {
 
 // 실을 주장: 가족 맞춤 문장과 가격 전망(전망·검증불가)은 뺀다
 const claimRows = (checks) => (checks || []).filter((c) => c.verdict !== '전망·검증불가' && !FAMILY.test(c.claim + c.note + c.official));
-// 영상 주장 대조표: 다른 것·공식 자료로 확인 못 한 것을 먼저, 맞는 것은 접어 둔다
+// 출처 매체를 밝히지 않는다(2026-10-30 사용자 결정: 채널·영상 이름을 쓰면 특정인을 깎아내린다는 다툼이 생길 수 있다 — 「공개된 분석 의견을 찾아본 결과」로 포괄해서 쓴다).
+// 리포트 문장에 남은 영상 번호·재생 시각·채널 이름을 지우고 「영상」을 「분석 의견」으로 바꾼다. 남은 흔적은 --lint가 잡는다
+export const scrub = (t, videos = []) => {
+  let s = String(t || '').replace(/\s*\((?=[^()]*(?:t=\d|s_\d|\b[A-Za-z0-9_-]{11}\b))[^()]*\)/g, '');
+  for (const v of videos) { s = s.replace(new RegExp(`${v.id.slice(0, 4).replace(/-/g, '\\-')}[A-Za-z0-9_-]*,?\\s*`, 'g'), ''); if (v.channel) s = s.split(v.channel).join('다른 분석'); } // 영상 번호는 앞 네 글자만 적힌 곳도 있다
+  return s.replace(/출연자의? 의견/g, '개인 의견').replace(/출연자/g, '의견을 낸 쪽').replace(/로 들리는/g, '로 적힌').replace(/자막 오인식/g, '잘못 적은 이름').replace(/자막/g, '표기').replace(/영상/g, '분석 의견').replace(/\s{2,}/g, ' ').trim();
+};
+// 분석 의견 대조표: 다른 것·공식 자료로 확인 못 한 것을 먼저, 맞는 것은 접어 둔다
 function claimsHtml(checks, videos) {
-  const ch = claimRows(checks);
-  const row = (c) => { const v = videos.find((x) => x.id === c.video_id); return [esc(c.claim), `${chip(VERDICT[c.verdict] || '공식 자료 없음')}${c.note ? `<small>${esc(c.note)}</small>` : ''}`, cv(c.official), v ? `<a href="${esc(v.url)}&t=${c.t}s" rel="nofollow noopener">${esc(v.channel)} ${mmss(c.t)}</a>` : '-']; };
-  const head = ['영상에서 나온 말', '확인 결과', '공고문·공식 자료', '영상'];
+  const ch = claimRows(checks), x = (t) => scrub(t, videos);
+  const row = (c) => [esc(x(c.claim)), `${chip(VERDICT[c.verdict] || '공식 자료 없음')}${c.note ? `<small>${esc(x(c.note))}</small>` : ''}`, cv(x(c.official))];
+  const head = ['공개된 분석 의견', '확인 결과', '공고문·공식 자료'];
   const off = ch.filter((c) => c.verdict !== '맞음'), ok = ch.filter((c) => c.verdict === '맞음');
   return [
-    '<h2>영상에서 나온 말, 공고문과 맞춰 보기</h2>',
-    `<p>영상 ${videos.length}편에서 나온 사실 주장 ${ch.length}개를 입주자모집공고문과 공식 자료에 맞춰 봤습니다. 공고문과 다르거나 공식 자료로 확인되지 않은 것 ${off.length}개를 먼저 보여 드립니다.</p>`,
+    '<h2>공개된 분석 의견, 공고문과 맞춰 보기</h2>',
+    `<p>이 단지에 대해 온라인에 공개된 여러 분석 의견을 찾아보니 아래와 같은 이야기가 있었습니다. 사실에 가까운 내용과 그렇지 않은 내용을 구분하려고, 그중 확인할 수 있는 주장 ${ch.length}개를 입주자모집공고문과 공식 자료에 맞춰 봤습니다. 공고문과 다르거나 공식 자료로 확인되지 않은 것 ${off.length}개를 먼저 보여 드립니다.</p>`,
     off.length ? table(head, off.map(row)) : '',
-    ok.length ? `<details class="az-more"><summary>공고문과 맞는 주장 ${ok.length}개 보기</summary>${table(head, ok.map(row))}</details>` : '',
-    src('「공식 자료 없음」은 틀렸다는 뜻이 아니라 공고문·공식 자료로 확인되지 않았다는 뜻입니다. 영상의 가격 전망은 확인할 수 있는 사실이 아니어서 이 표에 싣지 않았습니다.'),
+    ok.length ? `<details class="az-more"><summary>공고문과 맞는 내용 ${ok.length}개 보기</summary>${table(head, ok.map(row))}</details>` : '',
+    src('「공식 자료 없음」은 틀렸다는 뜻이 아니라 공고문·공식 자료로 확인되지 않았다는 뜻입니다. 앞으로의 가격 전망은 확인할 수 있는 사실이 아니어서 이 표에 싣지 않았습니다. 어느 한 의견을 평가하려는 표가 아니라, 청약 전에 사실을 가려 보려는 정리입니다.'),
   ];
 }
 
@@ -83,15 +90,12 @@ export async function render(key) {
     if (b.claims) return claimsHtml(summary?.claim_checks, videos).join('\n');
     throw new Error(`모르는 블록 ${JSON.stringify(b).slice(0, 60)}`);
   };
-  const ok = (t) => !BANNED.some((w) => t.includes(w));
-  const vids = videos.map((v) => `<li><a href="${esc(v.url)}" rel="nofollow noopener">${esc(v.channel)}</a>${ok(v.title) ? ` <span class="az-s">${esc(v.title)}</span>` : ''}</li>`);
   const html = [
     ...d.blocks.map(block),
     '<h2>이 글의 자료</h2>',
-    `<p>이 글은 입주자모집공고문, 청약홈·LH·교육청 같은 공식 자료, 그리고 이 단지를 다룬 유튜브 영상 ${videos.length}편을 함께 정리한 리포트를 바탕으로 썼습니다. 영상은 여러 시선을 보려고 참고했고, 숫자와 조건은 공고문을 기준으로 적었습니다.</p>`,
+    '<p>이 글은 입주자모집공고문과 청약홈·LH·교육청 같은 공식 자료를 기준으로, 온라인에 공개된 여러 분석 의견을 함께 찾아보고 aulee가 다시 정리한 결과입니다. 분석 의견은 여러 시선을 보려고 참고했고, 숫자와 조건은 공고문을 기준으로 적었습니다.</p>',
     `<ul class="az-links">${(d.sources || []).map(([t, u]) => `<li><a href="${esc(u)}" rel="nofollow noopener">${esc(t)}</a></li>`).join('')}</ul>`,
-    vids.length ? `<h3>참고한 영상</h3><ul>${vids.join('')}</ul>` : '',
-    src('영상 내용은 aulee가 확인한 사실이 아니며, 공고문과 맞춰 본 결과만 옮겼습니다. 이 글은 청약 판단을 돕는 정보이고 청약이나 투자를 권하지 않습니다. 자격·분양가·일정은 청약 전에 청약홈 입주자모집공고 원문으로 다시 확인하시기 바랍니다.'),
+    src('분석 의견은 aulee가 확인한 사실이 아니며, 공고문과 맞춰 본 결과만 옮겼습니다. 이 글은 청약 판단을 돕는 정보이고 청약이나 투자를 권하지 않습니다. 자격·분양가·일정은 청약 전에 청약홈 입주자모집공고 원문으로 다시 확인하시기 바랍니다.'),
   ].filter(Boolean).join('\n');
   return { slug: `deep-${key}`, title: d.title, html: wrap(keepUnits(html)), excerpt: d.excerpt, categories: [CAT_DEEP], tags: d.tags || [] };
 }
@@ -99,15 +103,16 @@ export async function render(key) {
 // 점검: 글 숫자가 리포트·공고 자료에 있는지(지어낸 숫자 막기), 금지 표현, 가족 정보, 해요체(워드프레스는 합쇼체)
 export async function check(key) {
   const d = await loadDeep(key), folder = await folderOf(key), issues = [];
-  const { summary } = await analyzerData(folder);
+  const { summary, videos } = await analyzerData(folder);
   const texts = d.blocks.flatMap((b) => [b.h, b.h3, b.p, b.note, b.src, ...(b.ul || []), ...(b.key || []), ...(b.table ? [...b.table.head, ...b.table.rows.flat()] : [])]).filter(Boolean).concat([d.title, d.excerpt, ...(d.card || [])]);
-  const auto = d.blocks.some((b) => b.claims) ? claimRows(summary?.claim_checks).flatMap((c) => [c.claim, c.note, c.official]).filter(Boolean) : []; // 대조표는 리포트 문장 그대로라 숫자 대조는 건너뛰고 표현만 본다
+  const auto = d.blocks.some((b) => b.claims) ? claimRows(summary?.claim_checks).flatMap((c) => [c.claim, c.note, c.official]).filter(Boolean).map((t) => scrub(t, videos)) : []; // 대조표는 리포트 문장 그대로라 숫자 대조는 건너뛰고 표현만 본다
   const corpus = [await readFile(join(BASE, folder, '종합리포트.html'), 'utf8'), await readFile(join(BASE, folder, '_data/notice.json'), 'utf8').catch(() => ''),
     ...await Promise.all((await folders())[folder].map((n) => readFile(join(ROOT, 'data/zip_posts', `${n}.json`), 'utf8').catch(() => '')))].join('\n').replace(/(\d),(?=\d{3})/g, '$1');
   for (const t of [...texts, ...auto]) {
     if (!auto.includes(t)) for (const m of t.replace(/(\d),(?=\d{3})/g, '$1').match(/\d{2,}(?:\.\d+)?/g) || []) if (!corpus.includes(m)) issues.push(`숫자 ${m} — 리포트·공고 자료에 없음: 「${t.slice(0, 50)}」`);
     for (const w of BANNED) if (t.replace(/기관추천/g, '').includes(w)) issues.push(`금지 표현 「${w}」: 「${t.slice(0, 50)}」`);
     if (FAMILY.test(t)) issues.push(`가족 정보: 「${t.slice(0, 50)}」`);
+    if (/유튜브|영상|채널|출연자|자막|구독|조회수/.test(t) || videos.some((v) => t.includes(v.id.slice(0, 4)) || (v.channel && t.includes(v.channel)))) issues.push(`매체 흔적(채널·영상을 밝히지 않는다): 「${t.slice(0, 50)}」`);
     if (/(해요|에요|예요|세요|어요|아요|네요|죠)[.!?]/.test(t)) issues.push(`해요체: 「${t.slice(0, 50)}」`);
   }
   return issues;

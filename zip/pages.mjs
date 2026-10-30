@@ -25,7 +25,7 @@ export function deepCards(deeps, list, today, views = {}) {
   const [lead, ...rest] = [...open, ...done];
   return [
     '<section class="az-deep" aria-labelledby="az-deep-h">',
-    '<div class="az-deep-head"><h2 id="az-deep-h">심층 분석</h2><p>공고문, 공식 자료, 유튜브 영상 여러 편을 함께 정리해 자격·필요한 현금·쟁점을 한 글로 묶었습니다.</p></div>',
+    '<div class="az-deep-head"><h2 id="az-deep-h">심층 분석</h2><p>공고문과 공식 자료를 기준으로 공개된 여러 분석 의견을 함께 찾아보고, 사실에 가까운 것과 아닌 것을 가려 자격·필요한 현금·쟁점을 한 글로 정리했습니다.</p></div>',
     `<article class="az-deep-lead"><div>${img(lead, 'az-deep-img')}${cap(lead)}</div><div class="az-deep-body"><p class="az-vmeta">${meta(lead)}</p><h3><a href="${esc(lead.link)}">${esc(lead.title)}</a></h3><p class="az-vex">${esc(lead.excerpt)}</p>${lead.card?.length ? `<ul class="az-deep-facts">${lead.card.map((t) => `<li>${esc(t)}</li>`).join('')}</ul>` : ''}<p class="az-deep-go"><a href="${esc(lead.link)}">심층 분석 읽기</a></p></div></article>`,
     rest.length ? `<ul class="az-vlist">${rest.map((x) => `<li class="az-vitem"><div class="az-vtext"><p class="az-vmeta">${meta(x)}</p><h2><a href="${esc(x.link)}">${esc(x.title)}</a></h2><p class="az-vex">${esc(x.excerpt)}</p></div>${img(x, 'az-vimg') ? `<figure class="az-vimg">${img(x, '')}</figure>` : ''}</li>`).join('')}</ul>` : '',
     '</section>',
