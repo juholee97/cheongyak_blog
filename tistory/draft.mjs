@@ -16,8 +16,8 @@ import { IMG_RE } from '../posts/weekly.mjs';
 const SEL = JSON.parse(await readFile(join(ROOT, 'tistory', 'selectors.json'), 'utf8'));
 // 티스토리 쪽 부담 줄이기(2026-10-30 사용자 결정: 하루에 저장·대조가 몰린 뒤 보안 확인이 잦아짐).
 // 저장(예약·임시저장·고치기)은 모든 스크립트를 합쳐 하루 DAY_MAX번, 저장 사이는 GAP_MIN분 — 기다릴 땐 브라우저를 띄우기 전에 기다린다.
-// 한도에 걸리면 코드 5(부르는 쪽은 「내일 다시」). 공개 글·예약 글 고치기는 EDIT_REST_UNTIL 전까지 쉰다. 기록 data/tistory_usage.json
-const DAY_MAX = 3, GAP_MIN = 30, EDIT_REST_UNTIL = '2026-11-03';
+// 한도에 걸리면 코드 5(부르는 쪽은 「내일 다시」). REST_UNTIL 전까지는 저장을 모두 쉰다(2026-10-31 사용자 결정: 5일 포스팅 정지 — 이미 예약된 글은 제시간에 공개). 기록 data/tistory_usage.json
+const DAY_MAX = 3, GAP_MIN = 30, REST_UNTIL = '2026-11-05';
 const USAGE = join(ROOT, 'data', 'tistory_usage.json');
 const kstDay = () => new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
 const usage = async () => { const u = JSON.parse(await readFile(USAGE, 'utf8').catch(() => '{}')); return u.day === kstDay() ? u : { day: kstDay(), saves: 0, last: u.last }; };
@@ -95,7 +95,7 @@ async function main() {
   if (issues.length) { issues.forEach((i) => log('✗ ' + i)); log('검수 실패 — 저장하지 않습니다.'); return 4; }
   for (const im of draft.images || []) await readFile(join(ROOT, im.file)).catch(() => { throw new Error(`그림 파일 없음: ${im.file} (posts/images.mjs 먼저)`); });
   if (!verifyOnly && !verifySched && !dryRun) {
-    if (updating && kstDay() < EDIT_REST_UNTIL) { log(`글 고치기는 ${EDIT_REST_UNTIL}부터(쉬는 중) — 다음에 다시`); return 5; }
+    if (kstDay() < REST_UNTIL) { log(`티스토리 저장은 ${REST_UNTIL}부터(쉬는 중) — 다음에 다시`); return 5; }
     const u = await usage();
     if (u.saves >= DAY_MAX) { log(`오늘 티스토리 저장 ${u.saves}번 — 하루 ${DAY_MAX}번까지라 내일 다시`); return 5; }
     const wait = u.last ? Date.parse(u.last) + GAP_MIN * 60e3 - Date.now() : 0;
