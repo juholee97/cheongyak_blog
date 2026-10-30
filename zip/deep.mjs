@@ -14,6 +14,7 @@ import { esc } from '../posts/weekly.mjs';
 import { BANNED } from '../posts/check.mjs';
 import { wrap } from './post.mjs';
 import { table, keyBox, note, src, chip, keepUnits } from './ui.mjs';
+import { won } from './timeline.mjs';
 
 export const BASE = 'D:/부동산_청약분석', CAT_DEEP = '심층 분석';
 const FOLDERS = join(ROOT, 'data/deep_folders.json'), DIR = join(ROOT, 'data/zip_deep');
@@ -38,7 +39,7 @@ export function reportText(html) {
 }
 
 // 표 칸 글자를 한 덩어리로: 휴대폰 표(az-stack)는 칸이 flex라, keepUnits가 「60㎡」에 씌우는 span마다 따로 줄이 갈라진다
-const cv = (t) => `<span>${esc(t)}</span>`;
+const cv = (t) => { const [a, ...b] = String(t).split('\n'); return `<span>${esc(a)}${b.map((x) => `<small>${esc(x)}</small>`).join('')}</span>`; }; // 줄바꿈 뒤는 작은 글씨 둘째 줄
 const VERDICT = { 맞음: '확인', 다름: '다름', 과장: '다름', '확인 필요': '공식 자료 없음', '전망·검증불가': '공식 자료 없음' };
 const mmss = (t) => `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`;
 async function analyzerData(folder) {
@@ -73,17 +74,37 @@ function claimsHtml(checks, videos) {
   ];
 }
 
-export async function render(key) {
+// 타임라인 그림: zip/timeline.mjs 틀로 찍어 data/deep/img/<키>-<종류>.png. local이면 미리보기용 상대 경로, 아니면 미디어로 올린 주소
+async function figures(key, blocks, local) {
+  const { scheduleHtml, moneyHtml, shoot } = await import('./timeline.mjs'), out = {};
+  await mkdir(join(ROOT, 'data/deep/img'), { recursive: true });
+  for (const b of blocks.filter((x) => x.timeline)) {
+    const t = b.timeline, name = `${key}-${t.kind}.png`, file = join(ROOT, 'data/deep/img', name);
+    await shoot(t.kind === 'money' ? moneyHtml(t) : scheduleHtml(t), file);
+    if (local) out[t.kind] = `img/${name}`;
+    else { const { uploadMedia, wp } = await import('./wp.mjs'), id = await uploadMedia(file, `deep-${name}`, t.title); out[t.kind] = (await wp(`media/${id}`)).source_url; }
+  }
+  return out;
+}
+const altOf = (t) => (t.kind === 'money'
+  ? `${t.title}. ${t.cash.map((c) => `${c.date} ${c.label} ${won(c.amount)}`).join(', ')}. ${t.loan ? t.loan.label + '. ' : ''}${t.interest ? t.interest.label + '. ' : ''}${t.total.label} ${t.total.value}.`
+  : `${t.title}. ${t.items.map((x) => `${x.date} ${x.label}`).join(', ')}.`);
+// 기본 정보 그리드: 칸마다 이름, 3단지·4단지처럼 나란히 놓을 값. 두 값이 같으면 한 칸으로 합친다
+const gridHtml = ({ cols, rows }) => `<div class="az-grid" style="--n:${cols.length}"><div class="az-grid-r az-grid-h"><span></span>${cols.map((c) => `<span>${esc(c)}</span>`).join('')}</div>${rows.map(([k, ...v]) => `<div class="az-grid-r"><span class="k">${esc(k)}</span>${v.every((x) => x === v[0]) ? `<span class="all">${esc(v[0])}</span>` : v.map((x) => `<span>${esc(x)}</span>`).join('')}</div>`).join('')}</div>`;
+
+export async function render(key, { local = false } = {}) {
   const d = await loadDeep(key), folder = await folderOf(key);
   if (!d) throw new Error(`data/zip_deep/${key}.json 없음`);
-  const { summary, videos } = await analyzerData(folder);
+  const { summary, videos } = await analyzerData(folder), figs = await figures(key, d.blocks, local);
   const block = (b) => {
     if (b.h) return `<h2>${esc(b.h)}</h2>`;
     if (b.h3) return `<h3>${esc(b.h3)}</h3>`;
     if (b.p) return `<p>${esc(b.p)}</p>`;
     if (b.ul) return `<ul>${b.ul.map((t) => `<li>${esc(t)}</li>`).join('')}</ul>`;
     if (b.key) return keyBox(b.key.map(esc), b.title || '한눈에 보기');
-    if (b.table) return table(b.table.head, b.table.rows.map((r) => r.map(cv)));
+    if (b.table) return table(b.table.head, b.table.rows.map((r) => r.map(cv)), { stack: !b.table.compact });
+    if (b.grid) return gridHtml(b.grid);
+    if (b.timeline) return `<figure class="az-fig"><img src="${esc(figs[b.timeline.kind])}" alt="${esc(altOf(b.timeline))}" width="720" loading="lazy">${b.timeline.caption ? `<figcaption>${esc(b.timeline.caption)}</figcaption>` : ''}</figure>`;
     if (b.note) return note(esc(b.note));
     if (b.src) return src(esc(b.src));
     if (b.links) return `<ul class="az-links">${b.links.map(([t, u]) => `<li><a href="${esc(u)}">${esc(t)}</a></li>`).join('')}</ul>`;
@@ -104,7 +125,8 @@ export async function render(key) {
 export async function check(key) {
   const d = await loadDeep(key), folder = await folderOf(key), issues = [];
   const { summary, videos } = await analyzerData(folder);
-  const texts = d.blocks.flatMap((b) => [b.h, b.h3, b.p, b.note, b.src, ...(b.ul || []), ...(b.key || []), ...(b.table ? [...b.table.head, ...b.table.rows.flat()] : [])]).filter(Boolean).concat([d.title, d.excerpt, ...(d.card || [])]);
+  const tl = (t) => (!t ? [] : [t.title, t.sub, t.caption, t.note, ...(t.items || []).flatMap((x) => [x.date, x.label, x.sub]), ...(t.cash || []).flatMap((c) => [c.date, c.label, won(c.amount)]), t.loan?.label, ...(t.loan?.dates || []), t.loan && won(t.loan.amount), t.interest?.label, t.total?.label, t.total?.value]);
+  const texts = d.blocks.flatMap((b) => [b.h, b.h3, b.p, b.note, b.src, ...(b.ul || []), ...(b.key || []), ...(b.table ? [...b.table.head, ...b.table.rows.flat()] : []), ...(b.grid ? [...b.grid.cols, ...b.grid.rows.flat()] : []), ...tl(b.timeline)]).filter(Boolean).concat([d.title, d.excerpt, ...(d.card || [])]);
   const auto = d.blocks.some((b) => b.claims) ? claimRows(summary?.claim_checks).flatMap((c) => [c.claim, c.note, c.official]).filter(Boolean).map((t) => scrub(t, videos)) : []; // 대조표는 리포트 문장 그대로라 숫자 대조는 건너뛰고 표현만 본다
   const corpus = [await readFile(join(BASE, folder, '종합리포트.html'), 'utf8'), await readFile(join(BASE, folder, '_data/notice.json'), 'utf8').catch(() => ''),
     ...await Promise.all((await folders())[folder].map((n) => readFile(join(ROOT, 'data/zip_posts', `${n}.json`), 'utf8').catch(() => '')))].join('\n').replace(/(\d),(?=\d{3})/g, '$1');
@@ -139,7 +161,7 @@ if (process.argv[1]?.endsWith('deep.mjs')) {
     // 올리기 전 화면 확인용: 사이트 CSS를 입힌 글 한 편 → data/deep/<키>.html
     const { previewHtml } = await import('./post.mjs'), key = arg('--preview'), out = join(ROOT, 'data/deep', `${key}.html`);
     await mkdir(join(ROOT, 'data/deep'), { recursive: true });
-    await writeFile(out, await previewHtml([await render(key)]));
+    await writeFile(out, await previewHtml([await render(key, { local: true })]));
     console.log('→', out);
   } else if (arg('--draft') || arg('--publish')) {
     const key = arg('--draft') || arg('--publish'), now = !!arg('--publish');
