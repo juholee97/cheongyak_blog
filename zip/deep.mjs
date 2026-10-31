@@ -30,7 +30,7 @@ export async function allDeep() {
 }
 
 // 리포트 HTML → 글자. 그림(data:)·스크립트는 버리고, 가족 맞춤 절은 뺀다
-const FAMILY = /우리 가족|우리 아기|우리집_정보|예비 신혼부부인|우리 기준|우리 부부|아기 계획|두 분(?!석)/; // 리포트의 가족 맞춤 문장(「우리 부부의 직장 주소」, 「곧 아기 계획」)
+const FAMILY = /우리 가족|우리 아기|우리 아이|아기와 |우리집_정보|예비 신혼부부인|우리 기준|우리 부부|아기 계획|두 분(?!석)/; // 리포트의 가족 맞춤 문장(「우리 부부의 직장 주소」, 「곧 아기 계획」)
 export function reportText(html) {
   let s = html.replace(/<(script|style)[^>]*>[\s\S]*?<\/\1>/g, '').replace(/src="data:[^"]+"/g, '');
   s = s.replace(/<br\s*\/?>|<\/(p|div|h\d|li|tr|section|table)>/g, '\n').replace(/<[^>]+>/g, '');
@@ -84,7 +84,7 @@ export const scrub = (t, videos = []) => {
   s = s.replace(/\s*\(\d+(?:~\d+)?초[^()]*\)/g, '').replace(/'다른 분석 의견'/g, '다른 분석 의견')
     .replace(/다른 분석 의견(?:와|과) 다른 분석 의견(이|가|도|은|는)?/g, (_, j) => `다른 분석 의견들${{ 가: '이', 는: '은' }[j] || j || ''}`)
     .replace(/다른 분석 의견(는|가|를|와)(?![가-힣])/g, (_, j) => `다른 분석 의견${{ 는: '은', 가: '이', 를: '을', 와: '과' }[j]}`);
-  return s.replace(/출연자의? 의견/g, '개인 의견').replace(/출연자/g, '의견을 낸 쪽').replace(/로 들리는/g, '로 적힌').replace(/자막 오인식/g, '잘못 적은 이름').replace(/자막/g, '표기').replace(/영상/g, '분석 의견').replace(/가장 확실하다/g, '가장 정확하다').replace(/확실/g, '분명').replace(/같은 채널의 /g, '같은 쪽의 ').replace(/채널/g, '출처').replace(/시세차익/g, '차익').replace(/오를 수/g, '인상될 수').replace(/\bnotice(?:_[0-9a-f]+)?/g, '공고문').replace(/공고문·공고문/g, '공고문') // 리포트의 내부 파일 이름(notice_849f1ea1 = 공고문 원문).replace(/\s{2,}/g, ' ').trim();
+  return s.replace(/출연자의? 의견/g, '개인 의견').replace(/출연자/g, '의견을 낸 쪽').replace(/로 들리는/g, '로 적힌').replace(/자막 오인식/g, '잘못 적은 이름').replace(/자막/g, '표기').replace(/영상/g, '분석 의견').replace(/가장 확실하다/g, '가장 정확하다').replace(/확실/g, '분명').replace(/같은 채널의 /g, '같은 쪽의 ').replace(/채널/g, '출처').replace(/시세차익/g, '차익').replace(/우리 아이가 배정/g, '실제로 배정').replace(/우리가 보는 공고/g, '이 공고').replace(/오를 수/g, '인상될 수').replace(/\bnotice(?:_[0-9a-f]+)?/g, '공고문').replace(/공고문·공고문/g, '공고문') // 리포트의 내부 파일 이름(notice_849f1ea1 = 공고문 원문).replace(/\s{2,}/g, ' ').trim();
 };
 // 분석 의견 대조표: 다른 것·공식 자료로 확인 못 한 것을 먼저. 공고문과 맞는 것은 keep(주장 글귀 일부)에 적은 것만 — 글 다른 절과 겹치는 당연한 내용은 뺀다(2026-10-30 사용자 지시)
 const keptOk = (ch, keep) => ch.filter((c) => c.verdict === '맞음' && (!keep || keep.some((k) => c.claim.includes(k))));
@@ -241,6 +241,8 @@ if (process.argv[1]?.endsWith('deep.mjs')) {
     assert.equal(scrub('같은 주장이 NEwy2SruxEA(t=827)에도 나온다', [{ id: 'NEwy2SruxEA' }]), '같은 주장이 다른 분석 의견에도 나온다');
     assert.equal(scrub('iqwICfKxfTg(539초)는 같은 사실을 지적했다', [{ id: 'iqwICfKxfTg' }]), '다른 분석 의견은 같은 사실을 지적했다');
     assert.equal(scrub('무순위 공고문·notice 정리, notice_849f1ea1 38쪽'), '무순위 공고문 정리, 공고문 38쪽');
+    assert.equal(scrub("'주변에 있다'와 '우리 아이가 배정된다'는 다르다. 우리가 보는 공고"), "'주변에 있다'와 '실제로 배정된다'는 다르다. 이 공고");
+    assert.ok(FAMILY.test('아기와 낮 시간을 보낼 집이라면') && FAMILY.test('우리 아이 학교') && !FAMILY.test('아이와 함께 걷기 좋은'));
     assert.equal(scrub("'돈다방'은 오히려 낮게 본다", [{ id: 'ccccccccccc', channel: '돈다방(Money-Cafe)' }]), '다른 분석 의견은 오히려 낮게 본다');
     assert.equal(scrub("'가나TV'(325초)와 '다라'(293초)도 단서를 강조한다", [{ id: 'aaaaaaaaaaa', channel: '가나TV' }, { id: 'bbbbbbbbbbb', channel: '다라' }]), '다른 분석 의견들도 단서를 강조한다');
     assert.ok(leftovers('<p>(가칭)계양2초 **개교시기 미정**으로</p>').length > 0);
