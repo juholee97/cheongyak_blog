@@ -55,6 +55,9 @@ async function main() {
   if (!key) throw new Error('.env에 DATA_GO_KR_KEY 필요');
   const peersOf = JSON.parse(await readFile(join(ROOT, 'data/zip_peers.json'), 'utf8').catch(() => '{}'));
   const neighbors = JSON.parse(await readFile(join(ROOT, 'data/zip_neighbors.json'), 'utf8').catch(() => '{}'));
+  // 공고 주소에 동·지번이 없어 위치를 못 찾는 공고(「고덕 국제화계획지구 내 Abc-33블록」 등): { 공고번호: { address, src, approx? } }.
+  // approx(동 단위로만 앎)면 비교 단지 거리를 비워 둔다 — 대략 좌표로 잰 거리를 글에 쓰지 않는다
+  const siteFix = JSON.parse(await readFile(join(ROOT, 'data/zip_address.json'), 'utf8').catch(() => '{}'));
   // 접수가 끝나 이번 수집에서 빠진 공고도 글이 계속 열려 있으니 지난 자료(풀·고른 단지·비교값)를 이어 둔다 — 시작할 때 읽어 둔다
   const prev = JSON.parse(await readFile(join(ROOT, 'data/deals.json'), 'utf8').catch(() => '{"items":[]}')).items.filter((r) => r.pool);
   const carry = (out) => [...out, ...prev.filter((r) => !out.some((o) => o.no === r.no))];
@@ -67,14 +70,15 @@ async function main() {
     try {
       const m = mainType(await odcloud(MODEL[it.kind], no, key));
       if (!m) { out.push({ ...row, skip: '주택형 분양가 없음' }); continue; }
-      const t = await nearbyTrades(it.address, m.area, { geo: false }); // 후보의 거리는 구하지 않는다
+      const fix = siteFix[no], address = fix?.address || it.address;
+      const t = await nearbyTrades(address, m.area, { geo: false }); // 후보의 거리는 구하지 않는다
       if (t.skip) { out.push({ ...row, main: m, skip: t.skip }); continue; }
       // 후보 풀: 같은 시군구 거래 단지 + 생활권이 이어지는 옆 시군구(data/zip_neighbors.json) + 분양권·오피스텔 — 최근 12개월 2건 이상 거래, 거래 많은 순. 거리는 안 구한다(비교 단지에만)
       const keep = (gs, n) => gs.filter((g) => g.count >= 2 && g.perPy).slice(0, n).map(({ apt, umd, jibun, built, tier, leasehold, count, perPy, d, near, sgg, kind, loc }) => ({ apt, umd, jibun, built, tier, leasehold, count, perPy, d, near, loc, ...(sgg ? { sgg } : {}), ...(kind ? { kind } : {}) }));
       const pool = keep(t.all, 250);
       for (const addr of neighbors[no] || []) pool.push(...keep(await poolIn(addr, t.site, m.area, { geo: false }), 120));
-      for (const addr of [it.address, ...(neighbors[no] || [])]) for (const kind of ['silv', 'offi']) pool.push(...keep(await poolIn(addr, t.site, m.area, { kind, geo: false }), 60));
-      const chosen = peersOf[no] ? await withDistances(pick(pool, peersOf[no].peers), t.site, distanceOf) : [];
+      for (const addr of [address, ...(neighbors[no] || [])]) for (const kind of ['silv', 'offi']) pool.push(...keep(await poolIn(addr, t.site, m.area, { kind, geo: false }), 60));
+      const chosen = !peersOf[no] ? [] : fix?.approx ? pick(pool, peersOf[no].peers) : await withDistances(pick(pool, peersOf[no].peers), t.site, distanceOf);
       const d = dealOf(m, chosen);
       out.push({ ...row, main: m, site: t.site, months: t.months, pool, refs: chosen, note: peersOf[no]?.note || '', ...(d ? { ...d, hit: d.hit && !row.leasehold } : { skip: peersOf[no] ? '고른 비교 단지가 풀에 2곳 미만' : '비교 단지 아직 안 고름' }) }); // 토지임대부는 땅값이 빠져 꿀분양에서 뺀다
     } catch (e) {
