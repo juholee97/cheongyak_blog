@@ -21,6 +21,10 @@ export async function saveTistoryCookies(context) {
 export const BLOG = 'https://aulee.tistory.com';
 export const NEWPOST = BLOG + '/manage/newpost/';
 
+// 자동화가 연 화면은 방문 통계·광고 노출로 세지 않게 막는다(2026-11-01 사용자 요청 — 우리의 집 zip/shot.mjs와 같은 취지)
+// tiara = 티스토리(카카오) 방문 통계, wcslog = 네이버 애널리틱스, gtag = 구글 애널리틱스, 애드센스
+export const TRACKERS = /tiara|wcs\.pstatic\.net|googletagmanager\.com|google-analytics\.com|googlesyndication\.com|doubleclick\.net/;
+
 export async function launch({ headless = true } = {}) {
   // TISTORY_PROFILE: 다른 자동화가 전용 프로필을 쓰는 중일 때 임시 프로필로(로그인은 저장된 쿠키로)
   const context = await chromium.launchPersistentContext(process.env.TISTORY_PROFILE || SESSION, {
@@ -30,6 +34,7 @@ export async function launch({ headless = true } = {}) {
     args: ['--disable-blink-features=AutomationControlled'],
   });
   try { await context.addCookies(JSON.parse(await readFile(COOKIES, 'utf8'))); } catch { /* 저장본 없음: 로그인 필요 */ }
+  await context.route(TRACKERS, (r) => r.abort());
   const page = context.pages()[0] || (await context.newPage());
   return { context, page };
 }
