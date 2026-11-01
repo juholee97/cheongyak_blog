@@ -606,3 +606,35 @@ body:has(.az-deep-post) .az-head>*{max-width:880px}
   .az-ft tfoot tr{display:block;border:0}
 }
 .az-fnm>a.az-ext::after{content:"\00a0↗";font-weight:400;color:var(--az-sub);font-size:.85em}
+/* 심층 분석 글 v2(2026-11-02 사용자 지시: 문단·글씨 크기·끊는 자리·절제된 강조로 의도가 보이게) */
+.az-deep-post>h2{margin-top:44px;padding-top:22px;border-top:1px solid var(--az-line);font-size:clamp(20px,0.6vw + 17px,23px)}
+.az-deep-post>p,.az-deep-post>ul:not([class]){max-width:680px}
+.az-deep-post>p+p{margin-top:-4px}
+.az-take{font-size:18.5px;font-weight:600;line-height:1.6;letter-spacing:-0.01em;border-left:3px solid var(--az-blue);padding:2px 0 2px 14px;max-width:680px}
+.az>h2+.az-take{margin-top:-6px}
+.az-two{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.az-two section{background:var(--az-panel);border-radius:10px;padding:14px 18px}
+.az-two-h{font-size:14px;font-weight:600;color:var(--az-blue);margin:0 0 6px}
+.az-two ul{margin:0;padding-left:1.1em;font-size:15.5px;line-height:1.65}
+.az-two li+li{margin-top:6px}
+.az-sig{border-top:2px solid var(--az-ink)}
+.az-sig-r{display:grid;grid-template-columns:150px minmax(0,1fr) auto;gap:2px 14px;padding:11px 0;border-bottom:1px solid var(--az-line);align-items:baseline}
+.az-sig-r .k{font-size:14px;color:var(--az-sub)}
+.az-sig-r .v{font-size:16.5px;font-weight:600}
+.az-sig-r .w{grid-column:2 / -1;font-size:14.5px;color:var(--az-sub);line-height:1.6}
+.az-sig-s{font-size:12px;font-weight:600;padding:1px 8px;border-radius:4px;white-space:nowrap}
+.az-sig-s.good{background:var(--az-dn-soft);color:var(--az-dn)}
+.az-sig-s.mid{background:var(--az-panel);color:var(--az-sub)}
+.az-sig-s.warn{background:var(--az-up-soft);color:var(--az-up)}
+.az-who{margin:0;border-top:2px solid var(--az-ink)}
+.az-who>div{display:grid;grid-template-columns:200px minmax(0,1fr);gap:4px 18px;padding:12px 0;border-bottom:1px solid var(--az-line)}
+.az-who dt{font-size:15px;font-weight:600}
+.az-who dd{margin:0;font-size:15.5px;line-height:1.65}
+@media (max-width:720px){
+  .az-take{font-size:17.5px}
+  .az-two{grid-template-columns:1fr}
+  .az-sig-r{grid-template-columns:minmax(0,1fr) auto}
+  .az-sig-r .k{grid-column:1 / -1}
+  .az-sig-r .w{grid-column:1 / -1}
+  .az-who>div{grid-template-columns:1fr}
+}

@@ -6,7 +6,7 @@
 // node zip/deep.mjs --lint <키>       글 자료 점검: 숫자가 리포트·공고 자료에 있는지, 금지 표현, 가족 정보, 해요체
 // node zip/deep.mjs --verify <키>|all  공개된 글을 받아 화면에 남은 표시(** [[ ]] &#…;) 검수 — --publish 끝에 자동으로도 돈다
 // node zip/deep.mjs --draft <키>      임시글로 올림(미리보기 링크)    --publish <키>  사용자 승인 뒤 공개(그 뒤 node zip/publish.mjs --go --pages로 메인 갱신)
-// 글 자료: { title, excerpt, card: [메인 카드 숫자 줄], blocks: [{h}|{p}|{ul}|{key}|{table:{head,rows}}|{note}|{grid:{cols,rows}}|{plan:[[구분,내용,상태]]}|{timeline}|{claims:{keep:[공고문과 맞는 주장 중 실을 것의 글귀]}}|{links:[[이름,주소]]}], sources: [[이름,주소]] }
+// 글 자료: { title, excerpt, card: [메인 카드 숫자 줄], blocks: [{h}|{p}|{ul}|{key}|{table:{head,rows}}|{note}|{grid:{cols,rows}}|{plan:[[구분,내용,상태]]}|{timeline}|{claims:{keep:[공고문과 맞는 주장 중 실을 것의 글귀]}}|{links:[[이름,주소]]}|{take}|{two:[{t,items}]}|{signals:{rows:[[지표,값,판정,해석]],src}}|{who:[[유형,판단]]}], sources: [[이름,주소]], market: [시군구코드(zip/market.mjs)] } — 쓰는 기준은 docs/deep-writing-guide.md
 // 본문 글자 안 [[r:글귀]] 위험(빨강)·[[y:]] 주의(노랑)·[[b:]] 핵심(파랑)·[[g:]] 유리(초록) 배경색 — 한 항목에 한두 곳, 글 전반에. 쓰면 글 맨 위에 색 뜻 안내가 붙는다
 // 리포트 속 분석 의견은 공고문과 맞춰 본 결과만 싣는다(전망 숫자·채널 평가는 옮기지 않는다). 채널·영상 이름·링크는 쓰지 않고 「공개된 분석 의견」으로 포괄한다(2026-10-30 사용자 결정).
 import { readFile, writeFile, mkdir, readdir, stat } from 'node:fs/promises';
@@ -132,6 +132,7 @@ const lead = (h) => h.replace(/^([^:<]{1,16}):\s/, '<b>$1</b>: '); // 목록 앞
 const legend = () => `<p class="az-hl-legend">${Object.entries(HL).map(([c, [n, d]]) => `<span><mark class="az-hl ${c}">${n}</mark> ${d}</span>`).join('')}</p>`;
 // 입지 표: [구분, 내용, 상태] 줄을 구분별 묶음으로(좁은 구분 칸이 세로 글씨가 되지 않게). 상태 앞머리 「확정·계획·공고문」은 색 표시
 const STATE = { 확정: 'ok', 계획: 'plan', 공고문: 'na' };
+const SIG = { 유리: 'good', 좋음: 'good', 보통: 'mid', 중립: 'mid', 주의: 'warn', 불리: 'warn' }; // 시장 신호표 판정 색
 const planHtml = (rows) => {
   const groups = [];
   for (const [g, ...r] of rows) { if (groups.at(-1)?.[0] !== g) groups.push([g, []]); groups.at(-1)[1].push(r); }
@@ -162,6 +163,11 @@ export async function render(key, { local = false } = {}) {
     if (b.timeline) return `<figure class="az-fig"><img src="${esc(figs[b.timeline.kind])}" alt="${esc(altOf(b.timeline))}" width="720" loading="lazy">${b.timeline.caption ? `<figcaption>${esc(b.timeline.caption)}</figcaption>` : ''}</figure>`;
     if (b.note) return note(tx(b.note));
     if (b.src) return src(tx(b.src));
+    // 2026-11-02 사용자 지시(가독성: 절마다 절제된 강조 한 곳, 실거주와 미래를 나눠 보기, 지금 시장 신호): take 절의 한 줄 결론, two 두 칸 비교, signals 시장 신호표, who 독자 유형별 판단
+    if (b.take) return `<p class="az-take">${tx(b.take)}</p>`;
+    if (b.two) return `<div class="az-two">${b.two.map((c) => `<section><p class="az-two-h">${esc(c.t)}</p><ul>${c.items.map((t) => `<li>${lead(tx(t))}</li>`).join('')}</ul></section>`).join('')}</div>`;
+    if (b.signals) return `<div class="az-sig">${b.signals.rows.map(([k, v, s, why]) => `<div class="az-sig-r"><span class="k">${esc(k)}</span><span class="v">${tx(v)}</span><span class="az-sig-s ${SIG[s] || 'mid'}">${esc(s)}</span><span class="w">${tx(why)}</span></div>`).join('')}</div>${b.signals.src ? src(tx(b.signals.src)) : ''}`;
+    if (b.who) return `<dl class="az-who">${b.who.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${tx(v)}</dd></div>`).join('')}</dl>`;
     if (b.links) return `<ul class="az-links">${b.links.map(([t, u]) => `<li><a href="${esc(u)}">${esc(t)}</a></li>`).join('')}</ul>`;
     if (b.claims) return claimsHtml(summary?.claim_checks, videos, b.claims.keep).join('\n');
     throw new Error(`모르는 블록 ${JSON.stringify(b).slice(0, 60)}`);
@@ -199,13 +205,22 @@ export async function check(key) {
   const d = await loadDeep(key), folder = await folderOf(key), issues = [];
   const { summary, videos } = await analyzerData(folder);
   const tl = (t) => (!t ? [] : [t.title, t.sub, t.caption, t.note, ...(t.items || []).flatMap((x) => [x.date, x.label, x.sub]), ...(t.cash || []).flatMap((c) => [c.date, c.label, won(c.amount)]), t.loan?.label, ...(t.loan?.dates || []), t.loan && won(t.loan.amount), t.interest?.label, t.total?.label, t.total?.value]);
-  const texts = d.blocks.flatMap((b) => [b.h, b.h3, b.p, b.note, b.src, ...(b.ul || []), ...(b.key || []), ...(b.table ? [...b.table.head, ...b.table.rows.flat()] : []), ...(b.grid ? [...b.grid.cols, ...b.grid.rows.flat()] : []), ...(b.plan || []).flat(), ...tl(b.timeline)]).filter(Boolean).concat([d.title, d.excerpt, ...(d.card || [])]);
+  const texts = d.blocks.flatMap((b) => [b.h, b.h3, b.p, b.note, b.src, ...(b.ul || []), ...(b.key || []), ...(b.table ? [...b.table.head, ...b.table.rows.flat()] : []), ...(b.grid ? [...b.grid.cols, ...b.grid.rows.flat()] : []), ...(b.plan || []).flat(), ...tl(b.timeline), b.take, ...(b.two || []).flatMap((c) => [c.t, ...c.items]), ...(b.signals?.rows || []).flat(), b.signals?.src, ...(b.who || []).flat()]).filter(Boolean).concat([d.title, d.excerpt, ...(d.card || [])]);
   for (const t of texts) if (/\[\[|\]\]/.test(unhl(t))) issues.push(`색 표시 문법 틀림([[r:글귀]]·y·b·g만): 「${t.slice(0, 50)}」`);
+  // v2 글(docs/deep-writing-guide.md): 소제목마다 바로 아래 한 줄 결론(take), 문단은 짧게
+  if (d.v === 2) d.blocks.forEach((b, i) => {
+    if (b.h && !d.blocks[i + 1]?.take) issues.push(`소제목 아래 한 줄 결론(take) 없음: 「${b.h}」`);
+    if (b.p && unhl(b.p).length > 230) issues.push(`문단이 김(${unhl(b.p).length}자, 230자 이하로 나누기): 「${b.p.slice(0, 40)}」`);
+  });
   for (const t of [d.title, d.excerpt, ...(d.card || [])]) if (/\[\[[rybg]:/.test(t ?? '')) issues.push(`제목·요약·카드에는 색 표시를 쓰지 않는다: 「${t.slice(0, 50)}」`);
   texts.splice(0, texts.length, ...texts.map(unhl));
   const auto = d.blocks.some((b) => b.claims) ? claimRows(summary?.claim_checks).flatMap((c) => [c.claim, c.note, c.official]).filter(Boolean).map((t) => scrub(t, videos)) : []; // 대조표는 리포트 문장 그대로라 숫자 대조는 건너뛰고 표현만 본다
-  const corpus = [await readFile(join(BASE, folder, '종합리포트.html'), 'utf8'), await readFile(join(BASE, folder, '_data/notice.json'), 'utf8').catch(() => ''),
-    ...await Promise.all((await folders())[folder].map((n) => readFile(join(ROOT, 'data/zip_posts', `${n}.json`), 'utf8').catch(() => '')))].join('\n').replace(/(\d),(?=\d{3})/g, '$1');
+  // 리포트가 다시 만들어지면(분석기 재실행) 이미 쓴 글의 숫자가 새 리포트에서 빠질 수 있다 — --read가 남겨 둔 이전 리포트 글자(<키>.prev.txt)도 근거로 본다(2026-11-02)
+  const corpus = [await readFile(join(BASE, folder, '종합리포트.html'), 'utf8'), await readFile(join(ROOT, 'data/deep', `${key}.prev.txt`), 'utf8').catch(() => ''), await readFile(join(BASE, folder, '_data/notice.json'), 'utf8').catch(() => ''),
+    ...await Promise.all((await folders())[folder].map((n) => readFile(join(ROOT, 'data/zip_posts', `${n}.json`), 'utf8').catch(() => ''))),
+    // 지금 시장(zip/market.mjs)·금리·정책 정리(docs/policy)의 숫자도 근거로 인정한다(2026-11-02)
+    ...await Promise.all((d.market || []).map((l) => readFile(join(ROOT, 'data/market', `${l}.json`), 'utf8').catch(() => ''))), await readFile(join(ROOT, 'data/rates.json'), 'utf8').catch(() => ''),
+    ...await Promise.all((await readdir(join(ROOT, 'docs/policy')).catch(() => [])).map((x) => readFile(join(ROOT, 'docs/policy', x), 'utf8')))].join('\n').replace(/(\d),(?=\d{3})/g, '$1');
   for (const k of d.blocks.find((b) => b.claims)?.claims.keep || []) if (!keptOk(claimRows(summary?.claim_checks), [k]).length) issues.push(`대조표 keep 「${k}」 — 공고문과 맞는 주장 중에 없음(리포트가 새로 만들어졌으면 다시 고른다)`);
   // 공고문 금액으로 계산한 숫자(잔금 30% 등): calc [[보이는 금액, 만원 단위 식]] — 식의 바탕 숫자가 자료에 있고 계산이 맞으면 통과(2026-10-31)
   let calcOk = '';
@@ -252,8 +267,9 @@ if (process.argv[1]?.endsWith('deep.mjs')) {
   } else if (arg('--read')) {
     const key = arg('--read'), folder = await folderOf(key);
     await mkdir(join(ROOT, 'data/deep'), { recursive: true });
-    const out = join(ROOT, 'data/deep', `${key}.txt`);
-    await writeFile(out, reportText(await readFile(join(BASE, folder, '종합리포트.html'), 'utf8')));
+    const out = join(ROOT, 'data/deep', `${key}.txt`), text = reportText(await readFile(join(BASE, folder, '종합리포트.html'), 'utf8')), prev = await readFile(out, 'utf8').catch(() => null);
+    if (prev && prev !== text) await writeFile(join(ROOT, 'data/deep', `${key}.prev.txt`), prev); // 리포트가 바뀌면 이전 글자를 남긴다(점검 근거)
+    await writeFile(out, text);
     console.log('→', out);
   } else if (arg('--lint')) {
     const issues = await check(arg('--lint'));
