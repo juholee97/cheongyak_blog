@@ -230,6 +230,8 @@ export async function check(key) {
   // 리포트가 다시 만들어지면(분석기 재실행) 이미 쓴 글의 숫자가 새 리포트에서 빠질 수 있다 — --read가 남겨 둔 이전 리포트 글자(<키>.prev.txt)도 근거로 본다(2026-11-02)
   const corpus = [await readFile(join(BASE, folder, '종합리포트.html'), 'utf8'), await readFile(join(ROOT, 'data/deep', `${key}.prev.txt`), 'utf8').catch(() => ''), await readFile(join(BASE, folder, '_data/notice.json'), 'utf8').catch(() => ''),
     ...await Promise.all((await folders())[folder].map((n) => readFile(join(ROOT, 'data/zip_posts', `${n}.json`), 'utf8').catch(() => ''))),
+    // 공고문 원문 글자(data/notice_text) — 그림으로만 열리는 LH 공고문은 읽은 대목을 옮겨 적어 둔다(2026-11-03)
+    ...await Promise.all((await folders())[folder].map((n) => readFile(join(ROOT, 'data/notice_text', `${n}.json`), 'utf8').catch(() => ''))),
     // 지금 시장(zip/market.mjs)·금리·정책 정리(docs/policy)의 숫자도 근거로 인정한다(2026-11-02)
     ...await Promise.all((d.market || []).map((l) => readFile(join(ROOT, 'data/market', `${l}.json`), 'utf8').catch(() => ''))), await readFile(join(ROOT, 'data/rates.json'), 'utf8').catch(() => ''),
     ...await Promise.all((await readdir(join(ROOT, 'docs/policy')).catch(() => [])).map((x) => readFile(join(ROOT, 'docs/policy', x), 'utf8')))].join('\n').replace(/(\d),(?=\d{3})/g, '$1');
