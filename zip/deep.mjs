@@ -189,7 +189,7 @@ export async function render(key, { local = false } = {}) {
     `<h2 id="s${heads.length}">이 글의 자료</h2>`,
     '<p>이 글은 입주자모집공고문과 청약홈·LH·교육청 같은 공식 자료를 기준으로, 온라인에 공개된 여러 분석 의견을 함께 찾아보고 aulee가 다시 정리한 결과입니다. 분석 의견은 여러 시선을 보려고 참고했고, 숫자와 조건은 공고문을 기준으로 적었습니다.</p>',
     `<ul class="az-links">${(d.sources || []).map(([t, u]) => `<li><a href="${esc(u)}" rel="nofollow noopener">${esc(t)}</a></li>`).join('')}</ul>`,
-    src('분석 의견은 aulee가 확인한 사실이 아니며, 공고문과 맞춰 본 결과만 옮겼습니다. 이 글은 청약 판단을 돕는 정보이고 청약이나 투자를 권하지 않습니다. 자격·분양가·일정은 청약 전에 청약홈 입주자모집공고 원문으로 다시 확인하시기 바랍니다.'),
+    src('이 글은 청약 판단을 돕는 정보이고 청약이나 투자를 권하지 않습니다. 자격·분양가·일정은 청약 전에 청약홈 입주자모집공고 원문으로 다시 확인하시기 바랍니다.'),
   ].filter(Boolean).join('\n');
   return { slug: `deep-${key}`, title: d.title, html: wrap(keepUnits(html.replace(/\*\*([^*<>]+?)\*\*/g, '<b>$1</b>')) + rail).replace('<div class="az">', '<div class="az az-deep-post">'), excerpt: d.excerpt, categories: [CAT_DEEP], tags: d.tags || [] };
 }
