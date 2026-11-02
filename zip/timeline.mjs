@@ -82,6 +82,43 @@ export function moneyHtml({ title, sub, start, end, cash, loan, interest, total,
 `);
 }
 
+// 2026-11-02 사용자 요청(글 중간중간에 그림): 가격 사다리와 지역 시세 흐름
+// bars: { title, sub, unit, rows: [{ label, value, sub, key }], note } — 가로 막대, key는 파란색(이번 분양가)
+export function barsHtml({ title, sub, unit = '', rows, note }) {
+  const max = Math.max(...rows.map((r) => r.value));
+  const body = rows.map((r) => `<div class="br${r.key ? ' key' : ''}"><p class="bl">${esc(r.label)}${r.sub ? `<small>${esc(r.sub)}</small>` : ''}</p><div class="bt"><div><div class="bb" style="width:${(r.value / max) * 100}%"></div></div><b>${r.value.toLocaleString('ko-KR')}${esc(unit)}</b></div></div>`).join('');
+  return page(`<p class="t">${esc(title)}</p>${sub ? `<p class="s">${esc(sub)}</p>` : ''}<div class="bs">${body}</div>${note ? `<p class="nt">${esc(note)}</p>` : ''}`, `
+.bs{margin-top:28px;display:grid;gap:18px}
+.bl{font-size:24px;line-height:1.3;margin-bottom:6px}
+.bl small{font-size:20px;color:${C.sub};margin-left:10px}
+.bt{display:grid;grid-template-columns:1fr 150px;align-items:center;gap:14px}
+.bb{height:34px;background:${C.line};border-radius:0 6px 6px 0}
+.bt b{font-size:25px;white-space:nowrap}
+.br.key .bl{font-weight:600}
+.br.key .bb{background:${C.blue}}
+.br.key b{color:${C.blue}}
+.nt{font-size:22px;color:${C.sub};margin-top:22px;line-height:1.5}
+`);
+}
+
+// trend: { title, sub, unit, points: [{ q: '2025Q4', v, mark }], note } — 분기 세로 막대, mark 있는 막대는 파란색, 값과 이름은 위 범례로. 연도는 첫 분기 밑에만
+export function trendHtml({ title, sub, unit = '', points, note }) {
+  const max = Math.max(...points.map((p) => p.v)), H = 300, h = (v) => (v / max) * H;
+  const keys = points.filter((p) => p.mark).map((p) => `<span><b>${p.v.toLocaleString('ko-KR')}${esc(unit)}</b>${esc(p.mark)}</span>`).join('');
+  const cols = points.map((p) => `<div class="tc${p.mark ? ' mk' : ''}"><div class="tb" style="height:${h(p.v)}px"></div><p class="ty">${p.q.endsWith('Q1') ? p.q.slice(0, 4) : ''}</p></div>`).join('');
+  return page(`<p class="t">${esc(title)}</p>${sub ? `<p class="s">${esc(sub)}</p>` : ''}<p class="tk">${keys}</p><div class="tr" style="height:${H + 40}px">${cols}</div>${note ? `<p class="nt">${esc(note)}</p>` : ''}`, `
+.tr{display:flex;align-items:flex-end;gap:5px;margin-top:20px;padding-bottom:40px;border-bottom:3px solid ${C.ink};position:relative}
+.tc{flex:1;position:relative;height:100%;display:flex;flex-direction:column;justify-content:flex-end}
+.tb{background:${C.line};border-radius:4px 4px 0 0}
+.tc.mk .tb{background:${C.blue}}
+.tk{display:flex;gap:28px;margin-top:22px}
+.tk span{font-size:21px;color:${C.sub}}
+.tk b{display:block;font-size:28px;color:${C.blue}}
+.ty{position:absolute;bottom:-38px;left:0;font-size:21px;color:${C.sub};white-space:nowrap}
+.nt{font-size:22px;color:${C.sub};margin-top:18px;line-height:1.5}
+`);
+}
+
 // HTML → PNG(2배 해상도). out: 파일 경로
 export async function shoot(html, out) {
   const { chromium } = await import('playwright');

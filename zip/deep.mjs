@@ -6,7 +6,7 @@
 // node zip/deep.mjs --lint <키>       글 자료 점검: 숫자가 리포트·공고 자료에 있는지, 금지 표현, 가족 정보, 해요체
 // node zip/deep.mjs --verify <키>|all  공개된 글을 받아 화면에 남은 표시(** [[ ]] &#…;) 검수 — --publish 끝에 자동으로도 돈다
 // node zip/deep.mjs --draft <키>      임시글로 올림(미리보기 링크)    --publish <키>  사용자 승인 뒤 공개(그 뒤 node zip/publish.mjs --go --pages로 메인 갱신)
-// 글 자료: { title, excerpt, card: [메인 카드 숫자 줄], blocks: [{h}|{p}|{ul}|{key}|{table:{head,rows}}|{note}|{grid:{cols,rows}}|{plan:[[구분,내용,상태]]}|{timeline}|{claims:{keep:[공고문과 맞는 주장 중 실을 것의 글귀]}}|{links:[[이름,주소]]}|{take}|{two:[{t,items}]}|{signals:{rows:[[지표,값,판정,해석]],src}}|{who:[[유형,판단]]}], sources: [[이름,주소]], market: [시군구코드(zip/market.mjs)] } — 쓰는 기준은 docs/deep-writing-guide.md
+// 글 자료: { title, excerpt, card: [메인 카드 숫자 줄], blocks: [{h}|{p}|{ul}|{key}|{table:{head,rows}}|{note}|{grid:{cols,rows}}|{plan:[[구분,내용,상태]]}|{timeline:{kind:schedule|money|bars|trend}}|{view:공고번호}|{claims:{keep:[공고문과 맞는 주장 중 실을 것의 글귀]}}|{links:[[이름,주소]]}|{take}|{two:[{t,items}]}|{signals:{rows:[[지표,값,판정,해석]],src}}|{who:[[유형,판단]]}], sources: [[이름,주소]], market: [시군구코드(zip/market.mjs)] } — 쓰는 기준은 docs/deep-writing-guide.md
 // 본문 글자 안 [[r:글귀]] 위험(빨강)·[[y:]] 주의(노랑)·[[b:]] 핵심(파랑)·[[g:]] 유리(초록) 배경색 — 한 항목에 한두 곳, 글 전반에. 쓰면 글 맨 위에 색 뜻 안내가 붙는다
 // 리포트 속 분석 의견은 공고문과 맞춰 본 결과만 싣는다(전망 숫자·채널 평가는 옮기지 않는다). 채널·영상 이름·링크는 쓰지 않고 「공개된 분석 의견」으로 포괄한다(2026-10-30 사용자 결정).
 import { readFile, writeFile, mkdir, readdir, stat } from 'node:fs/promises';
@@ -102,18 +102,27 @@ function claimsHtml(checks, videos, keep) {
 
 // 타임라인 그림: zip/timeline.mjs 틀로 찍어 data/deep/img/<키>-<종류>.png. local이면 미리보기용 상대 경로, 아니면 미디어로 올린 주소
 async function figures(key, blocks, local) {
-  const { scheduleHtml, moneyHtml, shoot } = await import('./timeline.mjs'), out = {};
+  const { scheduleHtml, moneyHtml, barsHtml, trendHtml, shoot } = await import('./timeline.mjs'), out = {};
+  const HTML = { money: moneyHtml, schedule: scheduleHtml, bars: barsHtml, trend: trendHtml };
   await mkdir(join(ROOT, 'data/deep/img'), { recursive: true });
   for (const b of blocks.filter((x) => x.timeline)) {
     const t = b.timeline, name = `${key}-${t.kind}.png`, file = join(ROOT, 'data/deep/img', name);
-    await shoot(t.kind === 'money' ? moneyHtml(t) : scheduleHtml(t), file);
+    if (t.kind === 'trend' && t.market) t.points = await trendPoints(t.market);
+    await shoot(HTML[t.kind](t), file);
     if (local) out[t.kind] = `img/${name}`;
     else { const { uploadMedia, wp } = await import('./wp.mjs'), id = await uploadMedia(file, `deep-${name}`, t.title); out[t.kind] = (await wp(`media/${id}`)).source_url; }
   }
   return out;
 }
-const altOf = (t) => (t.kind === 'money'
-  ? `${t.title}. ${t.cash.map((c) => `${c.date} ${c.label} ${won(c.amount)}`).join(', ')}. ${t.loan ? t.loan.label + '. ' : ''}${t.interest ? t.interest.label + '. ' : ''}${t.total.label} ${t.total.value}.`
+// 지역 시세 흐름 그림의 점: data/market/<코드>.json 분기(덜 찬 분기 빼고), 고점·최근 분기 표시
+async function trendPoints(lawd) {
+  const m = JSON.parse(await readFile(join(ROOT, 'data/market', `${lawd}.json`), 'utf8'));
+  return m.quarters.filter((q) => !q.partial).map((q) => ({ q: q.q, v: q.perPy, mark: q.q === m.last.q ? `${q.q.slice(2, 4)}년 ${q.q.at(-1)}분기` : q.q === m.peak.q ? `${q.q.slice(2, 4)}년 ${q.q.at(-1)}분기 고점` : '' }));
+}
+const altOf = (t) => (t.kind === 'bars' ? `${t.title}. ${t.rows.map((r) => `${r.label} ${r.value}${t.unit || ''}`).join(', ')}.`
+  : t.kind === 'trend' ? `${t.title}. ${t.points.filter((p) => p.mark).map((p) => `${p.mark} ${p.v}${t.unit || ''}`).join(', ')}.`
+  : t.kind === 'money'
+  ?`${t.title}. ${t.cash.map((c) => `${c.date} ${c.label} ${won(c.amount)}`).join(', ')}. ${t.loan ? t.loan.label + '. ' : ''}${t.interest ? t.interest.label + '. ' : ''}${t.total.label} ${t.total.value}.`
   : `${t.title}. ${t.items.map((x) => `${x.date} ${x.label}`).join(', ')}.`);
 // 노선 이름에 노선 색 표시(2026-10-30 사용자 요청). 색은 수도권 전철 노선도 색. 새 노선이 글에 나오면 여기에 더한다
 const LINES = { 'GTX-A': '#9a6292', 경의중앙선: '#77c4a3', 수인분당선: '#f5a200', 신분당선: '#d4003b', 서해선: '#8fc31f', 인천1호선: '#7ca8d5', 인천2호선: '#ed8b00', '1호선': '#0052a4', '2호선': '#00a84d', '3호선': '#ef7c1c', '4호선': '#00a5de', '5호선': '#996cac', '6호선': '#cd7c2f', '7호선': '#747f00', '8호선': '#e6186c', '9호선': '#bdb092' };
@@ -145,7 +154,7 @@ const gridHtml = ({ cols, rows }) => `<div class="az-grid" style="--n:${cols.len
 export async function render(key, { local = false } = {}) {
   const d = await loadDeep(key), folder = await folderOf(key);
   if (!d) throw new Error(`data/zip_deep/${key}.json 없음`);
-  const { summary, videos } = await analyzerData(folder), figs = await figures(key, d.blocks, local);
+  const { summary, videos } = await analyzerData(folder), figs = await figures(key, d.blocks, local), views = JSON.parse(await readFile(join(ROOT, 'data/zip_views.json'), 'utf8').catch(() => '{}'));
   // PC 오른쪽 안내 칸(2026-10-30 사용자: PC에서는 PC답게 널널하게): 목차·핵심 숫자·함께 볼 글. 휴대폰에서는 숨긴다(site.css .az-deep-post)
   const heads = [...d.blocks.filter((b) => b.h).map((b) => b.h), '이 글의 자료'];
   let hn = 0;
@@ -161,6 +170,8 @@ export async function render(key, { local = false } = {}) {
     if (b.grid) return gridHtml(b.grid);
     if (b.plan) return planHtml(b.plan);
     if (b.timeline) return `<figure class="az-fig"><img src="${esc(figs[b.timeline.kind])}" alt="${esc(altOf(b.timeline))}" width="720" loading="lazy">${b.timeline.caption ? `<figcaption>${esc(b.timeline.caption)}</figcaption>` : ''}</figure>`;
+    // 공식 조감도·투시도(zip/views.mjs로 받아 둔 것) — 출처를 그림 밑에 단다
+    if (b.view) { const v = views[b.view], href = v?.page || v?.homepage, site = esc(v?.site || '분양 홈페이지'); return !v?.file ? '' : `<figure class="az-fig"><img src="${esc(local ? `../zip_views/${b.view}.jpg` : v.url)}" alt="${esc(b.alt || v.label || '조감도')}" width="800" loading="lazy"><figcaption>${esc(v.label || '조감도')} · ${href ? `<a href="${esc(href)}" rel="nofollow noopener">${site}</a>` : site}${b.caption ? ` · ${esc(b.caption)}` : ''}</figcaption></figure>`; }
     if (b.note) return note(tx(b.note));
     if (b.src) return src(tx(b.src));
     // 2026-11-02 사용자 지시(가독성: 절마다 절제된 강조 한 곳, 실거주와 미래를 나눠 보기, 지금 시장 신호): take 절의 한 줄 결론, two 두 칸 비교, signals 시장 신호표, who 독자 유형별 판단
@@ -204,7 +215,7 @@ export async function verifyLive(link) {
 export async function check(key) {
   const d = await loadDeep(key), folder = await folderOf(key), issues = [];
   const { summary, videos } = await analyzerData(folder);
-  const tl = (t) => (!t ? [] : [t.title, t.sub, t.caption, t.note, ...(t.items || []).flatMap((x) => [x.date, x.label, x.sub]), ...(t.cash || []).flatMap((c) => [c.date, c.label, won(c.amount)]), t.loan?.label, ...(t.loan?.dates || []), t.loan && won(t.loan.amount), t.interest?.label, t.total?.label, t.total?.value]);
+  const tl = (t) => (!t ? [] : [t.title, t.sub, t.caption, t.note, ...(t.items || []).flatMap((x) => [x.date, x.label, x.sub]), ...(t.cash || []).flatMap((c) => [c.date, c.label, won(c.amount)]), t.loan?.label, ...(t.loan?.dates || []), t.loan && won(t.loan.amount), t.interest?.label, t.total?.label, t.total?.value, ...(t.rows || []).flatMap((x) => [x.label, x.sub, String(x.value)])]);
   const texts = d.blocks.flatMap((b) => [b.h, b.h3, b.p, b.note, b.src, ...(b.ul || []), ...(b.key || []), ...(b.table ? [...b.table.head, ...b.table.rows.flat()] : []), ...(b.grid ? [...b.grid.cols, ...b.grid.rows.flat()] : []), ...(b.plan || []).flat(), ...tl(b.timeline), b.take, ...(b.two || []).flatMap((c) => [c.t, ...c.items]), ...(b.signals?.rows || []).flat(), b.signals?.src, ...(b.who || []).flat()]).filter(Boolean).concat([d.title, d.excerpt, ...(d.card || [])]);
   for (const t of texts) if (/\[\[|\]\]/.test(unhl(t))) issues.push(`색 표시 문법 틀림([[r:글귀]]·y·b·g만): 「${t.slice(0, 50)}」`);
   // v2 글(docs/deep-writing-guide.md): 소제목마다 바로 아래 한 줄 결론(take), 문단은 짧게
