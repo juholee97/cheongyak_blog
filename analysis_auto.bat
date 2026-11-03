@@ -20,7 +20,7 @@ rem Only existing data is re-rendered (no new notices are added here) and held d
 rem Interest numbers (Naver search trend, news count, YouTube metadata) refreshed once a week per notice; closed notices keep their last values (2026-10-29)
 node zip\buzz.mjs --max-age 6.5 >> data\logs\zip_buzz.log 2>&1
 node zip\post.mjs >> data\logs\zip_daily.log 2>&1
-node zip\sh_write.mjs --publish --live >> data\logs\zip_daily.log 2>&1
+rem SH rent posts removed from the site 2026-11-03 (user: apartments, officetels, villas only) - zip\sh_write.mjs no longer runs here
 node zip\publish.mjs --go >> data\logs\zip_daily.log 2>&1
 rem auleezip deep-analysis posts: re-check published pages for leftover markup (scheduled posts go live 06:00, 7 days before first receipt) (2026-10-30)
 node zip\deep.mjs --verify all >> data\logs\zip_daily.log 2>&1

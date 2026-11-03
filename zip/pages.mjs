@@ -28,6 +28,7 @@ const regionOf = (r) => (['서울', '경기', '인천'].includes(r.region) ? r.r
 // 글이 없는 공고(r.url)는 청약홈·LH·SH 공고 화면으로
 const postUrl = (r) => r.url || `https://auleezip.com/${r.slug || 'apt-' + r.no}/`;
 // 장부(글이 있는 공고) + 청약달력 수집본의 접수가 남은 공고. 같은 공고번호는 장부를 쓴다
+// 사이트에는 아파트(분양·무순위·임의공급)·오피스텔·도시형만 싣는다 — 임대(LH·SH·민간임대·청년안심주택)는 뺀다(2026-11-03 사용자)
 export function withSchedule(list, items, today) {
   const have = new Set(list.map((r) => r.no)), out = [...list];
   for (const it of items) {
@@ -36,7 +37,7 @@ export function withSchedule(list, items, today) {
     have.add(no);
     out.push({ no, name: it.name, region: it.region, district: it.district || '', kind: it.kind, address: it.address || '', phases: it.phases, url: it.applyhomeUrl || it.url || it.homepageUrl, ...(no.startsWith('sh-') ? { source: 'sh' } : {}) });
   }
-  return out;
+  return out.filter((r) => kindOf(r) !== '임대');
 }
 // 공고 일정 → 날짜별 할 일(주말은 뺀다). 무순위·임대의 접수는 「접수」
 export function eventsOf(r) {
@@ -100,12 +101,12 @@ export function openPage(list, today, res = {}, deeps = [], views = {}) {
   return page([
     `<style>${dayCss}</style>`,
     '<form class="az-front" action="#">',
-    `<p class="az-flead">청약 공고마다 분양가(임대는 임대료)를 주변 단지 실거래와 맞춰 봤습니다. <time class="az-fdate" datetime="${today}">${esc(today.replaceAll('-', '.'))} 기준</time>이고 매일 아침 다시 만듭니다.</p>`,
+    `<p class="az-flead">청약 공고마다 분양가를 주변 단지 실거래와 맞춰 봤습니다. <time class="az-fdate" datetime="${today}">${esc(today.replaceAll('-', '.'))} 기준</time>이고 매일 아침 다시 만듭니다.</p>`,
     deepGrid(deeps, list, today, views), // 시험: 심층 분석을 맨 위에 격자로(오른쪽 칸의 심층 분석은 뺐다)
     `<div class="az-sum">${sum}</div>`,
     `<section class="az-days" aria-labelledby="az-days-h"><div class="az-days-head"><h2 id="az-days-h">청약 일정 2주</h2><p>날짜를 누르면 그날 일정이 있는 공고만 봅니다 · 전체 일정은 ${link(CAL_URL, '우리의 청약달력')}</p>${opt('az-d', 'az-d0', '날짜 해제', 'az-dclear', true)}</div><div class="az-days-row" role="radiogroup" aria-label="청약 일정 날짜">${dayList.map(day).join('')}</div></section>`,
     '<div class="az-fgrid"><section class="az-fmain" aria-label="공고 목록">',
-    `<div class="az-fbar">${chips('az-g', '지역', ['전체', '서울', '경기', '인천', '지방'])}${chips('az-k', '구분', ['전체', '분양', '무순위', '임대'])}${chips('az-s', '정렬', ['접수 빠른 순', '시세 대비 낮은 순', '분양가 낮은 순'])}<label class="az-fck"><input type="checkbox" id="az-c" class="az-x">접수 끝난 공고도 보기</label></div>`,
+    `<div class="az-fbar">${chips('az-g', '지역', ['전체', '서울', '경기', '인천', '지방'])}${chips('az-k', '구분', ['전체', '분양', '무순위'])}${chips('az-s', '정렬', ['접수 빠른 순', '시세 대비 낮은 순', '분양가 낮은 순'])}<label class="az-fck"><input type="checkbox" id="az-c" class="az-x">접수 끝난 공고도 보기</label></div>`,
     '<div class="az-fres"><p>기본은 접수 중·예정 공고입니다. 날짜를 고르면 접수가 끝난 공고의 발표 일정도 함께 보입니다. 「시세 대비 낮은 순」·「분양가 낮은 순」은 시세를 비교한 공고만 보입니다.</p><button type="reset">조건 지우기</button></div>',
     `<table class="az-ft"><thead><tr><th>단지</th><th>지역</th><th>구분</th><th class="n">접수</th><th class="n">주력 최고가</th><th>분양가와 주변 시세</th><th><span class="az-sr">심층 분석</span></th></tr></thead><tbody>${all.map(row).join('')}</tbody><tfoot><tr><td colspan="7" class="az-fcount"></td></tr></tfoot></table>`,
     src(`막대는 주력 주택형 최고 분양가가 비교 단지 실거래 중앙값(같은 면적 환산)보다 얼마나 높거나 낮은지이고 ±40%까지 그립니다. 계산 방법은 ${link(METHOD_URL, '비교 기준')}에 있습니다. 접수 일정은 입주자모집공고 기준이며 사업주체 사정에 따라 바뀔 수 있으니, 신청 전 공고문을 확인하시기 바랍니다.`),
@@ -205,11 +206,6 @@ export const methodPage = () => page([
   '<p>분양가가 비교 단지 시세보다 몇 % 높거나 낮은지를 반올림한 값으로 다섯 구간에 놓습니다.</p>',
   `<div style="max-width:720px">${table(['구간', '기준'], [['많이 낮음', '20% 이상 낮음'], ['낮음', '5~19% 낮음'], ['비슷', '위아래 4% 안'], ['높음', '5~19% 높음'], ['많이 높음', '20% 이상 높음']], { stack: false })}</div>`,
   `<p>토지임대부 공고는 땅값이 빠진 분양가라 일반 아파트 거래가와 그대로 견줄 수 없어서 눈금을 그리지 않습니다. 「꿀분양」은 주력 주택형 기준으로 비교 단지 시세보다 ${GAP / 10000}억원 이상 또는 ${Math.round(RATE * 100)}% 이상 낮은 공고입니다(토지임대부는 넣지 않습니다).</p>`,
-  '<h2>임대 공고: 임대보증금·월세와 주변 전월세 실거래</h2>',
-  '<ul><li><b>임대조건</b>: SH 입주자 모집공고에 적힌 호별 임대보증금·월세를 옮겨 적고, 공고문 이미지에서 글자를 읽는 프로그램(OCR)으로 숫자를 다시 대조합니다.</li>'
-  + '<li><b>주변 거래</b>: 국토교통부 전월세 실거래(아파트·연립다세대·오피스텔·단독다가구) 중 이 집과 같은 종류의 주택을, 같은 구에서 최근 6개월 안에 새로 맺은 계약만 씁니다. 갱신 계약과 같은 건물의 거래는 뺍니다. 단독·다가구 거래에는 층 정보가 없어 층대는 맞추지 못하고, 면적은 계약면적으로 봅니다.</li>'
-  + '<li><b>맞추는 조건</b>: 전용면적이 비슷하고(±5㎡ 또는 ±15% 중 큰 쪽) 임대보증금이 ±30% 안인 월세 거래만 봅니다. 같은 층대(반지하·1층·저층·중층·고층)와 연식대끼리 먼저 보고, 거래가 3건 미만이면 조건을 풉니다. 실제로 쓴 조건은 글의 표에 적습니다. 신축은 비슷한 연식의 거래가 없으면 판단하지 않습니다.</li>'
-  + '<li><b>월세 비율</b>: 이 집 월세 ÷ 그 거래들의 월세 중앙값입니다.</li></ul>',
   '<h2>날짜와 고친 기록</h2>',
   '<p>글 위에는 처음 올린 날과 마지막으로 고친 날을 적습니다. 실거래가 새로 쌓이거나 공고가 정정돼 숫자가 바뀌면 같은 글을 고치고, 글 끝 「고친 기록」에 날짜와 바뀐 내용을 남깁니다. 화면 모양만 바꾼 것은 기록하지 않습니다. 접수가 끝난 공고의 글은 「접수 마감」 표시를 달고 그대로 둡니다.</p>',
   '<h2>비교 글에서 지키는 것</h2>',
