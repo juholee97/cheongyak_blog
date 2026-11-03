@@ -638,3 +638,6 @@ body:has(.az-deep-post) .az-head>*{max-width:880px}
   .az-sig-r .w{grid-column:1 / -1}
   .az-who>div{grid-template-columns:1fr}
 }
+
+/* 첫 화면 임대 공고(아파트·오피스텔) — 매매 표와 따로(2026-11-03) */
+.az-rentbox{margin-top:44px}.az-rentbox h2{font-size:20px;margin:0 0 6px}.az-rentbox .az-flead{margin:0 0 10px}

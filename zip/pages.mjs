@@ -39,6 +39,17 @@ export function withSchedule(list, items, today) {
   }
   return out.filter((r) => kindOf(r) !== '임대');
 }
+// 임대 공고는 매매(분양) 표와 따로, 집이 아파트·오피스텔인 것만(2026-11-03 사용자). 공고 자료에 주택 유형 칸이 없어 이렇게 가린다:
+// LH 건설임대(국민·영구·행복·통합공공·10년 공공임대)는 아파트 단지 — 매입·전세임대(다가구·다세대)와 기업·기관 대상 공고는 뺀다.
+// 청약홈 공공지원 민간임대는 아파트 청약. 서울 청년안심주택은 역세권 고층(아파트·오피스텔). SH는 호별 자료(data/sh_units.json)의 주택 종류가 아파트·오피스텔일 때만
+const NOT_HOME = /매입|전세임대|다가구|다세대|기관공급|대상기업|돌보미|모집계획/;
+export function rentals(items, today, units = []) {
+  const shOk = new Set(units.filter((u) => /아파트|오피스텔/.test(u.type || '')).map((u) => u.id));
+  const ok = (it) => it.source === 'lh' ? !NOT_HOME.test(`${it.kind} ${it.name}`) : it.source === 'sh' ? shOk.has(it.id) : ['공공지원 민간임대', '청년안심주택'].includes(it.kind);
+  return items.filter((it) => kindOf(it) === '임대' && receiptOf(it.phases) && !closedOf(it.phases, today) && ok(it))
+    .sort((a, b) => (receiptOf(a.phases).start < receiptOf(b.phases).start ? -1 : 1));
+}
+const rentSection = (rents) => !rents.length ? '' : `<section class="az-rentbox" aria-labelledby="az-rent-h"><h2 id="az-rent-h">임대 공고 · 아파트·오피스텔 ${rents.length}곳</h2><p class="az-flead">매매(분양) 공고와 따로 모았습니다. 시세 비교는 하지 않고 공고 원문으로 잇습니다.</p>${table(['단지', '지역', '구분', { t: '접수', n: true }], rents.map((r) => { const rc = receiptOf(r.phases); return [r.applyhomeUrl ? `<a class="az-ext" href="${esc(r.applyhomeUrl)}" rel="nofollow noopener">${esc(shortName(r.name))}</a>` : esc(shortName(r.name)), esc(areaOf(r)), esc(r.kind), span(rc.start, rc.end)]; }))}</section>`;
 // 공고 일정 → 날짜별 할 일(주말은 뺀다). 무순위·임대의 접수는 「접수」
 export function eventsOf(r) {
   const name = { sp: '특공', p1: kindOf(r) === '분양' ? '1순위' : '접수', p2: '2순위', win: '발표' }, ev = {};
@@ -50,7 +61,7 @@ export function eventsOf(r) {
   return ev;
 }
 
-export function openPage(list, today, res = {}, deeps = [], views = {}) {
+export function openPage(list, today, res = {}, deeps = [], views = {}, rents = []) {
   const start = (r) => receiptOf(r.phases)?.start || '9999';
   const open = list.filter((r) => !closedOf(r.phases, today)).sort((a, b) => (start(a) < start(b) ? -1 : 1));
   const done = list.filter((r) => closedOf(r.phases, today)).sort((a, b) => ((receiptOf(a.phases)?.end || '') < (receiptOf(b.phases)?.end || '') ? 1 : -1));
@@ -110,6 +121,7 @@ export function openPage(list, today, res = {}, deeps = [], views = {}) {
     '<div class="az-fres"><p>기본은 접수 중·예정 공고입니다. 날짜를 고르면 접수가 끝난 공고의 발표 일정도 함께 보입니다. 「시세 대비 낮은 순」·「분양가 낮은 순」은 시세를 비교한 공고만 보입니다.</p><button type="reset">조건 지우기</button></div>',
     `<table class="az-ft"><thead><tr><th>단지</th><th>지역</th><th>구분</th><th class="n">접수</th><th class="n">주력 최고가</th><th>분양가와 주변 시세</th><th><span class="az-sr">심층 분석</span></th></tr></thead><tbody>${all.map(row).join('')}</tbody><tfoot><tr><td colspan="7" class="az-fcount"></td></tr></tfoot></table>`,
     src(`막대는 주력 주택형 최고 분양가가 비교 단지 실거래 중앙값(같은 면적 환산)보다 얼마나 높거나 낮은지이고 ±40%까지 그립니다. 계산 방법은 ${link(METHOD_URL, '비교 기준')}에 있습니다. 접수 일정은 입주자모집공고 기준이며 사업주체 사정에 따라 바뀔 수 있으니, 신청 전 공고문을 확인하시기 바랍니다.`),
+    rentSection(rents),
     '</section><aside class="az-frail" aria-label="함께 보기">',
     ends.length ? `<section class="az-rbox"><h2>마감 임박</h2><ul class="az-rls">${ends.map(({ r, rc, end }) => item(r, `<span>${rc.start === end ? `<b>${mdd(end)}(${dowOf(end)}) 하루만</b>` : `${today < rc.start ? `${mdd(rc.start)} 시작<br>` : ''}<b>${mdd(end)}(${dowOf(end)}) 마감</b>`}</span>`)).join('')}</ul></section>` : '',
     '<section class="az-rbox az-prep"><h2>청약 전에 챙길 것</h2><ul><li>거주지·무주택·혼인·자녀는 <b>입주자모집공고일</b> 기준으로 따집니다. 공고가 나온 뒤에 옮겨도 바뀌지 않습니다.</li><li>청약통장 가입기간과 예치금도 공고일 기준입니다. 청약홈에서 순위확인서로 미리 확인해 두십시오.</li><li>당첨자 발표일이 같은 단지는 한 사람이 한 곳만 넣을 수 있습니다.</li><li>특별공급은 한 세대가 평생 한 번만 당첨될 수 있습니다.</li><li>당첨 서류는 대부분 공고일 이후 발급분만 받습니다. 미리 떼 둔 서류는 다시 떼야 할 수 있습니다.</li></ul></section>',

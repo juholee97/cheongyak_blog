@@ -11,7 +11,7 @@ import { ROOT } from '../tistory/common.mjs';
 import { upsert, upsertPage, uploadMedia, wp } from './wp.mjs';
 import { closedOf, planOf, liveDeep } from './post.mjs';
 export { planOf }; // zip/sh_write.mjs가 여기서 불러 쓴다
-import { openPage, methodPage, aboutPage, privacyPage, saleList, deepList, rentList, withSchedule } from './pages.mjs';
+import { openPage, methodPage, aboutPage, privacyPage, saleList, deepList, rentList, withSchedule, rentals } from './pages.mjs';
 import { allDeep, folders as deepFolders } from './deep.mjs';
 import { loadViews } from './views.mjs';
 import { loadLog, saveLog, applyLog } from './revlog.mjs';
@@ -72,7 +72,7 @@ if (process.argv.includes('--check')) {
     const fo = Object.values(await deepFolders()), deeps = (await allDeep()).filter((d) => liveDeep(d)).map((d) => ({ ...d, nos: fo.find((n) => n[0] === d.key) || [d.key] }));
     // 첫 화면 공고 표·일정은 티스토리 청약달력과 같은 수집본(schedule.json)에서 열린 공고를 거의 다 받는다(2026-10-31 사용자) — 글이 없는 공고는 청약홈·LH·SH 공고로 잇는다
     const { items: sched } = await (await import('../posts/weekly.mjs')).loadData().catch(() => ({ items: [] }));
-    const pages = [['open-notices', '현재 열린 공고', openPage(withSchedule(Object.values(reg), sched, today), today, res, deeps, await loadViews())], ['method', '비교 기준', methodPage()], ['about', '소개', aboutPage()], ['privacy', '개인정보처리방침', privacyPage()]];
+    const pages = [['open-notices', '현재 열린 공고', openPage(withSchedule(Object.values(reg), sched, today), today, res, deeps, await loadViews(), rentals(sched, today, JSON.parse(await readFile(join(ROOT, 'data/sh_units.json'), 'utf8').catch(() => '[]'))))], ['method', '비교 기준', methodPage()], ['about', '소개', aboutPage()], ['privacy', '개인정보처리방침', privacyPage()]];
     let openId;
     for (const [slug, title, html] of pages) { if (slug === 'open-notices') { const kb = (s) => Math.round(Buffer.byteLength(s || '') / 1024); console.log(`첫 화면 ${kb(html)}KB`, [...html.matchAll(/<tbody class="(s\d)">[\s\S]*?<\/tbody>/g)].map((m) => `${m[1]} ${kb(m[0])}KB`).join(' '), `격자 ${kb(html.match(/<section class="az-dgrid"[\s\S]*?<\/section>/)?.[0])}KB`); } // 워드프레스가 큰 글을 502로 거절한다(2026-10-31 122KB) — 크기를 늘 찍어 둔다
 const o = await upsertPage({ slug, title, html }); if (slug === 'open-notices') openId = o.id; console.log(`${o.ok ? '✓' : '✗'} 페이지 ${slug} ${o.link}`); }
