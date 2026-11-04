@@ -25,8 +25,8 @@ const folderOf = async (key) => Object.entries(await folders()).find(([, nos]) =
 export const loadDeep = async (key) => JSON.parse(await readFile(join(DIR, `${key}.json`), 'utf8').catch(() => 'null'));
 export async function allDeep() {
   const out = [];
-  // youth-*: 청년안심주택(2026-11-05)
-  for (const f of await readdir(DIR).catch(() => [])) if (/^(\d+|youth-\d+)\.json$/.test(f)) out.push({ key: f.slice(0, -5), ...JSON.parse(await readFile(join(DIR, f), 'utf8')) });
+  // youth-*: 청년안심주택, lh-*: LH 행복주택(2026-11-05)
+  for (const f of await readdir(DIR).catch(() => [])) if (/^(\d+|(youth|lh)-\d+)\.json$/.test(f)) out.push({ key: f.slice(0, -5), ...JSON.parse(await readFile(join(DIR, f), 'utf8')) });
   return out;
 }
 
