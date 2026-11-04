@@ -1,4 +1,5 @@
-// 심층 분석 대상 고르기(2026-10-31 사용자 결정): 매매 청약(아파트 분양·무순위·임의공급, 임대 제외) 중 수도권이거나 지방 핵심지인 곳만.
+// 심층 분석 대상 고르기(2026-10-31 사용자 결정): 매매 청약(아파트 분양·무순위·임의공급) 중 수도권이거나 지방 핵심지인 곳만.
+// 2026-11-04 사용자 「규칙 바꾸자」: 수도권 아파트·오피스텔 임대(청년안심주택·공공지원 민간임대)도 고른다. LH·SH 임대(예비자·자격완화 상시모집이 많음)는 넣지 않는다.
 // 고른 단지는 유튜브 분석기(D:\dev\apt_youtube_analyzer) 감시 폴더 D:\부동산_청약분석\<단지 이름>을 만들어 리포트를 받고,
 // data/deep_folders.json에 폴더 → 공고번호를 적는다(zip/deep.mjs가 이 표로 리포트를 찾는다). 글은 리포트가 나오면 세션에서 쓴다.
 // node zip/deep_targets.mjs           고를 단지 목록만
@@ -12,7 +13,7 @@ import { loadData } from '../posts/weekly.mjs';
 import { shortName } from './post.mjs';
 
 const BASE = 'D:/부동산_청약분석', MAP = join(ROOT, 'data/deep_folders.json');
-const KINDS = ['APT', '무순위', '임의공급'];
+const KINDS = ['APT', '무순위', '임의공급'], RENT = ['청년안심주택', '공공지원 민간임대'];
 const CAPITAL = ['서울', '경기', '인천'];
 // 지방 핵심지: 시·도 → 주소에 들어 있으면 고르는 구·시 이름(빈 배열은 시·도 전체). 바꾸려면 여기만 고친다
 export const CORE = {
@@ -31,14 +32,21 @@ const lastOf = (it) => receipt(it).map((p) => p.end || p.date).sort().at(-1) || 
 export const coreArea = (it) => CAPITAL.includes(it.region) || (it.region in CORE && (!CORE[it.region].length || CORE[it.region].some((g) => (it.address || '').includes(g) || `${it.district || ''}`.includes(g))));
 // 접수가 아직 시작되지 않은 매매 청약 + 핵심지(리포트가 나와 첫 접수 7일 전에 글을 올릴 시간이 있어야 한다)
 const plus = (d, n) => new Date(Date.parse(d + 'T00:00:00Z') + n * 864e5).toISOString().slice(0, 10);
-export const isTarget = (it, today) => KINDS.includes(it.kind) && coreArea(it) && firstOf(it) >= plus(today, 3); // 분석에 반나절~하루, 글 쓰기까지 사흘은 남아야 한다
-export const folderOf = (it) => `${shortName(it.name).replace(/\s*(본청약|후속사업|추가입주자모집공고|입주자모집공고)$/, '')}${it.kind === 'APT' ? '' : ' (무순위)'}`;
+export const isTarget = (it, today) => (KINDS.includes(it.kind) ? coreArea(it) : RENT.includes(it.kind) && CAPITAL.includes(it.region)) && firstOf(it) >= plus(today, 3); // 분석에 반나절~하루, 글 쓰기까지 사흘은 남아야 한다
+export const folderOf = (it) => `${shortName(it.name).replace(/\s*(본청약|후속사업|추가입주자모집공고|입주자모집공고)$/, '')}${it.kind === 'APT' ? '' : RENT.includes(it.kind) ? ' (임대)' : ' (무순위)'}`;
+// 공고번호: 청약홈은 「번호-번호」의 앞, 청년안심주택(youth-6718) 등은 id 그대로
+export const noOf = (it) => (/^\d+-\d+$/.test(it.id) ? it.id.split('-')[0] : it.id);
 
 if (process.argv.includes('--check')) {
   const assert = (await import('node:assert')).default, ph = [{ k: 'sp', date: '2026-11-09' }];
   assert.ok(isTarget({ kind: 'APT', region: '경기', phases: ph }, '2026-10-31'));
   assert.ok(!isTarget({ kind: 'APT', region: '경기', phases: [{ k: 'sp', date: '2026-11-02' }] }, '2026-10-31'), '이틀 뒤 접수는 늦다');
-  assert.ok(!isTarget({ kind: '국민임대', region: '서울', phases: ph }, '2026-10-31'), '임대 제외');
+  assert.ok(!isTarget({ kind: '국민임대', region: '서울', phases: ph }, '2026-10-31'), 'LH 임대 제외');
+  assert.ok(isTarget({ kind: '청년안심주택', region: '서울', phases: ph }, '2026-10-31'), '수도권 청년안심주택');
+  assert.ok(!isTarget({ kind: '공공지원 민간임대', region: '부산', phases: ph }, '2026-10-31'), '지방 임대 제외');
+  assert.equal(folderOf({ kind: '청년안심주택', name: '효창공원앞역 해링턴 플레이스 용산 리버뷰 (최초모집)' }), '효창공원앞역 해링턴 플레이스 용산 리버뷰 (임대)');
+  assert.equal(noOf({ id: 'youth-6718' }), 'youth-6718');
+  assert.equal(noOf({ id: '2026000517-2026000517' }), '2026000517');
   assert.ok(!isTarget({ kind: 'APT', region: '제주', phases: ph }, '2026-10-31'), '핵심지 아님');
   assert.ok(isTarget({ kind: 'APT', region: '부산', address: '부산광역시 해운대구 우동', phases: ph }, '2026-10-31'));
   assert.ok(!isTarget({ kind: 'APT', region: '부산', address: '부산광역시 사하구', phases: ph }, '2026-10-31'));
@@ -51,7 +59,7 @@ if (process.argv.includes('--check')) {
   const done = new Set(Object.values(map).flat());
   const by = new Map();
   for (const it of items.filter((x) => isTarget(x, today) && lastOf(x) >= today)) {
-    const no = it.id.split('-')[0];
+    const no = noOf(it);
     if (done.has(no)) continue;
     const f = folderOf(it), g = by.get(f) || { it, nos: [] };
     if (!g.nos.includes(no)) g.nos.push(no);
