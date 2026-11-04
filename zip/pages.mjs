@@ -94,8 +94,8 @@ export function openPage(list, today, res = {}, deeps = [], views = {}, rents = 
   const badge = (r) => { const rc = receiptOf(r.phases); return closedOf(r.phases, today) ? '<span class="az-bd end">접수 마감</span>' : !rc ? '' : `<span class="az-bd ${today < rc.start ? 'd' : 'now'}">${recLabel(rc, today)}</span>`; };
   const row = (r) => {
     const rc = receiptOf(r.phases), x = res[r.no] || {}, closed = closedOf(r.phases, today), dp = deepOf[r.no];
-    const cmp = x.text ? `<span class="az-cmp-t">${esc(x.text)}</span>` : x.leasehold ? '<span class="az-cmp-t">토지임대부라 땅값이 빠진 분양가입니다</span>' : typeof x.d === 'number' ? cmpBar(x.d) : '-';
-    // 첫 화면에서는 비교 결과를 흐리게만 보여 글로 들어가 보게 한다(2026-10-31 사용자 요청 — 값은 화면 읽기 프로그램과 검색엔진에 그대로 있다). 토지임대부 안내문은 그대로
+    const cmp = x.text ? `<span class="az-cmp-t">${esc(x.text)}</span>` : x.leasehold ? '-' : typeof x.d === 'number' ? cmpBar(x.d) : '-';
+    // 첫 화면에서는 비교 결과를 흐리게만 보여 글로 들어가 보게 한다(2026-10-31 사용자 요청 — 값은 화면 읽기 프로그램과 검색엔진에 그대로 있다). 토지임대부는 「-」(2026-11-04 사용자: 표에 안내문을 적지 않는다)
     const peek = (h) => `<a class="az-peek" href="${esc(postUrl(r))}" title="분양가와 주변 시세 비교 보기"><span class="az-peek-v">${h}</span><span class="az-peek-l" aria-hidden="true">비교 보기</span></a>`;
     const evs = Object.entries(ev[r.no]).filter(([d]) => dayList.includes(d)).map(([d, ks]) => `<span class="az-fev" data-day="${d}">${mdd(d)} ${ks.join('·')}</span>`).join('');
     const o1 = rank1.get(r.no), o2 = rank2.get(r.no), cls = [closed && 'cl', o1 !== undefined && 'o1', o2 !== undefined && 'o2'].filter(Boolean).join(' ');
