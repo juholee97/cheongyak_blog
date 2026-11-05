@@ -72,19 +72,21 @@ if (process.argv.includes('--check')) {
     const fo = Object.values(await deepFolders()), deeps = (await allDeep()).filter((d) => liveDeep(d)).map((d) => ({ ...d, nos: fo.find((n) => n[0] === d.key) || [d.key] }));
     // 첫 화면 공고 표·일정은 티스토리 청약달력과 같은 수집본(schedule.json)에서 열린 공고를 거의 다 받는다(2026-10-31 사용자) — 글이 없는 공고는 청약홈·LH·SH 공고로 잇는다
     const { items: sched } = await (await import('../posts/weekly.mjs')).loadData().catch(() => ({ items: [] }));
-    const pages = [['open-notices', '현재 열린 공고', openPage(withSchedule(Object.values(reg), sched, today), today, res, deeps, await loadViews(), rentals(sched, today, JSON.parse(await readFile(join(ROOT, 'data/sh_units.json'), 'utf8').catch(() => '[]'))))], ['method', '비교 기준', methodPage()], ['about', '소개', aboutPage()], ['privacy', '개인정보처리방침', privacyPage()]];
-    let openId;
-    for (const [slug, title, html] of pages) { if (slug === 'open-notices') { const kb = (s) => Math.round(Buffer.byteLength(s || '') / 1024); console.log(`첫 화면 ${kb(html)}KB`, [...html.matchAll(/<tbody class="(s\d)">[\s\S]*?<\/tbody>/g)].map((m) => `${m[1]} ${kb(m[0])}KB`).join(' '), `격자 ${kb(html.match(/<section class="az-dgrid"[\s\S]*?<\/section>/)?.[0])}KB`); } // 워드프레스가 큰 글을 502로 거절한다(2026-10-31 122KB) — 크기를 늘 찍어 둔다
-const o = await upsertPage({ slug, title, html }); if (slug === 'open-notices') openId = o.id; console.log(`${o.ok ? '✓' : '✗'} 페이지 ${slug} ${o.link}`); }
-    // 첫 화면을 「현재 열린 공고」로: 방문자가 사이트 안을 돌게 한다
-    await wp('settings', { method: 'POST', body: { show_on_front: 'page', page_on_front: openId } }).then((s) => console.log('첫 화면:', s.show_on_front, s.page_on_front)).catch((e) => console.log('첫 화면 설정 못 바꿈:', e.message));
-    // 「분양 시세비교」 목록 = 카테고리 템플릿 category-<id>(글 왼쪽, 조감도 오른쪽). 조감도는 data/zip_views.json(zip/views.mjs)을 미디어로 올려 쓴다
-    const views = await loadViews(), posts = {};
+    // 조감도(data/zip_views.json, zip/views.mjs)를 미디어로 먼저 올린다 — 첫 화면 격자도 같은 그림을 쓰니 페이지보다 먼저(2026-11-05: 나중에 올려 새 그림이 첫 화면에 하루 늦게 붙던 것)
+    const views = await loadViews();
     for (const [no, v] of Object.entries(views)) if (v.file && !v.url) {
       const id = await uploadMedia(join(ROOT, v.file), `view-${no}.jpg`, `${reg[no]?.name || no} ${v.label || '조감도'}`).catch(() => null);
       if (id) Object.assign(v, { mid: id, url: (await wp(`media/${id}`)).source_url });
     }
     await (await import('node:fs/promises')).writeFile(join(ROOT, 'data/zip_views.json'), JSON.stringify(views, null, 1));
+    const pages = [['open-notices', '현재 열린 공고', openPage(withSchedule(Object.values(reg), sched, today), today, res, deeps, views,rentals(sched, today, JSON.parse(await readFile(join(ROOT, 'data/sh_units.json'), 'utf8').catch(() => '[]'))))], ['method', '비교 기준', methodPage()], ['about', '소개', aboutPage()], ['privacy', '개인정보처리방침', privacyPage()]];
+    let openId;
+    for (const [slug, title, html] of pages) { if (slug === 'open-notices') { const kb = (s) => Math.round(Buffer.byteLength(s || '') / 1024); console.log(`첫 화면 ${kb(html)}KB`, [...html.matchAll(/<tbody class="(s\d)">[\s\S]*?<\/tbody>/g)].map((m) => `${m[1]} ${kb(m[0])}KB`).join(' '), `격자 ${kb(html.match(/<section class="az-dgrid"[\s\S]*?<\/section>/)?.[0])}KB`); } // 워드프레스가 큰 글을 502로 거절한다(2026-10-31 122KB) — 크기를 늘 찍어 둔다
+const o = await upsertPage({ slug, title, html }); if (slug === 'open-notices') openId = o.id; console.log(`${o.ok ? '✓' : '✗'} 페이지 ${slug} ${o.link}`); }
+    // 첫 화면을 「현재 열린 공고」로: 방문자가 사이트 안을 돌게 한다
+    await wp('settings', { method: 'POST', body: { show_on_front: 'page', page_on_front: openId } }).then((s) => console.log('첫 화면:', s.show_on_front, s.page_on_front)).catch((e) => console.log('첫 화면 설정 못 바꿈:', e.message));
+    // 「분양 시세비교」 목록 = 카테고리 템플릿 category-<id>(글 왼쪽, 조감도 오른쪽). 조감도는 위에서 미디어로 올린 views를 쓴다
+    const posts = {};
     for (const r of Object.values(reg)) { const j = JSON.parse(await readFile(join(ROOT, 'data/zip_posts', `${r.slug || r.no}.json`), 'utf8').catch(() => 'null')); if (j) posts[r.no] = { title: j.title, excerpt: j.excerpt, link: `https://auleezip.com/${j.slug}/` }; }
     // 「심층 분석」·「임대 시세비교」 목록도 같은 방식(오른쪽 카드 — pages.mjs deepList·rentList). 임대는 사이트에서 뺐다(2026-11-03 사용자) — 메뉴에 없고 목록은 비워 둔다
     const lists = [['분양-시세비교', saleList(Object.values(reg), today, res, posts, views)], ['심층-분석', deepList(deeps, Object.values(reg), today, views)], ['임대-시세비교', rentList(Object.values(reg), today, {}, sh)]];
