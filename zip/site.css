@@ -314,7 +314,7 @@ a:hover{color:var(--az-ink)}
 .az-thumb{position:relative;display:flex;flex-direction:column;justify-content:flex-end;align-items:flex-start;gap:6px;aspect-ratio:16/10;border-radius:8px;overflow:hidden;padding:16px 18px;text-decoration:none!important;color:#fff!important;background:#1b2733}
 .az-thumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transition:transform .3s}
 .az-vitem:hover .az-thumb img{transform:scale(1.04)}
-.az-thumb.deep::before{content:"";position:absolute;inset:0;z-index:1;background:linear-gradient(180deg,rgba(8,12,18,0) 15%,rgba(8,12,18,.55) 50%,rgba(8,12,18,.9) 100%)}
+.az-thumb.deep::before{content:"";position:absolute;inset:0;z-index:1;background:linear-gradient(180deg,rgba(8,12,18,0) 30%,rgba(8,12,18,.5) 60%,rgba(8,12,18,.88) 100%)}
 .az-thumb span{position:relative;z-index:2}
 .az-thumb .k{font-size:12px;font-weight:700;line-height:1.5;background:#ffd84d;color:#17212b;padding:1px 8px;border-radius:3px}
 .az-thumb .t{font-size:22px;font-weight:800;line-height:1.28;letter-spacing:-0.03em;text-shadow:0 1px 4px rgba(0,0,0,.45)}

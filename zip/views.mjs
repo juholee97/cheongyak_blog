@@ -22,28 +22,29 @@ async function homepageOf(r) {
 }
 
 // 원본(크기 제각각) → 800×500 JPEG. 브라우저로 그려 찍는다(새 의존성 없이)
-export async function frame(src, out, focus = 'center') {
+// zoom > 1: 하늘이 넓은 눈높이 그림을 건물 쪽으로 확대(focus 지점이 제자리) — 카드 아래쪽은 훅 글자가 덮어서 건물이 위로 와야 보인다(2026-11-05 사용자)
+export async function frame(src, out, focus = 'center', zoom = 1) {
   const { chromium } = await import('playwright');
   const b = await chromium.launch();
   try {
     const p = await b.newPage({ viewport: { width: 800, height: 500 } });
     const type = /\.png$/i.test(src) ? 'image/png' : 'image/jpeg';
-    await p.setContent(`<body style="margin:0"><img src="data:${type};base64,${(await readFile(src)).toString('base64')}" style="width:800px;height:500px;object-fit:cover;object-position:${focus};display:block"></body>`);
+    await p.setContent(`<body style="margin:0"><img src="data:${type};base64,${(await readFile(src)).toString('base64')}" style="width:800px;height:500px;object-fit:cover;object-position:${focus};display:block;transform:scale(${zoom});transform-origin:${focus}"></body>`);
     await p.waitForTimeout(300);
     await p.screenshot({ path: out, type: 'jpeg', quality: 78 });
   } finally { await b.close(); }
 }
 
 // 자동으로 못 찾은 곳은 사람이 공식 출처의 사업개요·메인 그림을 받아 등록한다(2026-10-29: 13곳 중 6곳, 이어서 나머지 9곳 중 8곳)
-// node zip/views.mjs --add 공고번호 그림파일 그림이있던페이지 [초점(object-position, 예 'center 20%')] [--label 투시도] [--site 'LH 청약플러스 공고']
+// node zip/views.mjs --add 공고번호 그림파일 그림이있던페이지 [초점(object-position, 예 'center 20%')] [--label 투시도] [--site 'LH 청약플러스 공고'] [--zoom 1.4]
 // label: 그림 이름(기본 조감도 — 눈높이 그림이면 투시도), site: 목록 그림 밑에 적는 출처 이름(기본 분양 홈페이지). 출처 링크는 그림이 있던 페이지
 if (process.argv[1]?.endsWith('views.mjs') && process.argv.includes('--add')) {
   const rest = process.argv.slice(process.argv.indexOf('--add') + 1), cut = rest.findIndex((a) => a.startsWith('--'));
   const [no, file, page, focus = 'center'] = cut < 0 ? rest : rest.slice(0, cut);
-  const flag = (k) => (rest.includes(k) ? rest[rest.indexOf(k) + 1] : null), label = flag('--label'), site = flag('--site');
+  const flag = (k) => (rest.includes(k) ? rest[rest.indexOf(k) + 1] : null), label = flag('--label'), site = flag('--site'), zoom = Number(flag('--zoom') || 1);
   const reg = JSON.parse(await readFile(join(ROOT, 'data/zip_registry.json'), 'utf8')), index = await loadViews();
   await mkdir(DIR, { recursive: true });
-  await frame(file, join(DIR, `${no}.jpg`), focus);
+  await frame(file, join(DIR, `${no}.jpg`), focus, zoom);
   index[no] = { file: `data/zip_views/${no}.jpg`, homepage: reg[no] ? await homepageOf(reg[no]) : null, page, from: '공식 출처에서 받음', ...(label && { label }), ...(site && { site }), at: new Date().toISOString().slice(0, 10) };
   await writeFile(INDEX, JSON.stringify(index, null, 1));
   console.log('✓', no, index[no].homepage);
