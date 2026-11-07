@@ -126,4 +126,30 @@ const merged = mergeNotices([mi('lh-1', '의령 행복주택 모집', '2026-10-1
 assert.deepEqual(merged.map((x) => x.id).sort(), ['123-1', '123-9', 'lh-2', 'sh-5', 'sh-6']);
 assert.equal(merged.find((x) => x.id === 'lh-2').name, '의령 행복주택 모집');
 
+// 계산기용 공고 정보(notices.json): 상세·주택형 가짜 행 → 한 줄, 그리고 지난 배포본 위에 쌓기
+const { noticeOf, stackNotices } = await import('./fetch.mjs');
+const nRow = { HOUSE_MANAGE_NO: '2026000496', HOUSE_DTL_SECD_NM: '민영', PUBLIC_HOUSE_SPCLW_APPLC_AT: 'N', SPECLT_RDN_EARTH_AT: 'Y', MDAT_TRGET_AREA_SECD: 'N' };
+const nModel = { HOUSE_TY: '084.9443A', SUPLY_AR: '122.2119', LTTOT_TOP_AMOUNT: '92070', SUPLY_HSHLDCO: 58, SPSPLY_HSHLDCO: 190, NWBB_HSHLDCO: 26, NWWDS_HSHLDCO: 42, LFE_FRST_HSHLDCO: 45, YGMN_HSHLDCO: 0, MNYCH_HSHLDCO: 24, OLD_PARNTS_SUPORT_HSHLDCO: 8, INSTT_RECOMEND_HSHLDCO: 19, TRANSR_INSTT_ENFSN_HSHLDCO: 0, ETC_HSHLDCO: 26 };
+const nv = noticeOf(nRow, { ...apt, kind: 'APT' }, [nModel, { HOUSE_TY: '046.0000O', SPSPLY_HSHLDCO: 18 }], '2026-11-08');
+assert.equal(nv.houseKind, '민영');
+assert.equal(nv.publicLaw, false);
+assert.deepEqual(nv.regFlags, ['투기과열']);
+assert.equal(nv.buyKind, 'apt');
+assert.deepEqual(nv.types[0], { ty: '084.9443A', ex: 84.9443, sa: 122.2119, top: 92070, gen: 58, sp: 190, spBy: { NWBB: 26, NWWDS: 42, LFE_FRST: 45, YGMN: 0, MNYCH: 24, OLD_PARNTS_SUPORT: 8, INSTT_RECOMEND: 19, TRANSR_INSTT_ENFSN: 0, ETC: 26 }, spOk: true });
+assert.equal(nv.types[1].spOk, false); // 신혼희망타운: 특별 18, 유형 0
+// 칸이 없는 행(무순위 등 이름 미확인)은 모름(null)
+const nUnknown = noticeOf({ HOUSE_DTL_SECD_NM: '분양주택' }, { ...remndr }, [], '2026-11-08');
+assert.deepEqual([nUnknown.houseKind, nUnknown.publicLaw, nUnknown.regFlags, nUnknown.buyKind], [null, null, null, 'apt']);
+assert.equal(noticeOf({}, { ...ofc }, [], '2026-11-08').buyKind, 'officetel');
+// 쌓기: 오늘 주택형이 비면 지난 주택형 유지, 공고일 + 18개월 지나면 지움
+const stacked = stackNotices(
+  { a: { noticeDate: '2026-10-01', types: [{ ty: '84' }], src: 'fallback', areaExact: false }, old: { noticeDate: '2025-05-07', types: [] }, keep: { noticeDate: '2025-05-08', types: [] } },
+  { a: { noticeDate: '2026-10-01', types: [], src: 'api', areaExact: true, seen: '2026-11-08' }, b: { noticeDate: '2026-11-01', types: [{ ty: '59' }], src: 'api', areaExact: true } },
+  '2026-11-08');
+assert.deepEqual(Object.keys(stacked).sort(), ['a', 'b', 'keep']);
+assert.deepEqual([stacked.a.types, stacked.a.src, stacked.a.areaExact, stacked.a.seen], [[{ ty: '84' }], 'fallback', false, '2026-11-08']);
+const fb = JSON.parse(await (await import('node:fs/promises')).readFile(new URL('./fallback-notices.json', import.meta.url), 'utf8'));
+assert.equal(fb.schema, 1);
+assert.ok(Object.keys(fb.n).length > 0 && Object.values(fb.n).every((v) => Array.isArray(v.types) && v.name));
+
 console.log('crawler check OK');

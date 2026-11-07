@@ -1,0 +1,2052 @@
+{
+ "schema": 1,
+ "updated": "2026-11-07T16:16:11.111Z",
+ "n": {
+  "2026000373": {
+   "name": "고덕강일지구 3단지 토지임대부(본청약)",
+   "kind": "APT",
+   "houseKind": "국민",
+   "publicLaw": true,
+   "regFlags": [
+    "투기과열",
+    "조정"
+   ],
+   "region": "서울",
+   "district": "강동구",
+   "address": "서울특별시 강동구 강일동 174 일원(고덕강일공공주택지구 3단지)",
+   "noticeDate": "2026-10-16",
+   "buyKind": "apt",
+   "src": "fallback",
+   "areaExact": true,
+   "types": [
+    {
+     "ty": "049.0000A",
+     "ex": 49,
+     "sa": 72.54,
+     "top": 30800,
+     "gen": 5,
+     "sp": 18,
+     "spBy": {
+      "NWBB": 9,
+      "NWWDS": 3,
+      "LFE_FRST": 3,
+      "YGMN": 3,
+      "MNYCH": 0,
+      "OLD_PARNTS_SUPORT": 0,
+      "INSTT_RECOMEND": 0,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 0
+     },
+     "spOk": true
+    },
+    {
+     "ty": "049.0000B",
+     "ex": 49,
+     "sa": 72.56,
+     "top": 30800,
+     "gen": 2,
+     "sp": 6,
+     "spBy": {
+      "NWBB": 3,
+      "NWWDS": 1,
+      "LFE_FRST": 1,
+      "YGMN": 1,
+      "MNYCH": 0,
+      "OLD_PARNTS_SUPORT": 0,
+      "INSTT_RECOMEND": 0,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 0
+     },
+     "spOk": true
+    },
+    {
+     "ty": "049.0000C",
+     "ex": 49,
+     "sa": 72.19,
+     "top": 31416,
+     "gen": 19,
+     "sp": 74,
+     "spBy": {
+      "NWBB": 32,
+      "NWWDS": 14,
+      "LFE_FRST": 14,
+      "YGMN": 14,
+      "MNYCH": 0,
+      "OLD_PARNTS_SUPORT": 0,
+      "INSTT_RECOMEND": 0,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 0
+     },
+     "spOk": true
+    },
+    {
+     "ty": "049.0000D",
+     "ex": 49,
+     "sa": 72.21,
+     "top": 30800,
+     "gen": 3,
+     "sp": 10,
+     "spBy": {
+      "NWBB": 4,
+      "NWWDS": 2,
+      "LFE_FRST": 2,
+      "YGMN": 2,
+      "MNYCH": 0,
+      "OLD_PARNTS_SUPORT": 0,
+      "INSTT_RECOMEND": 0,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 0
+     },
+     "spOk": true
+    },
+    {
+     "ty": "049.0000E",
+     "ex": 49,
+     "sa": 72.32,
+     "top": 30800,
+     "gen": 4,
+     "sp": 20,
+     "spBy": {
+      "NWBB": 8,
+      "NWWDS": 4,
+      "LFE_FRST": 4,
+      "YGMN": 4,
+      "MNYCH": 0,
+      "OLD_PARNTS_SUPORT": 0,
+      "INSTT_RECOMEND": 0,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 0
+     },
+     "spOk": true
+    },
+    {
+     "ty": "049.0000F",
+     "ex": 49,
+     "sa": 72.64,
+     "top": 31724,
+     "gen": 14,
+     "sp": 58,
+     "spBy": {
+      "NWBB": 25,
+      "NWWDS": 11,
+      "LFE_FRST": 11,
+      "YGMN": 11,
+      "MNYCH": 0,
+      "OLD_PARNTS_SUPORT": 0,
+      "INSTT_RECOMEND": 0,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 0
+     },
+     "spOk": true
+    },
+    {
+     "ty": "049.0000G",
+     "ex": 49,
+     "sa": 72.05,
+     "top": 31724,
+     "gen": 2,
+     "sp": 5,
+     "spBy": {
+      "NWBB": 2,
+      "NWWDS": 1,
+      "LFE_FRST": 1,
+      "YGMN": 1,
+      "MNYCH": 0,
+      "OLD_PARNTS_SUPORT": 0,
+      "INSTT_RECOMEND": 0,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 0
+     },
+     "spOk": true
+    },
+    {
+     "ty": "049.0000H",
+     "ex": 49,
+     "sa": 73.5,
+     "top": 29567,
+     "gen": 8,
+     "sp": 31,
+     "spBy": {
+      "NWBB": 13,
+      "NWWDS": 6,
+      "LFE_FRST": 6,
+      "YGMN": 6,
+      "MNYCH": 0,
+      "OLD_PARNTS_SUPORT": 0,
+      "INSTT_RECOMEND": 0,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 0
+     },
+     "spOk": true
+    },
+    {
+     "ty": "049.0000I",
+     "ex": 49,
+     "sa": 73.26,
+     "top": 31416,
+     "gen": 2,
+     "sp": 7,
+     "spBy": {
+      "NWBB": 4,
+      "NWWDS": 1,
+      "LFE_FRST": 1,
+      "YGMN": 1,
+      "MNYCH": 0,
+      "OLD_PARNTS_SUPORT": 0,
+      "INSTT_RECOMEND": 0,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 0
+     },
+     "spOk": true
+    },
+    {
+     "ty": "049.0000J",
+     "ex": 49,
+     "sa": 72.38,
+     "top": 31416,
+     "gen": 2,
+     "sp": 5,
+     "spBy": {
+      "NWBB": 2,
+      "NWWDS": 1,
+      "LFE_FRST": 1,
+      "YGMN": 1,
+      "MNYCH": 0,
+      "OLD_PARNTS_SUPORT": 0,
+      "INSTT_RECOMEND": 0,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 0
+     },
+     "spOk": true
+    },
+    {
+     "ty": "049.0000K",
+     "ex": 49,
+     "sa": 72.24,
+     "top": 30184,
+     "gen": 3,
+     "sp": 11,
+     "spBy": {
+      "NWBB": 5,
+      "NWWDS": 2,
+      "LFE_FRST": 2,
+      "YGMN": 2,
+      "MNYCH": 0,
+      "OLD_PARNTS_SUPORT": 0,
+      "INSTT_RECOMEND": 0,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 0
+     },
+     "spOk": true
+    },
+    {
+     "ty": "059.0000A",
+     "ex": 59,
+     "sa": 86.54,
+     "top": 38670,
+     "gen": 6,
+     "sp": 18,
+     "spBy": {
+      "NWBB": 9,
+      "NWWDS": 3,
+      "LFE_FRST": 3,
+      "YGMN": 3,
+      "MNYCH": 0,
+      "OLD_PARNTS_SUPORT": 0,
+      "INSTT_RECOMEND": 0,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 0
+     },
+     "spOk": true
+    },
+    {
+     "ty": "059.0000B",
+     "ex": 59,
+     "sa": 86.76,
+     "top": 39050,
+     "gen": 12,
+     "sp": 48,
+     "spBy": {
+      "NWBB": 21,
+      "NWWDS": 9,
+      "LFE_FRST": 9,
+      "YGMN": 9,
+      "MNYCH": 0,
+      "OLD_PARNTS_SUPORT": 0,
+      "INSTT_RECOMEND": 0,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 0
+     },
+     "spOk": true
+    },
+    {
+     "ty": "059.0000C",
+     "ex": 59,
+     "sa": 87.19,
+     "top": 38670,
+     "gen": 1,
+     "sp": 2,
+     "spBy": {
+      "NWBB": 2,
+      "NWWDS": 0,
+      "LFE_FRST": 0,
+      "YGMN": 0,
+      "MNYCH": 0,
+      "OLD_PARNTS_SUPORT": 0,
+      "INSTT_RECOMEND": 0,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 0
+     },
+     "spOk": true
+    },
+    {
+     "ty": "059.0000D",
+     "ex": 59,
+     "sa": 87.19,
+     "top": 39050,
+     "gen": 16,
+     "sp": 60,
+     "spBy": {
+      "NWBB": 27,
+      "NWWDS": 11,
+      "LFE_FRST": 11,
+      "YGMN": 11,
+      "MNYCH": 0,
+      "OLD_PARNTS_SUPORT": 0,
+      "INSTT_RECOMEND": 0,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 0
+     },
+     "spOk": true
+    },
+    {
+     "ty": "059.0000E",
+     "ex": 59,
+     "sa": 87.15,
+     "top": 38670,
+     "gen": 9,
+     "sp": 35,
+     "spBy": {
+      "NWBB": 14,
+      "NWWDS": 7,
+      "LFE_FRST": 7,
+      "YGMN": 7,
+      "MNYCH": 0,
+      "OLD_PARNTS_SUPORT": 0,
+      "INSTT_RECOMEND": 0,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 0
+     },
+     "spOk": true
+    },
+    {
+     "ty": "059.0000F",
+     "ex": 59,
+     "sa": 86.66,
+     "top": 37154,
+     "gen": 9,
+     "sp": 37,
+     "spBy": {
+      "NWBB": 16,
+      "NWWDS": 7,
+      "LFE_FRST": 7,
+      "YGMN": 7,
+      "MNYCH": 0,
+      "OLD_PARNTS_SUPORT": 0,
+      "INSTT_RECOMEND": 0,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 0
+     },
+     "spOk": true
+    },
+    {
+     "ty": "059.0000G",
+     "ex": 59,
+     "sa": 86.94,
+     "top": 37912,
+     "gen": 25,
+     "sp": 95,
+     "spBy": {
+      "NWBB": 41,
+      "NWWDS": 18,
+      "LFE_FRST": 18,
+      "YGMN": 18,
+      "MNYCH": 0,
+      "OLD_PARNTS_SUPORT": 0,
+      "INSTT_RECOMEND": 0,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 0
+     },
+     "spOk": true
+    },
+    {
+     "ty": "059.0000H",
+     "ex": 59,
+     "sa": 86.56,
+     "top": 37154,
+     "gen": 4,
+     "sp": 20,
+     "spBy": {
+      "NWBB": 8,
+      "NWWDS": 4,
+      "LFE_FRST": 4,
+      "YGMN": 4,
+      "MNYCH": 0,
+      "OLD_PARNTS_SUPORT": 0,
+      "INSTT_RECOMEND": 0,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 0
+     },
+     "spOk": true
+    },
+    {
+     "ty": "059.0000I",
+     "ex": 59,
+     "sa": 88.61,
+     "top": 39050,
+     "gen": 1,
+     "sp": 6,
+     "spBy": {
+      "NWBB": 3,
+      "NWWDS": 1,
+      "LFE_FRST": 1,
+      "YGMN": 1,
+      "MNYCH": 0,
+      "OLD_PARNTS_SUPORT": 0,
+      "INSTT_RECOMEND": 0,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 0
+     },
+     "spOk": true
+    }
+   ],
+   "seen": "2026-10-22"
+  },
+  "2026000455": {
+   "name": "신분평 에피트 더웨이시티",
+   "kind": "APT",
+   "houseKind": "민영",
+   "publicLaw": false,
+   "regFlags": [],
+   "region": "충북",
+   "district": "청주시",
+   "address": "충청북도 청주시 서원구 장성동 135번지 일원(장성지구 A2블럭)",
+   "noticeDate": "2026-10-15",
+   "buyKind": "apt",
+   "src": "fallback",
+   "areaExact": false,
+   "types": [
+    {
+     "ty": "59",
+     "ex": 59,
+     "sa": 85.72,
+     "top": 39590,
+     "gen": 126,
+     "sp": 159,
+     "spBy": {
+      "NWBB": 29,
+      "NWWDS": 42,
+      "LFE_FRST": 20,
+      "YGMN": 0,
+      "MNYCH": 29,
+      "OLD_PARNTS_SUPORT": 10,
+      "INSTT_RECOMEND": 29,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 0
+     },
+     "spOk": true
+    },
+    {
+     "ty": "75",
+     "ex": 75,
+     "sa": 102.35,
+     "top": 46090,
+     "gen": 43,
+     "sp": 57,
+     "spBy": {
+      "NWBB": 10,
+      "NWWDS": 15,
+      "LFE_FRST": 7,
+      "YGMN": 0,
+      "MNYCH": 10,
+      "OLD_PARNTS_SUPORT": 5,
+      "INSTT_RECOMEND": 10,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 0
+     },
+     "spOk": true
+    },
+    {
+     "ty": "84",
+     "ex": 84,
+     "sa": 111.91,
+     "top": 50090,
+     "gen": 252,
+     "sp": 267,
+     "spBy": {
+      "NWBB": 51,
+      "NWWDS": 78,
+      "LFE_FRST": 36,
+      "YGMN": 0,
+      "MNYCH": 51,
+      "OLD_PARNTS_SUPORT": 0,
+      "INSTT_RECOMEND": 51,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 0
+     },
+     "spOk": true
+    },
+    {
+     "ty": "112",
+     "ex": 112,
+     "sa": 140.16,
+     "top": 65890,
+     "gen": 80,
+     "sp": 8,
+     "spBy": {
+      "NWBB": 0,
+      "NWWDS": 0,
+      "LFE_FRST": 0,
+      "YGMN": 0,
+      "MNYCH": 8,
+      "OLD_PARNTS_SUPORT": 0,
+      "INSTT_RECOMEND": 0,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 0
+     },
+     "spOk": true
+    }
+   ],
+   "seen": "2026-10-22"
+  },
+  "2026000495": {
+   "name": "연산 센텀 월드메르디앙",
+   "kind": "APT",
+   "houseKind": "민영",
+   "publicLaw": false,
+   "regFlags": [],
+   "region": "부산",
+   "district": "연제구",
+   "address": "부산광역시 연제구 연산동 418-8(외1필지)",
+   "noticeDate": "2026-10-16",
+   "buyKind": "apt",
+   "src": "fallback",
+   "areaExact": false,
+   "types": [
+    {
+     "ty": "59",
+     "ex": 59,
+     "sa": 79.62,
+     "top": 42316,
+     "gen": 9,
+     "sp": 7,
+     "spBy": {
+      "NWBB": 1,
+      "NWWDS": 3,
+      "LFE_FRST": 1,
+      "YGMN": 0,
+      "MNYCH": 1,
+      "OLD_PARNTS_SUPORT": 0,
+      "INSTT_RECOMEND": 1,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 0
+     },
+     "spOk": true
+    },
+    {
+     "ty": "66",
+     "ex": 66,
+     "sa": 89.53,
+     "top": 49278,
+     "gen": 36,
+     "sp": 45,
+     "spBy": {
+      "NWBB": 8,
+      "NWWDS": 13,
+      "LFE_FRST": 6,
+      "YGMN": 0,
+      "MNYCH": 8,
+      "OLD_PARNTS_SUPORT": 2,
+      "INSTT_RECOMEND": 8,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 0
+     },
+     "spOk": true
+    },
+    {
+     "ty": "73",
+     "ex": 73,
+     "sa": 99.43,
+     "top": 55250,
+     "gen": 14,
+     "sp": 15,
+     "spBy": {
+      "NWBB": 3,
+      "NWWDS": 3,
+      "LFE_FRST": 2,
+      "YGMN": 0,
+      "MNYCH": 3,
+      "OLD_PARNTS_SUPORT": 1,
+      "INSTT_RECOMEND": 3,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 0
+     },
+     "spOk": true
+    },
+    {
+     "ty": "82",
+     "ex": 82,
+     "sa": 109.7,
+     "top": 61620,
+     "gen": 7,
+     "sp": 11,
+     "spBy": {
+      "NWBB": 2,
+      "NWWDS": 3,
+      "LFE_FRST": 1,
+      "YGMN": 0,
+      "MNYCH": 2,
+      "OLD_PARNTS_SUPORT": 1,
+      "INSTT_RECOMEND": 2,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 0
+     },
+     "spOk": true
+    }
+   ],
+   "seen": "2026-10-26"
+  },
+  "2026000496": {
+   "name": "청라 아크원 푸르지오",
+   "kind": "APT",
+   "houseKind": "민영",
+   "publicLaw": false,
+   "regFlags": [],
+   "region": "인천",
+   "district": "서해구",
+   "address": "인천광역시 서해구 청라동 86-1번지 (청라국제업무단지 M5BL)",
+   "noticeDate": "2026-10-22",
+   "buyKind": "apt",
+   "src": "fallback",
+   "areaExact": true,
+   "types": [
+    {
+     "ty": "084.9443A",
+     "ex": 84.9443,
+     "sa": 122.2119,
+     "top": 92070,
+     "gen": 58,
+     "sp": 190,
+     "spBy": {
+      "NWBB": 26,
+      "NWWDS": 42,
+      "LFE_FRST": 45,
+      "YGMN": 0,
+      "MNYCH": 24,
+      "OLD_PARNTS_SUPORT": 8,
+      "INSTT_RECOMEND": 19,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 26
+     },
+     "spOk": true
+    },
+    {
+     "ty": "084.9210B",
+     "ex": 84.921,
+     "sa": 121.6639,
+     "top": 90050,
+     "gen": 40,
+     "sp": 84,
+     "spBy": {
+      "NWBB": 12,
+      "NWWDS": 14,
+      "LFE_FRST": 18,
+      "YGMN": 0,
+      "MNYCH": 12,
+      "OLD_PARNTS_SUPORT": 4,
+      "INSTT_RECOMEND": 13,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 11
+     },
+     "spOk": true
+    },
+    {
+     "ty": "084.8592C",
+     "ex": 84.8592,
+     "sa": 120.2914,
+     "top": 90880,
+     "gen": 26,
+     "sp": 98,
+     "spBy": {
+      "NWBB": 12,
+      "NWWDS": 20,
+      "LFE_FRST": 22,
+      "YGMN": 0,
+      "MNYCH": 12,
+      "OLD_PARNTS_SUPORT": 4,
+      "INSTT_RECOMEND": 15,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 13
+     },
+     "spOk": true
+    },
+    {
+     "ty": "084.9540D",
+     "ex": 84.954,
+     "sa": 121.9069,
+     "top": 90520,
+     "gen": 36,
+     "sp": 88,
+     "spBy": {
+      "NWBB": 10,
+      "NWWDS": 17,
+      "LFE_FRST": 20,
+      "YGMN": 0,
+      "MNYCH": 12,
+      "OLD_PARNTS_SUPORT": 4,
+      "INSTT_RECOMEND": 13,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 12
+     },
+     "spOk": true
+    },
+    {
+     "ty": "103.8518A",
+     "ex": 103.8518,
+     "sa": 147.0448,
+     "top": 117100,
+     "gen": 95,
+     "sp": 29,
+     "spBy": {
+      "NWBB": 0,
+      "NWWDS": 0,
+      "LFE_FRST": 0,
+      "YGMN": 0,
+      "MNYCH": 12,
+      "OLD_PARNTS_SUPORT": 4,
+      "INSTT_RECOMEND": 0,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 13
+     },
+     "spOk": true
+    },
+    {
+     "ty": "103.9916B",
+     "ex": 103.9916,
+     "sa": 148.2,
+     "top": 116340,
+     "gen": 99,
+     "sp": 25,
+     "spBy": {
+      "NWBB": 0,
+      "NWWDS": 0,
+      "LFE_FRST": 0,
+      "YGMN": 0,
+      "MNYCH": 12,
+      "OLD_PARNTS_SUPORT": 2,
+      "INSTT_RECOMEND": 0,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 11
+     },
+     "spOk": true
+    }
+   ],
+   "seen": "2026-10-28"
+  },
+  "2026000499": {
+   "name": "한화포레나 지제역",
+   "kind": "APT",
+   "houseKind": "민영",
+   "publicLaw": false,
+   "regFlags": [],
+   "region": "경기",
+   "district": "평택시",
+   "address": "경기도 평택시 세교동 725번지 일원",
+   "noticeDate": "2026-10-29",
+   "buyKind": "apt",
+   "src": "fallback",
+   "areaExact": false,
+   "types": [
+    {
+     "ty": "84",
+     "ex": 84,
+     "sa": 109.86,
+     "top": 72450,
+     "gen": 440,
+     "sp": 510,
+     "spBy": {
+      "NWBB": 93,
+      "NWWDS": 141,
+      "LFE_FRST": 64,
+      "YGMN": 0,
+      "MNYCH": 92,
+      "OLD_PARNTS_SUPORT": 27,
+      "INSTT_RECOMEND": 93,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 0
+     },
+     "spOk": true
+    },
+    {
+     "ty": "116",
+     "ex": 116,
+     "sa": 148.81,
+     "top": 96845,
+     "gen": 130,
+     "sp": 18,
+     "spBy": {
+      "NWBB": 0,
+      "NWWDS": 0,
+      "LFE_FRST": 0,
+      "YGMN": 0,
+      "MNYCH": 14,
+      "OLD_PARNTS_SUPORT": 4,
+      "INSTT_RECOMEND": 0,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 0
+     },
+     "spOk": true
+    }
+   ],
+   "seen": "2026-11-06"
+  },
+  "2026000502": {
+   "name": "화성 향남 롯데캐슬 시그니처",
+   "kind": "APT",
+   "houseKind": "민영",
+   "publicLaw": false,
+   "regFlags": [],
+   "region": "경기",
+   "district": "화성시",
+   "address": "경기도 화성시 만세구 향남읍 상신리 산 13-13 일원",
+   "noticeDate": "2026-10-21",
+   "buyKind": "apt",
+   "src": "fallback",
+   "areaExact": false,
+   "types": [
+    {
+     "ty": "84",
+     "ex": 84,
+     "sa": 110.57,
+     "top": 54600,
+     "gen": 605,
+     "sp": 726,
+     "spBy": {
+      "NWBB": 132,
+      "NWWDS": 199,
+      "LFE_FRST": 91,
+      "YGMN": 0,
+      "MNYCH": 132,
+      "OLD_PARNTS_SUPORT": 40,
+      "INSTT_RECOMEND": 132,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 0
+     },
+     "spOk": true
+    },
+    {
+     "ty": "102",
+     "ex": 102,
+     "sa": 134.79,
+     "top": 64000,
+     "gen": 49,
+     "sp": 7,
+     "spBy": {
+      "NWBB": 0,
+      "NWWDS": 0,
+      "LFE_FRST": 0,
+      "YGMN": 0,
+      "MNYCH": 5,
+      "OLD_PARNTS_SUPORT": 2,
+      "INSTT_RECOMEND": 0,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 0
+     },
+     "spOk": true
+    },
+    {
+     "ty": "112",
+     "ex": 112,
+     "sa": 144.88,
+     "top": 67800,
+     "gen": 69,
+     "sp": 9,
+     "spBy": {
+      "NWBB": 0,
+      "NWWDS": 0,
+      "LFE_FRST": 0,
+      "YGMN": 0,
+      "MNYCH": 7,
+      "OLD_PARNTS_SUPORT": 2,
+      "INSTT_RECOMEND": 0,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 0
+     },
+     "spOk": true
+    },
+    {
+     "ty": "120",
+     "ex": 120,
+     "sa": 156.68,
+     "top": 72700,
+     "gen": 68,
+     "sp": 9,
+     "spBy": {
+      "NWBB": 0,
+      "NWWDS": 0,
+      "LFE_FRST": 0,
+      "YGMN": 0,
+      "MNYCH": 7,
+      "OLD_PARNTS_SUPORT": 2,
+      "INSTT_RECOMEND": 0,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 0
+     },
+     "spOk": true
+    }
+   ],
+   "seen": "2026-10-22"
+  },
+  "2026000507": {
+   "name": "광안센텀 비스타동원(조합원 취소분)",
+   "kind": "APT",
+   "houseKind": "민영",
+   "publicLaw": false,
+   "regFlags": [],
+   "region": "부산",
+   "district": "수영구",
+   "address": "부산광역시 수영구 광안동 971",
+   "noticeDate": "2026-10-16",
+   "buyKind": "apt",
+   "src": "fallback",
+   "areaExact": false,
+   "types": [
+    {
+     "ty": "59",
+     "ex": 59,
+     "sa": 82.77,
+     "top": 67400,
+     "gen": 18,
+     "sp": 0,
+     "spBy": {
+      "NWBB": 0,
+      "NWWDS": 0,
+      "LFE_FRST": 0,
+      "YGMN": 0,
+      "MNYCH": 0,
+      "OLD_PARNTS_SUPORT": 0,
+      "INSTT_RECOMEND": 0,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 0
+     },
+     "spOk": true
+    },
+    {
+     "ty": "84",
+     "ex": 84,
+     "sa": 115.46,
+     "top": 91400,
+     "gen": 21,
+     "sp": 0,
+     "spBy": {
+      "NWBB": 0,
+      "NWWDS": 0,
+      "LFE_FRST": 0,
+      "YGMN": 0,
+      "MNYCH": 0,
+      "OLD_PARNTS_SUPORT": 0,
+      "INSTT_RECOMEND": 0,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 0
+     },
+     "spOk": true
+    }
+   ],
+   "seen": "2026-10-26"
+  },
+  "2026000508": {
+   "name": "아크메르 동탄 95",
+   "kind": "APT",
+   "houseKind": "민영",
+   "publicLaw": false,
+   "regFlags": [
+    "투기과열",
+    "조정"
+   ],
+   "region": "경기",
+   "district": "화성특례시",
+   "address": "경기도 화성특례시 동탄구 반송동 95번지[동탄(1) M1-1-2블록]",
+   "noticeDate": "2026-10-16",
+   "buyKind": "apt",
+   "src": "fallback",
+   "areaExact": false,
+   "types": [
+    {
+     "ty": "84",
+     "ex": 84,
+     "sa": 116.33,
+     "top": 171530,
+     "gen": 123,
+     "sp": 147,
+     "spBy": {
+      "NWBB": 27,
+      "NWWDS": 40,
+      "LFE_FRST": 18,
+      "YGMN": 0,
+      "MNYCH": 27,
+      "OLD_PARNTS_SUPORT": 8,
+      "INSTT_RECOMEND": 27,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 0
+     },
+     "spOk": true
+    },
+    {
+     "ty": "116",
+     "ex": 116,
+     "sa": 157.63,
+     "top": 221350,
+     "gen": 237,
+     "sp": 35,
+     "spBy": {
+      "NWBB": 0,
+      "NWWDS": 0,
+      "LFE_FRST": 0,
+      "YGMN": 0,
+      "MNYCH": 27,
+      "OLD_PARNTS_SUPORT": 8,
+      "INSTT_RECOMEND": 0,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 0
+     },
+     "spOk": true
+    },
+    {
+     "ty": "128",
+     "ex": 128,
+     "sa": 174.38,
+     "top": 243610,
+     "gen": 78,
+     "sp": 12,
+     "spBy": {
+      "NWBB": 0,
+      "NWWDS": 0,
+      "LFE_FRST": 0,
+      "YGMN": 0,
+      "MNYCH": 9,
+      "OLD_PARNTS_SUPORT": 3,
+      "INSTT_RECOMEND": 0,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 0
+     },
+     "spOk": true
+    },
+    {
+     "ty": "129",
+     "ex": 129,
+     "sa": 177.31,
+     "top": 248290,
+     "gen": 153,
+     "sp": 23,
+     "spBy": {
+      "NWBB": 0,
+      "NWWDS": 0,
+      "LFE_FRST": 0,
+      "YGMN": 0,
+      "MNYCH": 18,
+      "OLD_PARNTS_SUPORT": 5,
+      "INSTT_RECOMEND": 0,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 0
+     },
+     "spOk": true
+    },
+    {
+     "ty": "184",
+     "ex": 184,
+     "sa": 253.76,
+     "top": 391150,
+     "gen": 2,
+     "sp": 0,
+     "spBy": {
+      "NWBB": 0,
+      "NWWDS": 0,
+      "LFE_FRST": 0,
+      "YGMN": 0,
+      "MNYCH": 0,
+      "OLD_PARNTS_SUPORT": 0,
+      "INSTT_RECOMEND": 0,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 0
+     },
+     "spOk": true
+    },
+    {
+     "ty": "188",
+     "ex": 188,
+     "sa": 260.26,
+     "top": 401320,
+     "gen": 2,
+     "sp": 0,
+     "spBy": {
+      "NWBB": 0,
+      "NWWDS": 0,
+      "LFE_FRST": 0,
+      "YGMN": 0,
+      "MNYCH": 0,
+      "OLD_PARNTS_SUPORT": 0,
+      "INSTT_RECOMEND": 0,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 0
+     },
+     "spOk": true
+    }
+   ],
+   "seen": "2026-10-23"
+  },
+  "2026000509": {
+   "name": "아크메르 동탄 99",
+   "kind": "APT",
+   "houseKind": "민영",
+   "publicLaw": false,
+   "regFlags": [
+    "투기과열",
+    "조정"
+   ],
+   "region": "경기",
+   "district": "화성특례시",
+   "address": "경기도 화성특례시 동탄구 반송동 99번지[동탄(1) M1-2-2블록]",
+   "noticeDate": "2026-10-16",
+   "buyKind": "apt",
+   "src": "fallback",
+   "areaExact": false,
+   "types": [
+    {
+     "ty": "84",
+     "ex": 84,
+     "sa": 124.2,
+     "top": 171680,
+     "gen": 413,
+     "sp": 499,
+     "spBy": {
+      "NWBB": 91,
+      "NWWDS": 136,
+      "LFE_FRST": 63,
+      "YGMN": 0,
+      "MNYCH": 91,
+      "OLD_PARNTS_SUPORT": 27,
+      "INSTT_RECOMEND": 91,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 0
+     },
+     "spOk": true
+    },
+    {
+     "ty": "99",
+     "ex": 99,
+     "sa": 146.29,
+     "top": 191440,
+     "gen": 68,
+     "sp": 10,
+     "spBy": {
+      "NWBB": 0,
+      "NWWDS": 0,
+      "LFE_FRST": 0,
+      "YGMN": 0,
+      "MNYCH": 8,
+      "OLD_PARNTS_SUPORT": 2,
+      "INSTT_RECOMEND": 0,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 0
+     },
+     "spOk": true
+    },
+    {
+     "ty": "148",
+     "ex": 148,
+     "sa": 219.73,
+     "top": 316460,
+     "gen": 1,
+     "sp": 0,
+     "spBy": {
+      "NWBB": 0,
+      "NWWDS": 0,
+      "LFE_FRST": 0,
+      "YGMN": 0,
+      "MNYCH": 0,
+      "OLD_PARNTS_SUPORT": 0,
+      "INSTT_RECOMEND": 0,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 0
+     },
+     "spOk": true
+    },
+    {
+     "ty": "158",
+     "ex": 158,
+     "sa": 234.39,
+     "top": 337600,
+     "gen": 1,
+     "sp": 0,
+     "spBy": {
+      "NWBB": 0,
+      "NWWDS": 0,
+      "LFE_FRST": 0,
+      "YGMN": 0,
+      "MNYCH": 0,
+      "OLD_PARNTS_SUPORT": 0,
+      "INSTT_RECOMEND": 0,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 0
+     },
+     "spOk": true
+    },
+    {
+     "ty": "162",
+     "ex": 162,
+     "sa": 241.19,
+     "top": 347450,
+     "gen": 4,
+     "sp": 0,
+     "spBy": {
+      "NWBB": 0,
+      "NWWDS": 0,
+      "LFE_FRST": 0,
+      "YGMN": 0,
+      "MNYCH": 0,
+      "OLD_PARNTS_SUPORT": 0,
+      "INSTT_RECOMEND": 0,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 0
+     },
+     "spOk": true
+    }
+   ],
+   "seen": "2026-10-23"
+  },
+  "2026000513": {
+   "name": "트리븐센텀 1단지",
+   "kind": "APT",
+   "houseKind": "민영",
+   "publicLaw": false,
+   "regFlags": [],
+   "region": "부산",
+   "district": "해운대구",
+   "address": "부산광역시 해운대구 반여동 1167-3번지 일원",
+   "noticeDate": "2026-10-16",
+   "buyKind": "apt",
+   "src": "fallback",
+   "areaExact": false,
+   "types": [
+    {
+     "ty": "75",
+     "ex": 75,
+     "sa": 97.12,
+     "top": 68940,
+     "gen": 35,
+     "sp": 44,
+     "spBy": {
+      "NWBB": 8,
+      "NWWDS": 12,
+      "LFE_FRST": 6,
+      "YGMN": 0,
+      "MNYCH": 8,
+      "OLD_PARNTS_SUPORT": 2,
+      "INSTT_RECOMEND": 8,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 0
+     },
+     "spOk": true
+    },
+    {
+     "ty": "84",
+     "ex": 84,
+     "sa": 109.1,
+     "top": 77970,
+     "gen": 277,
+     "sp": 340,
+     "spBy": {
+      "NWBB": 62,
+      "NWWDS": 92,
+      "LFE_FRST": 43,
+      "YGMN": 0,
+      "MNYCH": 62,
+      "OLD_PARNTS_SUPORT": 19,
+      "INSTT_RECOMEND": 62,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 0
+     },
+     "spOk": true
+    },
+    {
+     "ty": "114",
+     "ex": 114,
+     "sa": 144.77,
+     "top": 102850,
+     "gen": 135,
+     "sp": 21,
+     "spBy": {
+      "NWBB": 0,
+      "NWWDS": 0,
+      "LFE_FRST": 0,
+      "YGMN": 0,
+      "MNYCH": 16,
+      "OLD_PARNTS_SUPORT": 5,
+      "INSTT_RECOMEND": 0,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 0
+     },
+     "spOk": true
+    }
+   ],
+   "seen": "2026-10-23"
+  },
+  "2026000514": {
+   "name": "트리븐센텀 2단지",
+   "kind": "APT",
+   "houseKind": "민영",
+   "publicLaw": false,
+   "regFlags": [],
+   "region": "부산",
+   "district": "해운대구",
+   "address": "부산광역시 해운대구 반여동 610-5번지 일원",
+   "noticeDate": "2026-10-16",
+   "buyKind": "apt",
+   "src": "fallback",
+   "areaExact": false,
+   "types": [
+    {
+     "ty": "75",
+     "ex": 75,
+     "sa": 96.85,
+     "top": 69280,
+     "gen": 27,
+     "sp": 38,
+     "spBy": {
+      "NWBB": 7,
+      "NWWDS": 10,
+      "LFE_FRST": 5,
+      "YGMN": 0,
+      "MNYCH": 7,
+      "OLD_PARNTS_SUPORT": 2,
+      "INSTT_RECOMEND": 7,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 0
+     },
+     "spOk": true
+    },
+    {
+     "ty": "84",
+     "ex": 84,
+     "sa": 108.8,
+     "top": 77200,
+     "gen": 252,
+     "sp": 311,
+     "spBy": {
+      "NWBB": 56,
+      "NWWDS": 85,
+      "LFE_FRST": 40,
+      "YGMN": 0,
+      "MNYCH": 56,
+      "OLD_PARNTS_SUPORT": 18,
+      "INSTT_RECOMEND": 56,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 0
+     },
+     "spOk": true
+    },
+    {
+     "ty": "114",
+     "ex": 114,
+     "sa": 144.37,
+     "top": 101830,
+     "gen": 143,
+     "sp": 21,
+     "spBy": {
+      "NWBB": 0,
+      "NWWDS": 0,
+      "LFE_FRST": 0,
+      "YGMN": 0,
+      "MNYCH": 16,
+      "OLD_PARNTS_SUPORT": 5,
+      "INSTT_RECOMEND": 0,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 0
+     },
+     "spOk": true
+    }
+   ],
+   "seen": "2026-10-23"
+  },
+  "2026000515": {
+   "name": "평택 고덕 우미 린 더 프리미어",
+   "kind": "APT",
+   "houseKind": "민영",
+   "publicLaw": false,
+   "regFlags": [],
+   "region": "경기",
+   "district": "평택시",
+   "address": "경기도 평택시 고덕 국제화계획지구 내 Abc-33블록",
+   "noticeDate": "2026-10-30",
+   "buyKind": "apt",
+   "src": "fallback",
+   "areaExact": false,
+   "types": [
+    {
+     "ty": "84",
+     "ex": 84,
+     "sa": 110.62,
+     "top": 59130,
+     "gen": 140,
+     "sp": 260,
+     "spBy": {
+      "NWBB": 40,
+      "NWWDS": 60,
+      "LFE_FRST": 68,
+      "YGMN": 0,
+      "MNYCH": 40,
+      "OLD_PARNTS_SUPORT": 12,
+      "INSTT_RECOMEND": 40,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 0
+     },
+     "spOk": true
+    },
+    {
+     "ty": "94",
+     "ex": 94,
+     "sa": 122.02,
+     "top": 62010,
+     "gen": 67,
+     "sp": 12,
+     "spBy": {
+      "NWBB": 0,
+      "NWWDS": 0,
+      "LFE_FRST": 0,
+      "YGMN": 0,
+      "MNYCH": 9,
+      "OLD_PARNTS_SUPORT": 3,
+      "INSTT_RECOMEND": 0,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 0
+     },
+     "spOk": true
+    },
+    {
+     "ty": "101",
+     "ex": 101,
+     "sa": 131.37,
+     "top": 68190,
+     "gen": 113,
+     "sp": 16,
+     "spBy": {
+      "NWBB": 0,
+      "NWWDS": 0,
+      "LFE_FRST": 0,
+      "YGMN": 0,
+      "MNYCH": 13,
+      "OLD_PARNTS_SUPORT": 3,
+      "INSTT_RECOMEND": 0,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 0
+     },
+     "spOk": true
+    },
+    {
+     "ty": "111",
+     "ex": 111,
+     "sa": 143.06,
+     "top": 68100,
+     "gen": 15,
+     "sp": 0,
+     "spBy": {
+      "NWBB": 0,
+      "NWWDS": 0,
+      "LFE_FRST": 0,
+      "YGMN": 0,
+      "MNYCH": 0,
+      "OLD_PARNTS_SUPORT": 0,
+      "INSTT_RECOMEND": 0,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 0
+     },
+     "spOk": true
+    }
+   ],
+   "seen": "2026-11-06"
+  },
+  "2026000517": {
+   "name": "GTX운정중앙역 시티프라디움 3단지(후속사업)",
+   "kind": "APT",
+   "houseKind": "민영",
+   "publicLaw": false,
+   "regFlags": [],
+   "region": "경기",
+   "district": "파주시",
+   "address": "경기도 파주시 파주운정3지구 주상복합 3블록(경기도 파주시 동패동 1673번지 일원)",
+   "noticeDate": "2026-10-23",
+   "buyKind": "apt",
+   "src": "fallback",
+   "areaExact": false,
+   "types": [
+    {
+     "ty": "60",
+     "ex": 60,
+     "sa": 83.03,
+     "top": 58900,
+     "gen": 12,
+     "sp": 21,
+     "spBy": {
+      "NWBB": 3,
+      "NWWDS": 4,
+      "LFE_FRST": 6,
+      "YGMN": 0,
+      "MNYCH": 3,
+      "OLD_PARNTS_SUPORT": 2,
+      "INSTT_RECOMEND": 3,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 0
+     },
+     "spOk": true
+    },
+    {
+     "ty": "84",
+     "ex": 84,
+     "sa": 113.32,
+     "top": 79800,
+     "gen": 60,
+     "sp": 103,
+     "spBy": {
+      "NWBB": 15,
+      "NWWDS": 23,
+      "LFE_FRST": 28,
+      "YGMN": 0,
+      "MNYCH": 17,
+      "OLD_PARNTS_SUPORT": 5,
+      "INSTT_RECOMEND": 15,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 0
+     },
+     "spOk": true
+    },
+    {
+     "ty": "88",
+     "ex": 88,
+     "sa": 116.83,
+     "top": 84100,
+     "gen": 55,
+     "sp": 7,
+     "spBy": {
+      "NWBB": 0,
+      "NWWDS": 0,
+      "LFE_FRST": 0,
+      "YGMN": 0,
+      "MNYCH": 6,
+      "OLD_PARNTS_SUPORT": 1,
+      "INSTT_RECOMEND": 0,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 0
+     },
+     "spOk": true
+    },
+    {
+     "ty": "115",
+     "ex": 115,
+     "sa": 151.51,
+     "top": 99400,
+     "gen": 69,
+     "sp": 10,
+     "spBy": {
+      "NWBB": 0,
+      "NWWDS": 0,
+      "LFE_FRST": 0,
+      "YGMN": 0,
+      "MNYCH": 8,
+      "OLD_PARNTS_SUPORT": 2,
+      "INSTT_RECOMEND": 0,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 0
+     },
+     "spOk": true
+    }
+   ],
+   "seen": "2026-10-26"
+  },
+  "2026000518": {
+   "name": "GTX운정중앙역 시티프라디움 4단지(후속사업)",
+   "kind": "APT",
+   "houseKind": "민영",
+   "publicLaw": false,
+   "regFlags": [],
+   "region": "경기",
+   "district": "파주시",
+   "address": "경기도 파주시 파주운정3지구 주상복합 4블록(경기도 파주시 동패동 400-7번지 일원)",
+   "noticeDate": "2026-10-23",
+   "buyKind": "apt",
+   "src": "fallback",
+   "areaExact": false,
+   "types": [
+    {
+     "ty": "60",
+     "ex": 60,
+     "sa": 84.82,
+     "top": 60100,
+     "gen": 33,
+     "sp": 59,
+     "spBy": {
+      "NWBB": 9,
+      "NWWDS": 13,
+      "LFE_FRST": 15,
+      "YGMN": 0,
+      "MNYCH": 9,
+      "OLD_PARNTS_SUPORT": 4,
+      "INSTT_RECOMEND": 9,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 0
+     },
+     "spOk": true
+    },
+    {
+     "ty": "84",
+     "ex": 84,
+     "sa": 114.93,
+     "top": 81400,
+     "gen": 95,
+     "sp": 171,
+     "spBy": {
+      "NWBB": 26,
+      "NWWDS": 39,
+      "LFE_FRST": 45,
+      "YGMN": 0,
+      "MNYCH": 27,
+      "OLD_PARNTS_SUPORT": 7,
+      "INSTT_RECOMEND": 27,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 0
+     },
+     "spOk": true
+    }
+   ],
+   "seen": "2026-10-26"
+  },
+  "2026000525": {
+   "name": "엘리프 시흥 더프라임",
+   "kind": "APT",
+   "houseKind": "민영",
+   "publicLaw": false,
+   "regFlags": [],
+   "region": "경기",
+   "district": "시흥시",
+   "address": "경기도 시흥시 거모동 시흥거모지구 B-5블록",
+   "noticeDate": "2026-10-29",
+   "buyKind": "apt",
+   "src": "fallback",
+   "areaExact": false,
+   "types": [
+    {
+     "ty": "84",
+     "ex": 84,
+     "sa": 109.18,
+     "top": 59930,
+     "gen": 114,
+     "sp": 190,
+     "spBy": {
+      "NWBB": 29,
+      "NWWDS": 44,
+      "LFE_FRST": 51,
+      "YGMN": 0,
+      "MNYCH": 29,
+      "OLD_PARNTS_SUPORT": 8,
+      "INSTT_RECOMEND": 29,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 0
+     },
+     "spOk": true
+    }
+   ],
+   "seen": "2026-11-06"
+  },
+  "2026000528": {
+   "name": "광교 자연앤 센트레빌(A17BL) 공공분양주택",
+   "kind": "APT",
+   "houseKind": "국민",
+   "publicLaw": true,
+   "regFlags": [
+    "투기과열",
+    "조정"
+   ],
+   "region": "경기",
+   "district": "수원시",
+   "address": "경기도 수원시 영통구 원천동 633번지 일원",
+   "noticeDate": "2026-10-30",
+   "buyKind": "apt",
+   "src": "fallback",
+   "areaExact": false,
+   "types": [
+    {
+     "ty": "84",
+     "ex": 84,
+     "sa": 111.8,
+     "top": 94930,
+     "gen": 90,
+     "sp": 270,
+     "spBy": {
+      "NWBB": 72,
+      "NWWDS": 36,
+      "LFE_FRST": 54,
+      "YGMN": 0,
+      "MNYCH": 36,
+      "OLD_PARNTS_SUPORT": 18,
+      "INSTT_RECOMEND": 54,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 0
+     },
+     "spOk": true
+    }
+   ],
+   "seen": "2026-11-06"
+  },
+  "2026000530": {
+   "name": "계양신도시 카이브 유보라(AC3BL)",
+   "kind": "APT",
+   "houseKind": "민영",
+   "publicLaw": false,
+   "regFlags": [],
+   "region": "인천",
+   "district": "계양구",
+   "address": "인천광역시 계양구 동양동 458-3번지 일원 (인천계양 테크노밸리 공공주택지구 AC3블록)",
+   "noticeDate": "2026-10-23",
+   "buyKind": "apt",
+   "src": "fallback",
+   "areaExact": false,
+   "types": [
+    {
+     "ty": "84",
+     "ex": 84,
+     "sa": 111.22,
+     "top": 82600,
+     "gen": 152,
+     "sp": 336,
+     "spBy": {
+      "NWBB": 48,
+      "NWWDS": 73,
+      "LFE_FRST": 82,
+      "YGMN": 0,
+      "MNYCH": 46,
+      "OLD_PARNTS_SUPORT": 15,
+      "INSTT_RECOMEND": 48,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 24
+     },
+     "spOk": true
+    },
+    {
+     "ty": "92",
+     "ex": 92,
+     "sa": 121.09,
+     "top": 91200,
+     "gen": 31,
+     "sp": 5,
+     "spBy": {
+      "NWBB": 0,
+      "NWWDS": 0,
+      "LFE_FRST": 0,
+      "YGMN": 0,
+      "MNYCH": 4,
+      "OLD_PARNTS_SUPORT": 1,
+      "INSTT_RECOMEND": 0,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 0
+     },
+     "spOk": true
+    },
+    {
+     "ty": "93",
+     "ex": 93,
+     "sa": 123.19,
+     "top": 91000,
+     "gen": 78,
+     "sp": 12,
+     "spBy": {
+      "NWBB": 0,
+      "NWWDS": 0,
+      "LFE_FRST": 0,
+      "YGMN": 0,
+      "MNYCH": 10,
+      "OLD_PARNTS_SUPORT": 2,
+      "INSTT_RECOMEND": 0,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 0
+     },
+     "spOk": true
+    }
+   ],
+   "seen": "2026-10-27"
+  },
+  "2026000531": {
+   "name": "시흥거모지구 S-1블록 공공분양(본청약)",
+   "kind": "APT",
+   "houseKind": "국민",
+   "publicLaw": true,
+   "regFlags": [],
+   "region": "경기",
+   "district": "시흥시",
+   "address": "경기도 시흥시 거모동, 군자동 일원 시흥거모 공공주택지구 내 S-1블록",
+   "noticeDate": "2026-10-23",
+   "buyKind": "apt",
+   "src": "fallback",
+   "areaExact": false,
+   "types": [
+    {
+     "ty": "59",
+     "ex": 59,
+     "sa": 78.65,
+     "top": 41110,
+     "gen": 8,
+     "sp": 25,
+     "spBy": {
+      "NWBB": 7,
+      "NWWDS": 3,
+      "LFE_FRST": 5,
+      "YGMN": 0,
+      "MNYCH": 3,
+      "OLD_PARNTS_SUPORT": 2,
+      "INSTT_RECOMEND": 5,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 0
+     },
+     "spOk": true
+    },
+    {
+     "ty": "84",
+     "ex": 84,
+     "sa": 111.56,
+     "top": 57026,
+     "gen": 19,
+     "sp": 53,
+     "spBy": {
+      "NWBB": 14,
+      "NWWDS": 7,
+      "LFE_FRST": 11,
+      "YGMN": 0,
+      "MNYCH": 7,
+      "OLD_PARNTS_SUPORT": 2,
+      "INSTT_RECOMEND": 12,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 0
+     },
+     "spOk": true
+    }
+   ],
+   "seen": "2026-10-26"
+  },
+  "2026000532": {
+   "name": "계양신도시 카이브 유보라(AC4BL)",
+   "kind": "APT",
+   "houseKind": "민영",
+   "publicLaw": false,
+   "regFlags": [],
+   "region": "인천",
+   "district": "계양구",
+   "address": "인천광역시 계양구 동양동 420-3번지 일원 (인천계양 테크노밸리 공공주택지구 AC4블록)",
+   "noticeDate": "2026-10-23",
+   "buyKind": "apt",
+   "src": "fallback",
+   "areaExact": false,
+   "types": [
+    {
+     "ty": "84",
+     "ex": 84,
+     "sa": 111,
+     "top": 82200,
+     "gen": 123,
+     "sp": 273,
+     "spBy": {
+      "NWBB": 39,
+      "NWWDS": 59,
+      "LFE_FRST": 67,
+      "YGMN": 0,
+      "MNYCH": 38,
+      "OLD_PARNTS_SUPORT": 12,
+      "INSTT_RECOMEND": 39,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 19
+     },
+     "spOk": true
+    },
+    {
+     "ty": "93",
+     "ex": 93,
+     "sa": 122.94,
+     "top": 90600,
+     "gen": 88,
+     "sp": 12,
+     "spBy": {
+      "NWBB": 0,
+      "NWWDS": 0,
+      "LFE_FRST": 0,
+      "YGMN": 0,
+      "MNYCH": 10,
+      "OLD_PARNTS_SUPORT": 2,
+      "INSTT_RECOMEND": 0,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 0
+     },
+     "spOk": true
+    }
+   ],
+   "seen": "2026-10-26"
+  },
+  "2026000533": {
+   "name": "안산신길2지구 B-1블록 공공분양주택(본청약)",
+   "kind": "APT",
+   "houseKind": "국민",
+   "publicLaw": true,
+   "regFlags": [],
+   "region": "경기",
+   "district": "안산시",
+   "address": "경기도 안산시 단원구 신길동 일원 안산신길2 공공주택지구 내 B-1블록",
+   "noticeDate": "2026-10-30",
+   "buyKind": "apt",
+   "src": "fallback",
+   "areaExact": false,
+   "types": [
+    {
+     "ty": "74",
+     "ex": 74,
+     "sa": 97.14,
+     "top": 51190,
+     "gen": 6,
+     "sp": 22,
+     "spBy": {
+      "NWBB": 6,
+      "NWWDS": 3,
+      "LFE_FRST": 5,
+      "YGMN": 0,
+      "MNYCH": 2,
+      "OLD_PARNTS_SUPORT": 1,
+      "INSTT_RECOMEND": 4,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 1
+     },
+     "spOk": true
+    },
+    {
+     "ty": "84",
+     "ex": 84,
+     "sa": 109.82,
+     "top": 60969,
+     "gen": 25,
+     "sp": 71,
+     "spBy": {
+      "NWBB": 19,
+      "NWWDS": 9,
+      "LFE_FRST": 14,
+      "YGMN": 0,
+      "MNYCH": 10,
+      "OLD_PARNTS_SUPORT": 3,
+      "INSTT_RECOMEND": 14,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 2
+     },
+     "spOk": true
+    }
+   ],
+   "seen": "2026-11-06"
+  },
+  "2026820012": {
+   "name": "시흥하중지구 A1블록 신혼희망타운(공공분양) 추가입주자모집공고",
+   "kind": "APT",
+   "houseKind": "국민",
+   "publicLaw": true,
+   "regFlags": [],
+   "region": "경기",
+   "district": "시흥시",
+   "address": "경기도 시흥시 하중동 일원 시흥하중 공공주택지구 내 A1블록",
+   "noticeDate": "2026-10-23",
+   "buyKind": "apt",
+   "src": "fallback",
+   "areaExact": false,
+   "types": [
+    {
+     "ty": "55",
+     "ex": 55,
+     "sa": 80.86,
+     "top": 42374,
+     "gen": 0,
+     "sp": 175,
+     "spBy": {
+      "NWBB": 0,
+      "NWWDS": 0,
+      "LFE_FRST": 0,
+      "YGMN": 0,
+      "MNYCH": 0,
+      "OLD_PARNTS_SUPORT": 0,
+      "INSTT_RECOMEND": 0,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 0
+     },
+     "spOk": false
+    }
+   ],
+   "seen": "2026-10-26"
+  },
+  "2026820014": {
+   "name": "남양주왕숙 A-2블록 신혼희망타운(공공분양) 잔여세대 추가입주자모집공고",
+   "kind": "APT",
+   "houseKind": "국민",
+   "publicLaw": true,
+   "regFlags": [],
+   "region": "경기",
+   "district": "남양주시",
+   "address": "경기도 남양주시 진접읍, 진건읍, 퇴계원읍 일원, 남양주왕숙 공공주택지구 내 A-2블록",
+   "noticeDate": "2026-11-03",
+   "buyKind": "apt",
+   "src": "fallback",
+   "areaExact": true,
+   "types": [
+    {
+     "ty": "046.0000O",
+     "ex": 46,
+     "sa": 67.1669,
+     "top": 35276,
+     "gen": 0,
+     "sp": 18,
+     "spBy": {
+      "NWBB": 0,
+      "NWWDS": 0,
+      "LFE_FRST": 0,
+      "YGMN": 0,
+      "MNYCH": 0,
+      "OLD_PARNTS_SUPORT": 0,
+      "INSTT_RECOMEND": 0,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 0
+     },
+     "spOk": false
+    },
+    {
+     "ty": "055.0000O",
+     "ex": 55,
+     "sa": 79.7936,
+     "top": 41908,
+     "gen": 0,
+     "sp": 14,
+     "spBy": {
+      "NWBB": 0,
+      "NWWDS": 0,
+      "LFE_FRST": 0,
+      "YGMN": 0,
+      "MNYCH": 0,
+      "OLD_PARNTS_SUPORT": 0,
+      "INSTT_RECOMEND": 0,
+      "TRANSR_INSTT_ENFSN": 0,
+      "ETC": 0
+     },
+     "spOk": false
+    }
+   ],
+   "seen": "2026-11-06"
+  }
+ }
+}

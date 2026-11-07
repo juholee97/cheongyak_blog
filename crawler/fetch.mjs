@@ -7,9 +7,11 @@ import { fetchYouth } from './youth.mjs';
 import { fetchLH } from './lh.mjs';
 import { fetchSH } from './sh.mjs';
 import { mergeNotices } from './merge.mjs';
+import { typeOf } from './supply.mjs';
 
 const BASE = 'https://api.odcloud.kr/api/ApplyhomeInfoDetailSvc/v1/';
 const PREV_URL = 'https://juholee97.github.io/cheongyak_blog/schedule.json'; // 지난번 배포본
+const PREV_NOTICES_URL = 'https://juholee97.github.io/cheongyak_blog/notices.json'; // 계산기용 공고 정보 지난 배포본
 const SOURCES = [
   { kind: 'APT', detail: 'getAPTLttotPblancDetail', model: 'getAPTLttotPblancMdl' },
   { kind: 'URBTY', detail: 'getUrbtyOfctlLttotPblancDetail' }, // 오피스텔·도시형 (민간임대·생숙은 제외)
@@ -78,6 +80,38 @@ export function toItem(row, sourceKind) {
     homepageUrl: url(row.HMPG_ADRES),
     phases: PHASE_FIELDS[kind].map(phaseOf(row)).filter((p) => p.date),
   };
+}
+
+// 공고 한 건의 계산기용 정보(site/notices.json, docs/eligibility-calculator-design.md 16-2). 이미 받은 상세·주택형 행에서 계산만 한다(API 추가 0건).
+// 모르는 값은 null(계산기가 「모름」으로 다룬다). 무순위 상세 행의 민영/국민·규제 칸 이름은 미확인이라 값이 정확히 맞을 때만 쓴다.
+const flagOf = (row) => (row.SPECLT_RDN_EARTH_AT === undefined && row.MDAT_TRGET_AREA_SECD === undefined ? null
+  : [row.SPECLT_RDN_EARTH_AT === 'Y' && '투기과열', row.MDAT_TRGET_AREA_SECD === 'Y' && '조정'].filter(Boolean));
+export function noticeOf(row, it, models, today) {
+  const hk = String(row.HOUSE_DTL_SECD_NM || '').trim();
+  return {
+    name: it.name, kind: it.kind,
+    houseKind: ['민영', '국민'].includes(hk) ? hk : null,
+    publicLaw: row.PUBLIC_HOUSE_SPCLW_APPLC_AT === undefined ? null : row.PUBLIC_HOUSE_SPCLW_APPLC_AT === 'Y',
+    regFlags: flagOf(row),
+    region: it.region, district: it.district, address: it.address, noticeDate: it.noticeDate,
+    buyKind: { APT: 'apt', 무순위: 'apt', 오피스텔: 'officetel' }[it.kind] || null,
+    src: 'api', areaExact: true,
+    types: (models || []).map(typeOf),
+    seen: today,
+  };
+}
+
+// 지난 배포본 위에 오늘 값을 쌓는다. 오늘 주택형을 못 받았으면(조회 실패·0건) 지난 주택형을 남긴다. 공고일(없으면 마지막으로 본 날) + 18개월이 지나면 지운다
+export function stackNotices(prev, today, todayDate) {
+  const n = { ...prev };
+  for (const [k, v] of Object.entries(today)) {
+    const old = n[k];
+    n[k] = !v.types.length && old?.types?.length ? { ...v, types: old.types, src: old.src, areaExact: old.areaExact } : v;
+  }
+  const [y, m, d] = todayDate.split('-').map(Number);
+  const cut = isoDate(new Date(Date.UTC(y, m - 1 - 18, d)));
+  for (const k of Object.keys(n)) if ((n[k].noticeDate || n[k].seen || '') < cut) delete n[k];
+  return n;
 }
 
 // 주택형별 최고분양가 ÷ 공급면적 × 3.3㎡, 세대수 가중 평균 (만원)
@@ -159,6 +193,10 @@ async function main() {
     console.warn(`  ↳ ${label}: 지난 배포본 ${old.length}건을 그대로 씀`);
   };
   const KINDS_OF = { APT: ['APT'], URBTY: ['오피스텔', '도시형'] };
+  const notices = {}; // 청약홈 공고번호 → noticeOf(...)
+  const today = isoDate(now);
+  const keyLogged = new Set(); // 상세·주택형 행 키를 출처마다 한 번 찍는다(무순위 칸 이름 확인용, 설계 6-2의 3)
+  const logKeys = (label, row) => { if (row && !keyLogged.has(label)) { keyLogged.add(label); console.log(`  [키] ${label}: ${Object.keys(row).join(',')}`); } };
   for (const src of SOURCES) {
     const since = src.compactDate ? noticeFrom.replace(/-/g, '') : noticeFrom;
     const rows = await getAll(src.detail, { 'cond[RCRIT_PBLANC_DE::GTE]': since }, key);
@@ -173,15 +211,18 @@ async function main() {
       const it = toItem(row, src.kind);
       if (!it || !it.region || !it.phases.some((p) => p.date >= from && p.date <= to)) continue;
       // 분양전환 임대(RENT_SECD 1)는 공급금액이 분양가가 아니라 비워 둔다
+      let models = [];
       if (src.model && row.RENT_SECD !== '1') {
         try {
-          const models = await getAll(src.model, { 'cond[HOUSE_MANAGE_NO::EQ]': row.HOUSE_MANAGE_NO, 'cond[PBLANC_NO::EQ]': row.PBLANC_NO }, key);
+          models = await getAll(src.model, { 'cond[HOUSE_MANAGE_NO::EQ]': row.HOUSE_MANAGE_NO, 'cond[PBLANC_NO::EQ]': row.PBLANC_NO }, key);
           it.pricePerPyeong = pricePerPyeong(models);
         } catch (e) {
           console.warn(`분양가 조회 실패 ${it.name}: ${e.message}`);
         }
         await sleep(100);
       }
+      if (src.model) { logKeys(src.detail, row); logKeys(src.model, models[0]); }
+      if (row.HOUSE_MANAGE_NO) notices[row.HOUSE_MANAGE_NO] = noticeOf(row, it, models, today);
       items.set(it.id, it);
       kept++;
     }
@@ -230,6 +271,21 @@ async function main() {
   await mkdir(dirname(out), { recursive: true });
   await writeFile(out, JSON.stringify(json));
   console.log(`${out}: ${merged.length}건 (${from} ~ ${to})`);
+
+  // 계산기용 공고 정보(site/notices.json). 실패해도 달력 배포는 막지 않는다
+  try {
+    let prevN = await fetch(PREV_NOTICES_URL).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+    if (!prevN?.n) {
+      prevN = JSON.parse(await readFile(new URL('./fallback-notices.json', import.meta.url), 'utf8').catch(() => '{"n":{}}'));
+      console.warn(`  ↳ notices.json 지난 배포본 없음 — 대체본 ${Object.keys(prevN.n || {}).length}건에서 시작`);
+    }
+    const n = stackNotices(prevN.n || {}, notices, today);
+    const nOut = `${dirname(out)}/notices.json`;
+    await writeFile(nOut, JSON.stringify({ schema: 1, updated: `${t}+09:00`, n }));
+    console.log(`${nOut}: ${Object.keys(n).length}건 (오늘 ${Object.keys(notices).length}건, 주택형 있는 공고 ${Object.values(n).filter((v) => v.types.length).length}건)`);
+  } catch (e) {
+    console.warn(`notices.json 실패: ${e.message}`);
+  }
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

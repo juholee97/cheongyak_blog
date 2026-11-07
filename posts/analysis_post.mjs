@@ -17,6 +17,8 @@ import { itemHtml, renderPngs, searchThumbHtml } from './card.mjs';
 import { plansFor } from './floorplan.mjs';
 import { noticeText, termsOf } from './notice_terms.mjs';
 import { feeNear, feeFor } from './kapt_fee.mjs';
+import { SP, supplyOf } from '../crawler/supply.mjs';
+export { supplyOf };
 import { moneyOf, checkMoney, bankRate, BANK, POLICY_YEARS, INCOME, incomeAt, PRIVATE_RULES, PRIVATE_ASSET, MONEY_CHECKED } from './money.mjs';
 
 const ODCLOUD = 'https://api.odcloud.kr/api/ApplyhomeInfoDetailSvc/v1/';
@@ -125,19 +127,7 @@ export async function enrich(f) {
   return addV2(f, d || {}, await odcloud('getAPTLttotPblancMdl', f.detail.no, key));
 }
 
-// 특별공급 유형별 세대(청약홈 주택형 자료): 주택형(전용)별로 묶고, 유형 합이 특별공급 수와 맞는지 검산
-const SP = [['NWBB_HSHLDCO', '신생아'], ['NWWDS_HSHLDCO', '신혼부부'], ['LFE_FRST_HSHLDCO', '생애최초'], ['YGMN_HSHLDCO', '청년'], ['MNYCH_HSHLDCO', '다자녀'], ['OLD_PARNTS_SUPORT_HSHLDCO', '노부모부양'], ['INSTT_RECOMEND_HSHLDCO', '기관추천'], ['TRANSR_INSTT_ENFSN_HSHLDCO', '이전기관'], ['ETC_HSHLDCO', '그 밖']];
-export function supplyOf(models) {
-  const by = new Map();
-  for (const m of models) {
-    const a = ar(m.HOUSE_TY), g = by.get(a) || { area: a, general: 0, special: 0, sp: Object.fromEntries(SP.map(([k]) => [k, 0])) };
-    g.general += +m.SUPLY_HSHLDCO || 0; g.special += +m.SPSPLY_HSHLDCO || 0;
-    for (const [k] of SP) g.sp[k] += +m[k] || 0;
-    by.set(a, g);
-  }
-  const rows = [...by.values()].sort((x, y) => x.area - y.area);
-  return { rows, ok: rows.every((g) => Object.values(g.sp).reduce((s, v) => s + v, 0) === g.special) };
-}
+// 특별공급 유형별 세대: crawler/supply.mjs(fetch.mjs와 함께 쓴다)
 
 // ── 본문 ─────────────────────────────────────────
 const H2 = (t, id) => `<h2${id ? ` id="${id}"` : ''} style="font-weight:700">${t}</h2>`;
