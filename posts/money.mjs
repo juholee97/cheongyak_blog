@@ -10,15 +10,18 @@ import { useApi } from '../zip/guard.mjs';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 export const MONEY_CHECKED = '2026-10-23'; // docs/policy loans.md·tax.md·public.md·special.md 확인일 — 문서를 고치면 아래 값과 함께 고친다
+export const POLICY_CHECKED = '2026-11-08'; // 아래 POLICY(정책대출) 값을 docs/policy/loans.md와 다시 대조한 날
 
-// 정책대출(loans.md 1~3절). price·limit 만원, ltv [수도권·규제지역, 그 밖], 기간은 30년으로 가정
+// 정책대출(loans.md 1~3절). price·limit 만원, ltv [수도권·규제지역, 그 밖], 기간은 30년으로 가정.
+// 생애최초 지방 LTV 80%는 생애최초 줄만 쓴다(신혼·신생아 줄은 생애최초가 아닐 때의 70%).
+// 보금자리론 금리는 2026-11-09 공시(아낌e 5.00~5.30%, 그 전 11-01 공시 4.90~5.20%)
 export const POLICY = [
   { name: '디딤돌대출(일반)', who: '부부합산 소득 6천만원 이하', price: 50000, area: 85, limit: 20000, ltv: [70, 70], rate: [2.85, 4.15] },
   { name: '디딤돌대출(생애최초)', who: '생애최초 구입, 소득 7천만원 이하', price: 50000, area: 85, limit: 24000, ltv: [70, 80], rate: [2.85, 4.15] },
   { name: '디딤돌대출(신혼·2자녀 이상)', who: '신혼 소득 8.5천만원·2자녀 이상 7천만원 이하', price: 60000, area: 85, limit: 32000, ltv: [70, 70], rate: [2.85, 4.15] },
   { name: '신생아 특례 디딤돌대출', who: '2년 안에 출산한 가구, 소득 1.3억원(맞벌이 2억원) 이하', price: 90000, area: 85, limit: 40000, ltv: [70, 70], rate: [1.8, 4.5] },
-  { name: '보금자리론', who: '부부합산 소득 7천만원 이하(신혼 8.5천만원 등)', price: 60000, area: null, limit: 36000, ltv: [70, 70], rate: [4.9, 5.2] },
-  { name: '보금자리론(생애최초)', who: '생애최초 구입', price: 60000, area: null, limit: 42000, ltv: [70, 80], rate: [4.9, 5.2] },
+  { name: '보금자리론', who: '부부합산 소득 7천만원 이하(신혼 8.5천만원 등)', price: 60000, area: null, limit: 36000, ltv: [70, 70], rate: [5.0, 5.3] },
+  { name: '보금자리론(생애최초)', who: '생애최초 구입', price: 60000, area: null, limit: 42000, ltv: [70, 80], rate: [5.0, 5.3] },
 ];
 export const POLICY_YEARS = 30;
 // 은행 주택담보대출(loans.md 5절): LTV 무주택 규제지역 40%·그 밖 70%, 수도권·규제지역 한도(시가 15억 이하 6억·25억 이하 4억·그 위 2억),

@@ -19,7 +19,7 @@ import { noticeText, termsOf } from './notice_terms.mjs';
 import { feeNear, feeFor } from './kapt_fee.mjs';
 import { SP, supplyOf } from '../crawler/supply.mjs';
 export { supplyOf };
-import { moneyOf, checkMoney, bankRate, BANK, POLICY_YEARS, INCOME, incomeAt, PRIVATE_RULES, PRIVATE_ASSET, MONEY_CHECKED } from './money.mjs';
+import { moneyOf, checkMoney, bankRate, BANK, POLICY_YEARS, INCOME, incomeAt, PRIVATE_RULES, PRIVATE_ASSET, MONEY_CHECKED, POLICY_CHECKED } from './money.mjs';
 
 const ODCLOUD = 'https://api.odcloud.kr/api/ApplyhomeInfoDetailSvc/v1/';
 const LOANS_CHECKED = '2026-10-23';
@@ -430,7 +430,7 @@ function moneyHtml(f, m, x) {
   if (m.cases.length) {
     const cards = m.cases.map((c) => card(esc(c.name), esc(c.who), `월 상환 ${B(span2(c.pay[0], c.pay[1], M))} · 입주 때 자기 돈 ${B(W(c.cash))}`, `대출 ${W(c.loan)}(LTV ${c.ltv}%${c.limit ? ` · 한도 ${W(c.limit)}` : ''}) · 연 ${span2(c.rate[0], c.rate[1], rt)}% · ${c.years}년 원리금균등`)).join('');
     const rent = m.rent && base?.base ? `<p style="margin:8px 0 0">여기에 토지임대료 ${iga(`월 ${R(m.rent.won)}`)} 따로 나가서, ${esc(base.base.name)} 기준 매달 내는 돈은 원리금과 합쳐 ${HL(`월 ${span2(base.total[0], base.total[1], M)}`)}이에요.</p>` : '';
-    const src = [t.balLoan ? `${pg(t.balLoan.p)} 잔금 대출 안내` : null, `정책대출은 주택도시기금·한국주택금융공사 기준(확인일 ${MONEY_CHECKED}, ${POLICY_YEARS}년 가정)`, f.bank ? bankLabel(f.bank) : null].filter(Boolean).join(' · ');
+    const src = [t.balLoan ? `${pg(t.balLoan.p)} 잔금 대출 안내` : null, `정책대출은 주택도시기금·한국주택금융공사 기준(확인일 ${POLICY_CHECKED}, ${POLICY_YEARS}년 가정)`, f.bank ? bankLabel(f.bank) : null].filter(Boolean).join(' · ');
     out.push(calcBox(`전용 ${m.main.area}㎡(최고 ${W(m.main.price)})를 대출받아 산다면`, cards + rent
       + foldNote('계산 가정·출처', `가정: 최고 분양가 기준, 대출액은 한도와 분양가×LTV 중 작은 값, 금리 구간의 낮은 쪽과 높은 쪽으로 각각 계산, 입주 때 자기 돈 = 분양가 − 대출. 금리: ${src}. 실제 대출 여부·금액·금리는 소득·신용·심사로 달라지고, 중도금 대출 이자·발코니 확장비·관리비는 빠져 있어요.`)));
   }
