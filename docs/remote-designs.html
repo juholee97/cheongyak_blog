@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>리모컨 디자인 시안 5개</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+:root {
+  --navy:#0f2557; --primary:#0a4ec2; --tint:#f3f7fe; --tint2:#eaf0fb; --tint3:#f8faff;
+  --tag-ink:#0a4ec2; --tag-bg:#eef3fc; --tag-line:#a9c1ee;
+  --ink:#1e2124; --sub:#464c53; --muted:#6d7882; --off:#8a949e;
+  --line-strong:#c4cad4; --line:#d6dbe3; --line-soft:#e4e8ee; --line-faint:#eef1f5;
+  --surface:#f4f6f9; --green:#00745f; --green-bg:#e5f3ef; --amber:#9a5a00; --amber-bg:#f8f0e2;
+  --shadow:0 20px 50px -20px rgba(0,0,0,.45);
+}
+* { box-sizing:border-box; }
+body { margin:0; background:#fff; color:var(--ink); font-family:Pretendard,-apple-system,sans-serif; letter-spacing:-0.01em; font-feature-settings:'tnum'; -webkit-font-smoothing:antialiased; }
+.top { background:var(--navy); color:#fff; padding:20px 24px; }
+.top h1 { margin:0 0 6px; font-size:22px; font-weight:800; }
+.top p { margin:0; font-size:13px; color:#c9d3e8; line-height:1.6; }
+main { max-width:1200px; margin:0 auto; padding:8px 24px 60px; }
+section.v { border-top:2px solid var(--navy); margin-top:36px; padding-top:16px; }
+.v h2 { margin:0 0 6px; font-size:20px; font-weight:800; }
+.v h2 span { display:inline-block; width:28px; height:28px; line-height:28px; text-align:center; background:var(--primary); color:#fff; border-radius:3px; margin-right:8px; font-size:15px; }
+.v .desc { margin:0 0 10px; font-size:14px; color:var(--sub); line-height:1.6; }
+.pc-mo { display:flex; gap:24px; flex-wrap:wrap; align-items:flex-start; }
+.cap { font-size:12px; font-weight:700; color:var(--muted); margin:0 0 6px; }
+.notes { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:12px; font-size:13px; line-height:1.6; }
+.notes div { border:1px solid var(--line-soft); border-radius:2px; padding:10px 12px; }
+.notes b { display:block; font-size:12px; margin-bottom:4px; }
+.notes .good b { color:var(--green); } .notes .bad b { color:#b3261e; }
+.notes ul { margin:0; padding-left:16px; }
+
+/* 가짜 블로그 화면 */
+.pc { position:relative; width:720px; max-width:100%; height:450px; border:1px solid var(--line-strong); overflow:hidden; background:#fff; }
+.mo { position:relative; width:280px; height:560px; border:1px solid var(--line-strong); overflow:hidden; background:#fff; }
+.f-util { height:22px; background:var(--navy); }
+.f-head { height:46px; border-bottom:1px solid var(--line); display:flex; align-items:center; padding:0 16px; gap:8px; font-weight:800; font-size:14px; }
+.f-head i { width:20px; height:20px; background:var(--primary); border-radius:3px; display:inline-block; }
+.f-head .nav { margin-left:auto; display:flex; gap:14px; font-size:12px; font-weight:600; color:var(--sub); }
+.f-body { display:flex; gap:16px; padding:16px; }
+.f-post { flex:1; }
+.f-side { width:150px; }
+.bar { height:9px; background:var(--line-faint); border-radius:2px; margin-bottom:9px; }
+.bar.t { height:16px; width:70%; background:var(--line-soft); margin-bottom:14px; }
+.bar.s { width:60%; } .bar.m { width:85%; }
+.blk { height:70px; background:var(--surface); border:1px solid var(--line-soft); border-radius:2px; margin:12px 0; }
+.mo .f-util { display:none; }
+.mo .f-head { height:42px; font-size:13px; }
+.mo .f-head .nav { display:none; }
+.mo .f-body { padding:12px; }
+.mo .f-side { display:none; }
+.tabbar { position:absolute; left:0; right:0; bottom:0; height:54px; border-top:1px solid var(--line-soft); background:#fff; display:grid; }
+.tabbar div { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; font-size:10px; font-weight:700; color:var(--muted); }
+.tabbar div i { width:16px; height:16px; border:2px solid currentColor; border-radius:3px; }
+.tabbar div.on { color:var(--primary); }
+.dim { position:absolute; inset:0; background:rgba(15,37,87,.35); }
+
+/* 리모컨 본문 (모든 시안 공통 내용) */
+.rc { font-size:12px; line-height:1.45; }
+.rc-head { display:flex; align-items:center; justify-content:space-between; padding:10px 12px; border-bottom:1px solid var(--line); }
+.rc-head b { font-size:14px; font-weight:800; }
+.rc-x { width:24px; height:24px; border:1px solid var(--line-strong); border-radius:3px; display:flex; align-items:center; justify-content:center; font-size:13px; color:var(--sub); background:#fff; }
+.rc-tabs { display:flex; border-bottom:1px solid var(--line); }
+.rc-tabs div { flex:1; text-align:center; padding:7px 0; font-weight:700; color:var(--muted); }
+.rc-tabs div.on { color:var(--primary); box-shadow:inset 0 -2px 0 var(--primary); }
+.rc-notice { margin:8px 12px 0; padding:7px 9px; background:var(--tint); border:1px solid var(--tag-line); border-radius:2px; color:var(--sub); }
+.rc-notice b { color:var(--ink); }
+.rc-sum { margin:8px 12px; font-weight:700; }
+.rc-grp { margin:0 12px 6px; }
+.rc-grp > p { margin:8px 0 4px; font-size:11px; font-weight:800; color:var(--navy); border-bottom:1px solid var(--line-soft); padding-bottom:3px; }
+.rc-row { display:grid; grid-template-columns:1fr auto; gap:2px 8px; padding:6px 0; border-bottom:1px solid var(--line-faint); }
+.rc-row .n { font-weight:700; }
+.rc-row .a { text-align:right; font-weight:700; }
+.rc-row .r { color:var(--sub); }
+.rc-row .l { text-align:right; color:var(--primary); font-weight:600; }
+.rc-row .st { display:inline-block; font-size:10px; font-weight:700; padding:0 4px; border-radius:2px; margin-left:4px; vertical-align:1px; }
+.st.ok { color:var(--green); background:var(--green-bg); } .st.chk { color:var(--amber); background:var(--amber-bg); }
+.rc-foot { margin:6px 12px 10px; font-size:10.5px; color:var(--muted); }
+
+/* 시안 A: 글자 버튼 + 오른쪽 전체 높이 패널 */
+.a-btn { position:absolute; right:12px; bottom:12px; background:var(--primary); color:#fff; font-weight:700; font-size:13px; padding:9px 14px; border-radius:3px; }
+.a-panel { position:absolute; top:0; right:0; bottom:0; width:300px; background:#fff; border-left:1px solid var(--line-strong); border-top:3px solid var(--navy); box-shadow:var(--shadow); overflow:hidden; }
+.sheet { position:absolute; left:0; right:0; bottom:0; height:84%; background:#fff; border-top:3px solid var(--navy); border-radius:3px 3px 0 0; box-shadow:var(--shadow); overflow:hidden; }
+
+/* 시안 B: 오른쪽 가장자리 세로 탭 */
+.b-edge { position:absolute; right:0; top:120px; width:30px; background:var(--navy); color:#fff; font-weight:700; font-size:12px; writing-mode:vertical-rl; letter-spacing:2px; padding:12px 0; text-align:center; border-radius:3px 0 0 3px; }
+.b-panel { position:absolute; top:0; right:30px; bottom:0; width:290px; background:#fff; border-left:1px solid var(--line-strong); box-shadow:var(--shadow); overflow:hidden; }
+.b-edge.open { background:var(--primary); }
+.mo .b-edge { top:200px; width:24px; font-size:11px; }
+
+/* 시안 C: 리모컨 모양 작은 카드 */
+.c-mini { position:absolute; right:12px; bottom:12px; width:150px; background:#fff; border:1px solid var(--line-strong); border-top:3px solid var(--navy); border-radius:3px; box-shadow:var(--shadow); padding:8px; }
+.c-mini p { margin:0 0 6px; font-size:11px; font-weight:800; color:var(--navy); }
+.c-mini div { border:1px solid var(--line-strong); border-radius:3px; padding:6px 8px; font-size:12px; font-weight:700; margin-top:4px; display:flex; justify-content:space-between; }
+.c-mini div:first-of-type { background:var(--primary); border-color:var(--primary); color:#fff; }
+.c-card { position:absolute; right:12px; bottom:12px; width:300px; height:390px; background:#fff; border:1px solid var(--line-strong); border-top:3px solid var(--navy); border-radius:3px; box-shadow:var(--shadow); overflow:hidden; }
+.c-fab { position:absolute; right:10px; bottom:66px; background:#fff; color:var(--primary); border:1px solid var(--primary); font-weight:700; font-size:12px; padding:7px 10px; border-radius:3px; box-shadow:var(--shadow); }
+
+/* 시안 D: 헤더 고정 버튼 + 아래로 펼침 */
+.d-btn { border:1px solid var(--primary); color:var(--primary); font-size:12px; font-weight:700; padding:5px 10px; border-radius:3px; margin-left:12px; }
+.d-btn.on { background:var(--primary); color:#fff; }
+.d-drop { position:absolute; top:68px; right:12px; width:320px; height:370px; background:#fff; border:1px solid var(--line-strong); border-top:3px solid var(--navy); border-radius:0 0 3px 3px; box-shadow:var(--shadow); overflow:hidden; }
+.mo .d-btn { margin-left:auto; font-size:11px; padding:4px 8px; }
+.d-full { position:absolute; top:42px; left:0; right:0; bottom:0; background:#fff; border-top:3px solid var(--navy); overflow:hidden; }
+
+/* 시안 E: 아래 띠 */
+.e-strip { position:absolute; left:0; right:0; bottom:0; height:40px; background:var(--navy); color:#fff; display:flex; align-items:center; gap:10px; padding:0 16px; font-size:13px; }
+.e-strip b { font-weight:800; }
+.e-strip span { color:#c9d3e8; font-size:12px; }
+.e-strip em { margin-left:auto; font-style:normal; background:#fff; color:var(--navy); font-weight:800; padding:4px 10px; border-radius:3px; font-size:12px; }
+.e-drawer { position:absolute; left:0; right:0; bottom:40px; height:300px; background:#fff; border-top:3px solid var(--navy); box-shadow:var(--shadow); overflow:hidden; }
+.e-drawer .rc { display:grid; grid-template-columns:1fr 1fr; }
+.e-drawer .rc-head { grid-column:1/3; }
+.mo .e-strip { bottom:54px; height:36px; font-size:12px; padding:0 10px; }
+.mo .e-strip span { display:none; }
+
+@media (max-width:760px) { .notes { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<div class="top">
+  <h1>리모컨 디자인 시안 5개</h1>
+  <p>숫자는 화면 모양을 보이기 위한 예시예요. 금리는 정책 금리 범위만 보이고, 자세한 건 블로그 글로 이어요. 색·글꼴·모서리는 지금 스킨 기준(남색·파랑, 각진 모서리 2~3px, 둥근 알약 모양 없음)을 따랐어요.</p>
+</div>
+<main id="m"></main>
+<script>
+// 리모컨 안 내용: 시안 다섯 개가 같은 내용을 쓴다
+const RC = (opt = {}) => `
+<div class="rc">
+  <div class="rc-head"><b>정책대출 예비 확인</b><span class="rc-x">✕</span></div>
+  ${opt.tabs ? '<div class="rc-tabs"><div class="on">정책대출</div><div>특공 자격</div></div>' : ''}
+  ${opt.notice ? '<div class="rc-notice"><b>○○자이 84A</b> 분양가 6억 2,000만 · 경기 · 84㎡ 로 계산 중</div>' : ''}
+  <div class="rc-sum">조건 맞는 정책대출 4개 · 지원금 1개</div>
+  <div class="rc-grp"><p>구입</p>
+    <div class="rc-row"><span class="n">신생아 특례 디딤돌<span class="st ok">해당</span></span><span class="a">최대 4억</span><span class="r">정책 금리 연 1.8~4.5%</span><span class="l">신청 방법 →</span></div>
+    <div class="rc-row"><span class="n">내집마련 디딤돌<span class="st chk">확인 필요</span></span><span class="a">최대 2.5억</span><span class="r">정책 금리 연 2.85~4.15%</span><span class="l">신청 방법 →</span></div>
+  </div>
+  <div class="rc-grp"><p>전세</p>
+    <div class="rc-row"><span class="n">청년전용 버팀목<span class="st ok">해당</span></span><span class="a">최대 7,200만</span><span class="r">정책 금리 범위</span><span class="l">신청 방법 →</span></div>
+  </div>
+  <div class="rc-grp"><p>지원금</p>
+    <div class="rc-row"><span class="n">청년월세 지원<span class="st chk">확인 필요</span></span><span class="a">월 최대 20만</span><span class="r">최장 24개월 · 금리 없음</span><span class="l">조건 글 →</span></div>
+  </div>
+  <div class="rc-foot">입력한 값으로 본 예비 확인이에요. 실제 가능 여부와 금리는 은행·기금 심사로 정해져요.</div>
+</div>`;
+
+const page = (cls, inner) => `<div class="${cls}"><div class="f-util"></div><div class="f-head"><i></i>우리의 청약달력${cls === 'pc' ? '<span class="nav">청약일정 · 분양분석 · 대출·정책 · 청약가이드</span>' : ''}${inner.head || ''}</div><div class="f-body"><div class="f-post"><div class="bar t"></div><div class="bar"></div><div class="bar m"></div><div class="bar s"></div><div class="blk"></div><div class="bar"></div><div class="bar m"></div><div class="bar"></div><div class="bar s"></div><div class="blk"></div><div class="bar m"></div></div><div class="f-side"><div class="blk"></div><div class="bar"></div><div class="bar s"></div><div class="bar m"></div></div></div>${inner.body || ''}</div>`;
+const tab = (n, extra) => `<div class="tabbar" style="grid-template-columns:repeat(${n},1fr)"><div><i></i>홈</div><div><i></i>달력</div><div><i></i>이번 주</div>${extra || ''}</div>`;
+
+const V = [
+  { t: '오른쪽 아래 글자 버튼 + 옆 패널', d: '지금 설계 문서 기준안. PC는 오른쪽 아래 「자격 확인」 버튼을 누르면 화면 높이 전체 패널이 오른쪽에 열리고, 본문은 그대로 스크롤돼요. 휴대폰은 아래 탭 바 4번째 칸이 「자격 확인」이 되고 아래에서 시트가 올라와요.',
+    pc: page('pc', { body: `<div class="a-btn" style="right:316px">자격 확인</div><div class="a-panel">${RC({ notice: 1 })}</div>` }),
+    mo: page('mo', { body: tab(4, '<div class="on"><i></i>자격 확인</div>') + `<div class="dim"></div><div class="sheet">${RC()}</div>` }),
+    good: ['무엇인지 글자로 바로 보여요', '분석 글을 보면서 옆에서 계산할 수 있어요', '휴대폰은 기존 탭 바 안이라 화면을 더 가리지 않아요'],
+    bad: ['PC 버튼이 애드센스 오른쪽 아래 광고와 겹칠 수 있어요(실제 화면에서 확인)', '탭 바가 3칸에서 4칸으로 좁아져요'] },
+  { t: '오른쪽 가장자리 세로 탭', d: '화면 오른쪽 끝에 세로로 붙은 남색 탭 「대출 조회」. 누르면 탭 바로 왼쪽으로 패널이 미끄러져 나와요. 휴대폰도 같은 세로 탭을 쓰고, 열면 거의 전체 화면이에요.',
+    pc: page('pc', { body: `<div class="b-panel">${RC({ notice: 1 })}</div><div class="b-edge open">대출 조회</div>` }),
+    mo: page('mo', { body: tab(3) + '<div class="b-edge">대출 조회</div>' }),
+    good: ['아래 광고 자리와 겹치지 않아요', '본문 글자를 가리는 면적이 가장 작아요', '탭 바를 건드리지 않아요'],
+    bad: ['세로 글자는 읽기 불편하고 덜 눌려요', '휴대폰에서 오른쪽 끝 스와이프와 헷갈릴 수 있어요'] },
+  { t: '리모컨 모양 작은 카드', d: '오른쪽 아래에 늘 떠 있는 작은 카드에 「정책대출」「특공 자격」 버튼 두 개. 누르면 같은 자리에서 카드가 커져 결과를 보여 줘요(채팅 상담 창처럼). 휴대폰은 탭 바 위에 작은 「대출 조회」 버튼이 뜨고 시트로 열려요.',
+    pc: page('pc', { body: `<div class="c-mini" style="right:330px"><p>자격 리모컨</p><div>정책대출 <span>›</span></div><div>특공 자격 <span>›</span></div></div><div class="c-card">${RC({ tabs: 1 })}</div>` }),
+    mo: page('mo', { body: tab(3) + '<div class="c-fab">대출 조회</div>' }),
+    good: ['「리모컨」 느낌이 가장 강해요', '정책대출·특공 두 확인기가 버튼으로 바로 보여요', '열어도 화면 일부만 덮어요'],
+    bad: ['늘 떠 있는 카드가 본문 오른쪽 아래를 계속 가려요', '광고·탭 바와 가장 겹치기 쉬워요'] },
+  { t: '헤더 고정 버튼 + 아래로 펼침', d: '떠 있는 버튼 없이 맨 위 메뉴 줄 오른쪽에 「내 자격 확인」 버튼. 누르면 그 아래로 패널이 펼쳐져요. 메뉴 줄은 스크롤해도 위에 붙어 있어요. 휴대폰은 헤더 오른쪽 버튼 → 전체 화면.',
+    pc: page('pc', { head: '<span class="d-btn on">내 자격 확인</span>', body: `<div class="d-drop">${RC({ notice: 1 })}</div>` }),
+    mo: page('mo', { head: '<span class="d-btn">내 자격 확인</span>', body: tab(3) }),
+    good: ['본문 위에 떠 있는 것이 없어 가장 깔끔해요', '광고와 겹칠 일이 없어요', '탭 바를 건드리지 않아요'],
+    bad: ['아래로 읽다 보면 버튼이 눈에 덜 띄어요', '헤더를 위에 붙이려면 스킨 헤더도 바꿔야 해요'] },
+  { t: '아래 띠 + 서랍', d: '화면 맨 아래 남색 띠에 「내 조건으로 받을 수 있는 정책대출」과 [확인하기]. 누르면 띠 위로 서랍이 올라와 결과를 두 줄로 넓게 보여 줘요. 휴대폰은 탭 바 바로 위에 얇은 띠.',
+    pc: page('pc', { body: `<div class="e-drawer">${RC()}</div><div class="e-strip"><b>내 조건으로 받을 수 있는 정책대출</b><span>소득·가구만 넣으면 1분</span><em>닫기</em></div>` }),
+    mo: page('mo', { body: tab(3) + '<div class="e-strip"><b>내 정책대출 확인</b><em>확인하기</em></div>' }),
+    good: ['문구로 무엇을 해 주는지 가장 잘 알려 줘요(눌러 볼 이유)', 'PC에서 결과를 넓게 볼 수 있어요'],
+    bad: ['휴대폰 아래 고정 광고와 거의 같은 자리예요', '휴대폰 화면 높이를 띠만큼 늘 잃어요'] },
+];
+document.getElementById('m').innerHTML = V.map((v, i) => `
+<section class="v">
+  <h2><span>${i + 1}</span>${v.t}</h2>
+  <p class="desc">${v.d}</p>
+  <div class="pc-mo">
+    <div><p class="cap">PC · 열린 모습</p>${v.pc}</div>
+    <div><p class="cap">휴대폰</p>${v.mo}</div>
+  </div>
+  <div class="notes"><div class="good"><b>좋은 점</b><ul>${v.good.map(x => `<li>${x}</li>`).join('')}</ul></div><div class="bad"><b>걱정되는 점</b><ul>${v.bad.map(x => `<li>${x}</li>`).join('')}</ul></div></div>
+</section>`).join('');
+</script>
+</body>
+</html>
