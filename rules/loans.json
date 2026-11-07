@@ -1,0 +1,489 @@
+{
+  "schema": 1,
+  "checkedAll": "2026-11-08",
+  "note": "정책대출 확인기 1단계 ①(구입 8 · 전세 4)과 별도 줄. 숫자는 docs/policy 행(doc = 파일#절#행 첫 칸)에서만 옮긴다. 금리는 정책 금리 범위만 보이고(14절 Q9), dtiRates는 DTI 한도 계산에만 쓴다. 순서는 order뿐(금리·한도로 정렬하지 않는다, 9-2)",
+  "products": [
+    {
+      "id": "loan-didimdol", "code": "P1", "order": 1, "group": "buy", "offer": "active",
+      "name": "내집마련 디딤돌대출", "org": "주택도시기금",
+      "when": { "all": [
+        { "use": "adultHead" }, { "use": "noHouse" }, { "use": "noLoanBuy" },
+        { "use": "notSoloUnder30" }, { "use": "singleUnder30Family" },
+        { "use": "asset511", "skipIf": { "f": "landLease", "is": "pre" } },
+        { "f": "buyKind", "is": ["apt", "house"], "why": "주택만 돼요(주거용 오피스텔은 오피스텔구입자금)" },
+        { "use": "notRegular" },
+        { "use": "capAptNotice" },
+        { "notice": "대출 후 1개월 안 전입·2년 이상 실거주, 대출 기간 동안 1주택 유지 의무가 있어요" }
+      ] },
+      "variants": [
+        { "key": "basic", "label": "일반", "when": { "all": [ { "any": [ { "f": "soloHead", "is": false }, { "f": "landLease", "is": ["main", "pre"] } ] }, { "use": "area85eup" } ] } },
+        { "key": "first", "label": "생애최초", "when": { "all": [ { "any": [ { "f": "soloHead", "is": false }, { "f": "landLease", "is": ["main", "pre"] } ] }, { "f": "everOwned", "is": false, "ask": "everOwned" }, { "use": "area85eup" } ] } },
+        { "key": "newlywed", "label": "신혼", "onePerson": true, "when": { "all": [ { "f": "marriage", "is": ["le7y", "soon"] }, { "use": "area85eup" } ] } },
+        { "key": "twoKids", "label": "2자녀 이상", "when": { "all": [ { "f": "kidsLoan", "op": "ge", "v": 2 }, { "use": "area85eup" } ] } },
+        { "key": "solo30", "label": "만 30세 이상 미혼 단독세대주", "keyIf": { "when": { "f": "everOwned", "is": false }, "then": "solo30First" },
+          "when": { "all": [ { "f": "soloHead", "is": true }, { "f": "age", "op": "ge", "v": 30 }, { "f": "landLease", "is": "none" },
+            { "any": [ { "f": "area60", "is": true },
+                       { "all": [ { "f": "area", "is": "60to85" }, { "f": "capital", "is": false }, { "f": "eupmyeon", "is": true, "ask": "eupmyeon" },
+                                  { "unknownIf": { "when": { "f": "eupmyeon", "is": true }, "why": "읍·면 70㎡ 기준은 면적 구간(60~85㎡)으로 가릴 수 없어요" } } ] } ],
+              "why": "전용 60㎡(수도권 밖 도시지역이 아닌 읍·면 70㎡) 이하만 돼요" } ] },
+          "notice": "직계존속이나 미성년 형제·자매를 6개월 이상 부양하면 85㎡·5억원·2억원(생애최초 2.4억원) 기준이에요" }
+      ],
+      "facts": {
+        "inc": { "by": "incCouple", "v": { "basic": 6000, "first": 7000, "newlywed": 8500, "twoKids": 7000, "solo30": 6000, "solo30First": 7000 },
+          "onePerson": { "newlywed": 6000 }, "skipIf": { "f": "landLease", "is": ["main", "pre"] },
+          "text": ["6천만원", "7천만원", "8.5천만원"], "doc": "loans.md#1#소득(부부합산)" },
+        "price": { "v": { "basic": 50000, "first": 50000, "newlywed": 60000, "twoKids": 60000, "solo30": 30000, "solo30First": 30000 },
+          "skipIf": { "f": "landLease", "is": "pre" }, "text": ["5억원", "6억원"], "doc": "loans.md#1#주택가격 상한" },
+        "cap": { "v": { "basic": 20000, "first": 24000, "newlywed": 32000, "twoKids": 32000, "solo30": 15000, "solo30First": 20000 },
+          "pick": [ { "when": { "f": "landLease", "is": "pre" }, "v": 50000, "text": "토지임대부 사전청약 당첨자 5억원" } ],
+          "text": ["2억원", "2.4억원", "3.2억원", "1.5억원", "5억원"], "doc": "loans.md#1#대출한도" },
+        "landLeaseNote": { "text": ["사전청약 당첨자는 자산요건 충족으로 봄"], "doc": "loans.md#1#순자산" },
+        "ltv": { "pick": [
+            { "when": { "f": "landLease", "is": "pre" }, "v": 80, "text": "토지임대부 사전청약 당첨자 80%" },
+            { "when": { "f": "landLease", "is": "main" }, "v": 60, "text": "토지임대부 60%" },
+            { "when": { "all": [ { "f": "everOwned", "is": false }, { "f": "capital", "is": false }, { "f": "regulated", "is": false } ] }, "v": 80, "text": "생애최초 80%" },
+            { "v": 70, "text": "LTV 70%" } ],
+          "doc": "loans.md#1#LTV" },
+        "dti": { "v": 60, "text": "60%", "doc": "loans.md#1#DTI" },
+        "exempt": { "v": { "inc": 4000, "price": 30000 }, "text": ["4천만원", "3억원"], "doc": "loans.md#1#수도권 아파트 방공제" }
+      },
+      "limit": { "terms": [
+        { "k": "cap", "label": "상품 한도" },
+        { "k": "pct", "of": "price", "fact": "ltv", "label": "집값 × LTV",
+          "minus": { "tbl": "smallDeposit", "label": "수도권 아파트 소액임차보증금 공제",
+            "when": { "all": [ { "f": "capital", "is": true }, { "f": "buyKind", "is": "apt" },
+              { "not": { "all": [ { "f": "incCouple", "op": "le", "fact": "exempt.inc" }, { "f": "price", "op": "le", "fact": "exempt.price" } ] } } ] } } },
+        { "k": "dti", "fact": "dti", "label": "DTI 60% 기준" }
+      ] },
+      "rate": { "range": [2.85, 4.15], "text": "연 2.85~4.15%(소득·만기별, 지방 0.2%p 인하, 우대 별도·최저 1.5%)", "doc": "loans.md#1#금리",
+        "dtiRates": { "by": "incCouple", "cols": [10, 15, 20, 30],
+          "rows": [ [2000, [2.85, 2.95, 3.05, 3.10]], [4000, [3.20, 3.30, 3.40, 3.45]], [7000, [3.55, 3.65, 3.75, 3.80]], [8500, [3.90, 4.00, 4.10, 4.15]] ] } },
+      "links": { "guide": "https://aulee.tistory.com/11", "official": "https://nhuf.molit.go.kr/FP/FP05/FP0503/FP05030101.jsp" },
+      "checked": "2026-11-08", "until": "2026-12-31", "untilNote": "순자산 2026년도 기준", "refresh": "monthly", "watch": ["디딤돌"]
+    },
+    {
+      "id": "loan-newborn-buy", "code": "P2", "order": 2, "group": "buy", "offer": "active",
+      "name": "신생아 특례 디딤돌대출", "org": "주택도시기금",
+      "when": { "all": [
+        { "use": "adultHead" },
+        { "f": "house", "is": "none", "why": "무주택 세대주여야 해요(1주택자는 대환 경로)",
+          "unknownIf": { "when": { "f": "house", "is": "own1" }, "why": "1주택 세대주는 기존 주택담보대출 대환으로만 돼요(소득 1.3억원 이하)" } },
+        { "any": [ { "f": "newborn", "is": "yes" }, { "f": "newbornSpecialWin", "is": true, "ask": "newbornSpecialWin" } ],
+          "why": "대출 접수일 기준 2년 안에 출산(입양)한 가구여야 해요(’23.1.1 이후 출생)",
+          "unknownIf": { "when": { "f": "newborn", "is": "pregnant" }, "why": "임신 중인 태아는 포함되지 않아요 — 출산 뒤 신청할 수 있어요" } },
+        { "use": "noLoanBuy", "skipIf": { "f": "house", "is": "own1" } },
+        { "use": "asset511", "skipIf": { "f": "landLease", "is": "pre" } },
+        { "f": "buyKind", "is": ["apt", "house"], "why": "주택만 돼요" },
+        { "use": "area85eup" },
+        { "use": "notRegular" },
+        { "notice": "특례금리는 기본 5년, 추가 출산 1명당 5년 연장(최장 20년). 특례 기간이 끝나면 금리가 올라요" },
+        { "notice": "혼인신고 없이도 신청할 수 있어요 — 아이 부모 두 사람의 소득·순자산을 합해 봐요" },
+        { "notice": "HF 보증 가입요건을 채우지 못하면 한도에서 소액임차보증금을 빼요" }
+      ] },
+      "variants": [
+        { "key": "single", "label": "외벌이", "when": { "f": "dual", "is": false } },
+        { "key": "dual", "label": "맞벌이", "when": { "all": [ { "f": "dual", "is": true },
+          { "f": "incSelf", "op": "le", "v": 13000, "why": "맞벌이는 부부 각각 1.3억원 이하여야 해요" },
+          { "f": "incSpouse", "op": "le", "v": 13000, "why": "맞벌이는 부부 각각 1.3억원 이하여야 해요" } ] } }
+      ],
+      "facts": {
+        "inc": { "by": "incCouple", "v": { "single": 13000, "dual": 20000 }, "skipIf": { "f": "landLease", "is": ["main", "pre"] },
+          "text": ["1.3억원", "2억원"], "doc": "loans.md#2#소득(부부합산)" },
+        "price": { "v": 90000, "skipIf": { "f": "landLease", "is": "pre" }, "text": "9억원", "doc": "loans.md#2#주택가격·면적" },
+        "cap": { "v": 40000, "pick": [ { "when": { "f": "landLease", "is": "pre" }, "v": 50000, "text": "토지임대부 사전청약 당첨자 5억원" } ],
+          "text": "4억원", "doc": "loans.md#2#한도" },
+        "ltv": { "pick": [
+            { "when": { "f": "landLease", "is": "pre" }, "v": 80, "text": "토지임대부 사전청약 당첨자 80%" },
+            { "when": { "f": "landLease", "is": "main" }, "v": 60, "text": "토지임대부 60%" },
+            { "when": { "all": [ { "f": "everOwned", "is": false }, { "f": "capital", "is": false }, { "f": "regulated", "is": false } ] }, "v": 80, "text": "생애최초 80%" },
+            { "v": 70, "text": "LTV 70%" } ],
+          "doc": "loans.md#2#LTV / DTI" },
+        "dti": { "v": 60, "text": "DTI 60%", "doc": "loans.md#2#LTV / DTI" }
+      },
+      "limit": { "terms": [
+        { "k": "cap", "label": "상품 한도" },
+        { "k": "pct", "of": "price", "fact": "ltv", "label": "집값 × LTV" },
+        { "k": "dti", "fact": "dti", "label": "DTI 60% 기준(특례 기간 금리로 계산)" }
+      ] },
+      "rate": { "range": [1.8, 4.5], "text": "연 1.8~4.5%(특례금리, 소득·만기별, 지방 0.2%p 인하, 최저 1.2%)", "doc": "loans.md#2#금리",
+        "dtiRates": { "by": "incCouple", "cols": [10, 15, 20, 30],
+          "rows": [ [2000, [1.80, 1.90, 2.00, 2.05]], [4000, [2.15, 2.25, 2.35, 2.40]], [6000, [2.40, 2.50, 2.60, 2.65]], [8500, [2.65, 2.75, 2.85, 2.90]],
+                    [10000, [2.90, 3.00, 3.10, 3.20]], [13000, [3.20, 3.30, 3.40, 3.50]], [15000, [3.50, 3.60, 3.70, 3.80]], [17000, [3.85, 3.95, 4.05, 4.15]], [20000, [4.20, 4.30, 4.40, 4.50]] ] } },
+      "links": { "guide": "https://aulee.tistory.com/15", "official": "https://nhuf.molit.go.kr/FP/FP05/FP0503/FP05030801.jsp" },
+      "checked": "2026-11-08", "until": "2026-12-31", "untilNote": "순자산 2026년도 기준", "refresh": "monthly", "watch": ["신생아 특례"]
+    },
+    {
+      "id": "loan-newlywed-buy", "code": "P3", "order": 3, "group": "buy", "offer": "active",
+      "name": "신혼부부전용 구입자금", "org": "주택도시기금",
+      "when": { "all": [
+        { "use": "adultHead" }, { "use": "noHouse" },
+        { "f": "marriage", "is": ["le7y", "soon"], "why": "혼인 7년 이내(3개월 안 결혼 예정 포함)여야 해요" },
+        { "f": "everOwned", "is": false, "ask": "everOwned", "why": "세대원 전원이 집을 산 적이 없어야 해요(기금 구입·중도금 대출 이력도 없어야 해요)" },
+        { "notice": "기금 구입자금·중도금 대출을 받은 적(갚은 것 포함)이 있으면 안 돼요" },
+        { "use": "capAptNotice" },
+        { "use": "noLoanBuy" },
+        { "use": "asset511", "skipIf": { "f": "landLease", "is": "pre" } },
+        { "f": "buyKind", "is": ["apt", "house"], "why": "주택만 돼요" },
+        { "use": "area85eup" },
+        { "use": "notRegular" }
+      ] },
+      "variants": [ { "key": "newlywed", "label": "신혼", "onePerson": true } ],
+      "facts": {
+        "inc": { "by": "incCouple", "v": 8500, "onePerson": { "newlywed": 6000 }, "skipIf": { "f": "landLease", "is": ["main", "pre"] },
+          "text": ["8.5천만원", "6천만원"], "doc": "loans.md#1#신혼부부전용 구입자금" },
+        "price": { "v": 60000, "skipIf": { "f": "landLease", "is": "pre" }, "text": "6억원", "doc": "loans.md#1#신혼부부전용 구입자금" },
+        "cap": { "v": 32000, "pick": [ { "when": { "f": "landLease", "is": "pre" }, "v": 50000, "text": "토지임대부 사전청약 당첨자 5억원" } ],
+          "text": "3.2억원", "doc": "loans.md#1#신혼부부전용 구입자금" },
+        "ltv": { "pick": [
+            { "when": { "f": "landLease", "is": "pre" }, "v": 80, "text": "토지임대부 사전청약 당첨자 80%" },
+            { "when": { "f": "landLease", "is": "main" }, "v": 60, "text": "토지임대부 60%" },
+            { "when": { "any": [ { "f": "capital", "is": true }, { "f": "regulated", "is": true } ] }, "v": 70, "text": "수도권·규제지역 70%" },
+            { "v": 80, "text": "LTV 80%" } ],
+          "doc": "loans.md#1#신혼부부전용 구입자금" },
+        "dti": { "v": 60, "text": "DTI 60%", "doc": "loans.md#1#신혼부부전용 구입자금" },
+        "exempt": { "v": { "inc": 4000, "price": 30000 }, "text": ["4천만원", "3억원"], "doc": "loans.md#1#수도권 아파트 방공제" }
+      },
+      "limit": { "terms": [
+        { "k": "cap", "label": "상품 한도" },
+        { "k": "pct", "of": "price", "fact": "ltv", "label": "집값 × LTV",
+          "minus": { "tbl": "smallDeposit", "label": "수도권 아파트 소액임차보증금 공제",
+            "when": { "all": [ { "f": "capital", "is": true }, { "f": "buyKind", "is": "apt" },
+              { "not": { "all": [ { "f": "incCouple", "op": "le", "fact": "exempt.inc" }, { "f": "price", "op": "le", "fact": "exempt.price" } ] } } ] } } },
+        { "k": "dti", "fact": "dti", "label": "DTI 60% 기준" }
+      ] },
+      "rate": { "range": [2.55, 3.85], "text": "연 2.55~3.85%(소득·만기별, 지방 0.2%p 인하, 최저 1.2%)", "doc": "loans.md#1#신혼부부전용 구입자금",
+        "dtiRates": { "by": "incCouple", "cols": [10, 15, 20, 30],
+          "rows": [ [2000, [2.55, 2.65, 2.75, 2.80]], [4000, [2.90, 3.00, 3.10, 3.15]], [7000, [3.25, 3.35, 3.45, 3.50]], [8500, [3.60, 3.70, 3.80, 3.85]] ] } },
+      "links": { "guide": "https://aulee.tistory.com/11", "guideLabel": "조건 자세히(내 블로그)", "official": "https://nhuf.molit.go.kr/FP/FP05/FP0503/FP05030601.jsp" },
+      "checked": "2026-11-08", "until": "2026-12-31", "untilNote": "순자산 2026년도 기준", "refresh": "monthly", "watch": ["신혼부부전용 구입"]
+    },
+    {
+      "id": "loan-dream-buy", "code": "P4", "order": 4, "group": "buy", "offer": "active",
+      "name": "청년 주택드림 디딤돌대출", "org": "주택도시기금",
+      "when": { "all": [
+        { "f": "saleWin", "is": "dream", "ask": "saleWin", "why": "청년 주택드림 청약통장으로 당첨된 분양주택이어야 해요" },
+        { "f": "dreamSaved", "is": true, "ask": "dreamSaved", "why": "통장 1년 이상 가입 + 1천만원 이상 납입이 필요해요" },
+        { "unknownIf": { "when": { "f": "age", "op": "gt", "v": 39 }, "why": "당첨 당시 만 39세 이하여야 해요" } },
+        { "use": "adultHead" }, { "use": "noHouse" }, { "use": "noLoanSale" },
+        { "use": "asset511", "skipIf": { "f": "landLease", "is": "pre" } },
+        { "f": "buyKind", "is": ["apt", "house"], "why": "주택만 돼요" },
+        { "use": "area85eup" }
+      ] },
+      "variants": [
+        { "key": "single", "label": "미혼", "when": { "f": "marriage", "is": "single" } },
+        { "key": "newlywed", "label": "신혼가구", "onePerson": true, "when": { "f": "marriage", "is": ["le7y", "soon"] } },
+        { "key": "over7y", "label": "혼인 7년 넘음", "when": { "all": [ { "f": "marriage", "is": "over7y" },
+          { "unknownIf": { "when": { "f": "marriage", "is": "over7y" }, "why": "기준이 미혼·신혼가구로만 나뉘어 혼인 7년 넘은 가구의 소득 기준은 원문에 없어요" } } ] } }
+      ],
+      "facts": {
+        "inc": { "by": "incCouple", "v": { "single": 7000, "newlywed": 10000, "over7y": 10000 }, "onePerson": { "newlywed": 7000 },
+          "skipIf": { "f": "landLease", "is": ["main", "pre"] }, "text": ["7천만원", "1억원"], "doc": "policy2.md#A-2#소득" },
+        "price": { "v": 60000, "skipIf": { "f": "landLease", "is": "pre" }, "text": "6억원", "doc": "policy2.md#A-2#대상주택" },
+        "cap": { "v": { "single": 30000, "newlywed": 40000, "over7y": 40000 },
+          "pick": [ { "when": { "f": "landLease", "is": "pre" }, "v": 50000, "text": "토지임대부 사전청약 당첨자 5억원" } ],
+          "text": ["3억원", "4억원"], "doc": "policy2.md#A-2#한도" },
+        "landLeaseNote": { "text": ["토지임대부 60%", "사전청약 당첨자 한도 5억원·LTV 80%"], "doc": "policy2.md#A-2#LTV / DTI" },
+        "ltv": { "pick": [
+            { "when": { "f": "landLease", "is": "pre" }, "v": 80, "text": "토지임대부 사전청약 당첨자 80%" },
+            { "when": { "f": "landLease", "is": "main" }, "v": 60, "text": "토지임대부 60%" },
+            { "when": { "all": [ { "f": "everOwned", "is": false }, { "f": "capital", "is": false }, { "f": "regulated", "is": false } ] }, "v": 80, "text": "생애최초 80%" },
+            { "v": 70, "text": "LTV 70%" } ],
+          "doc": "policy2.md#A-2#LTV / DTI" },
+        "dti": { "v": 60, "text": "DTI 60%", "doc": "policy2.md#A-2#LTV / DTI" }
+      },
+      "limit": { "terms": [
+        { "k": "cap", "label": "상품 한도" },
+        { "k": "pct", "of": "price", "fact": "ltv", "label": "분양가 × LTV" },
+        { "k": "dti", "fact": "dti", "label": "DTI 60% 기준" }
+      ] },
+      "rate": { "range": [2.4, 4.15], "text": "연 2.4~4.15%(소득·만기별, 지방 0.2%p 인하, 우대 최대 1%p·최저 1.5%)", "doc": "policy2.md#A-2#금리",
+        "dtiRates": { "by": "incCouple", "cols": [10, 15, 20, 30],
+          "rows": [ [2000, [2.40, 2.45, 2.55, 2.70]], [4000, [2.80, 2.85, 2.95, 3.10]], [7000, [3.20, 3.25, 3.35, 3.50]], [8500, [3.55, 3.60, 3.70, 3.85]], [10000, [3.90, 3.95, 4.05, 4.15]] ],
+          "note": "신혼가구이면서 7천만원 이하인 줄은 표에 없어 미혼 줄로 계산(13절 C28)" } },
+      "links": { "guide": "https://aulee.tistory.com/21", "official": "https://nhuf.molit.go.kr/FP/FP05/FP0503/FP05030901.jsp" },
+      "checked": "2026-11-08", "until": "2026-12-31", "untilNote": "순자산 2026년도 기준", "refresh": "monthly", "watch": ["청년 주택드림"]
+    },
+    {
+      "id": "loan-newhome-landlease", "code": "P5", "order": 5, "group": "buy", "offer": "active",
+      "name": "뉴홈 전용 디딤돌(토지임대부 분양주택) 대출", "org": "주택도시기금",
+      "when": { "all": [
+        { "f": "landLease", "is": ["main", "pre"], "ask": "landLease", "why": "뉴홈 토지임대부 분양주택 당첨자만 돼요" },
+        { "f": "landLeaseEarly", "is": true, "ask": "landLeaseEarly", "why": "입주자모집공고일이 2026-08-25 이전인 사업장만 돼요" },
+        { "use": "adultHead" }, { "use": "noHouse" }, { "use": "noLoanBuy" },
+        { "use": "area85eup" },
+        { "notice": "소득·순자산·주택가격 요건은 충족한 것으로 봐요" }
+      ] },
+      "variants": [ { "key": "basic", "label": "토지임대부 당첨자" } ],
+      "facts": {
+        "cap": { "v": 50000, "text": "5억원", "doc": "loans.md#8#한도·LTV·DTI" },
+        "ltv": { "v": 80, "text": "LTV 80%", "doc": "loans.md#8#한도·LTV·DTI" },
+        "dti": { "v": 60, "text": "DTI 60%", "doc": "loans.md#8#한도·LTV·DTI" }
+      },
+      "limit": { "terms": [
+        { "k": "cap", "label": "상품 한도" },
+        { "k": "pct", "of": "price", "fact": "ltv", "label": "분양가 × LTV" },
+        { "k": "dti", "fact": "dti", "label": "DTI 60% 기준(최고금리로 계산)" }
+      ] },
+      "rate": { "range": [1.9, 3.0], "text": "연 1.9~3.0% 고정(소득·기간별, 우대 없음)", "doc": "loans.md#8#금리" },
+      "links": { "guide": null, "official": "https://nhuf.molit.go.kr/FP/FP05/FP0503/FP05031101.jsp" },
+      "checked": "2026-11-08", "until": "2027-06-30", "untilNote": "기한 표기 없음, 다음 점검일(추정)", "refresh": "monthly", "watch": ["뉴홈 전용"]
+    },
+    {
+      "id": "loan-newhope-town", "code": "P6", "order": 6, "group": "buy", "offer": "active",
+      "name": "신혼희망타운전용 주택담보장기대출", "org": "주택도시기금",
+      "when": { "all": [
+        { "f": "saleWin", "is": "newHope", "ask": "saleWin", "why": "신혼희망타운 분양계약자만 돼요" },
+        { "f": "age", "op": "ge", "v": 19, "why": "만 19세 이상 세대주여야 해요" },
+        { "use": "adultHead" }, { "use": "noHouse" },
+        { "f": "area60", "is": true, "why": "LH가 공급하는 전용 60㎡ 이하 신혼희망타운만 돼요" },
+        { "notice": "매각·만기·전액 상환 때 처분손익의 50% 이내를 기금과 나눠요(대출기간·자녀 수에 따라)" },
+        { "notice": "잔금 약 2개월 전부터 취급은행(우리·KB국민·신한)에서 신청해요" }
+      ] },
+      "variants": [ { "key": "basic", "label": "분양계약자" } ],
+      "facts": {
+        "cap": { "v": 40000, "text": "4억원", "doc": "loans.md#9#한도·담보인정비율" },
+        "ltv": { "v": 70, "text": "30~70%", "show": "담보인정비율 최대 70%(30~70% 중 선택)", "doc": "loans.md#9#한도·담보인정비율" }
+      },
+      "limit": { "terms": [
+        { "k": "cap", "label": "상품 한도" },
+        { "k": "pct", "of": "price", "fact": "ltv", "label": "분양가 × 최대 담보인정비율" }
+      ] },
+      "rate": { "range": [1.3, 1.6], "text": "연 1.6% 고정(2023-08-30 이전 공고 사업장 연 1.3%)", "doc": "loans.md#9#금리" },
+      "links": { "guide": null, "related": "https://aulee.tistory.com/50", "official": "https://nhuf.molit.go.kr/FP/FP05/FP0503/FP05030701.jsp" },
+      "checked": "2026-11-08", "until": "2027-06-30", "untilNote": "기한 표기 없음, 다음 점검일(추정)", "refresh": "monthly", "watch": ["신혼희망타운"]
+    },
+    {
+      "id": "loan-officetel", "code": "P7", "order": 7, "group": "buy", "offer": "active",
+      "name": "오피스텔구입자금", "org": "주택도시기금",
+      "when": { "all": [
+        { "f": "buyKind", "is": "officetel", "why": "준공된 주거용 오피스텔만 돼요" },
+        { "use": "adultHead" }, { "use": "noHouse" },
+        { "not": { "all": [ { "f": "soloHead", "is": true }, { "f": "age", "op": "lt", "v": 30 } ] }, "why": "만 30세 미만 단독세대주는 신청할 수 없어요" },
+        { "notice": { "when": { "all": [ { "f": "marriage", "is": "single" }, { "f": "age", "op": "lt", "v": 30 }, { "f": "household", "op": "ge", "v": 2 } ] },
+          "text": "만 30세 미만 미혼세대주는 직계존속과 6개월 이상 같은 등본일 때만 돼요" } },
+        { "use": "asset511" },
+        { "f": "area60", "is": true, "why": "전용 60㎡ 이하만 돼요" }
+      ] },
+      "variants": [
+        { "key": "basic", "label": "일반" },
+        { "key": "kids3", "label": "다자녀", "when": { "f": "kidsLoan", "op": "ge", "v": 3 }, "notice": "다자녀 = 미성년 자녀 3명 이상으로 계산했어요(정의 확인 필요)" }
+      ],
+      "facts": {
+        "inc": { "by": "incCouple", "v": 6000, "text": "6천만원", "doc": "loans.md#10#대상" },
+        "price": { "v": 15000, "text": "1억5천만원", "doc": "loans.md#10#대상주택" },
+        "cap": { "v": { "basic": 7000, "kids3": 7500 }, "text": ["7천만원", "7천5백만원"], "doc": "loans.md#10#한도" }
+      },
+      "limit": { "terms": [ { "k": "cap", "label": "상품 한도(LTV는 공식 문구가 없어 반영하지 않았어요)" }, { "k": "price", "label": "집값 이내" } ] },
+      "rate": { "range": [2.6, 3.1], "text": "연 2.6~3.1%(소득별, 「국토교통부 고시 2016.9.12. 기준」 표기 — 지금 금리인지 확인 필요)", "doc": "loans.md#10#금리", "verify": true },
+      "links": { "guide": null, "official": "https://nhuf.molit.go.kr/FP/FP05/FP0503/FP05030501.jsp" },
+      "checked": "2026-11-08", "until": "2026-12-31", "untilNote": "순자산 2026년도 기준", "refresh": "monthly", "watch": ["오피스텔구입자금"]
+    },
+    {
+      "id": "loan-bogeumjari", "code": "P8", "order": 8, "group": "buy", "offer": "active",
+      "name": "보금자리론", "org": "한국주택금융공사",
+      "when": { "all": [
+        { "f": "age", "op": "ge", "v": 19, "why": "민법상 성년이어야 해요" },
+        { "f": "house", "is": "none", "why": "무주택이거나 1주택(처분 조건)이어야 해요",
+          "unknownIf": { "when": { "f": "house", "is": "own1" }, "why": "1주택자는 기존 주택을 3년 안에 처분하는 조건(일시적 2주택)일 때만 돼요" } },
+        { "f": "buyKind", "is": ["apt", "house"], "why": "주택만 돼요" },
+        { "notice": "CB점수 271~614점(MSS 별도 기준)이거나 소득을 추정 방식으로 보면 LTV가 10%p 낮아질 수 있어요" },
+        { "notice": { "when": { "any": [ { "f": "capital", "is": true }, { "f": "regulated", "is": true } ] }, "text": "수도권·규제지역 주택은 대출 후 6개월 안에 전입해야 해요" } }
+      ] },
+      "variants": [
+        { "key": "basic", "label": "일반" },
+        { "key": "newlywed", "label": "신혼", "onePerson": true, "when": { "f": "marriage", "is": ["le7y", "soon"] } },
+        { "key": "oneKid", "label": "1자녀", "when": { "f": "kidsLoan", "is": 1 } },
+        { "key": "multiKids", "label": "2자녀 이상", "when": { "f": "kidsLoan", "op": "ge", "v": 2 } }
+      ],
+      "facts": {
+        "inc": { "by": "incCouple", "v": { "basic": 7000, "newlywed": 8500, "oneKid": 9000, "multiKids": 10000 }, "onePerson": { "newlywed": 7000 },
+          "text": ["7천만원", "8.5천만원", "9천만원", "1억원"], "doc": "loans.md#3#소득" },
+        "price": { "v": 60000, "text": "6억원", "doc": "loans.md#3#주택가격 상한" },
+        "cap": { "v": 36000, "pick": [
+            { "when": { "all": [ { "f": "everOwned", "is": false, "ask": "everOwned" }, { "f": "house", "is": "none" } ] }, "v": 42000, "text": "생애최초 4.2억원" },
+            { "when": { "f": "kidsLoan", "op": "ge", "v": 3 }, "v": 40000, "text": "다자녀 4억원" },
+            { "when": { "f": "kidsLoan", "is": 2 }, "v": [36000, 40000], "text": "2자녀는 3.6억~4억원(한도의 「다자녀」 정의가 원문에 없어요)" } ],
+          "text": ["3.6억원", "4억원", "4.2억원"], "doc": "loans.md#3#대출한도" },
+        "ltv": { "pick": [
+            { "when": { "all": [ { "use": "bjFirst" }, { "f": "capital", "is": false }, { "f": "regulated", "is": false } ] }, "v": 80, "text": "생애최초 80%" },
+            { "when": { "use": "bjFirst" }, "v": 70, "text": "생애최초 수도권·규제지역 70%" },
+            { "when": { "all": [ { "f": "buyKind", "is": "apt" }, { "f": "regulated", "is": true }, { "not": { "use": "bjReal" } } ] }, "v": 60, "text": "아파트 규제지역 60%(10%p 차감)" },
+            { "when": { "f": "buyKind", "is": "apt" }, "v": 70, "text": "아파트 70%" },
+            { "when": { "all": [ { "f": "regulated", "is": true }, { "not": { "use": "bjReal" } } ] }, "v": 55, "text": "기타주택 규제지역 55%(10%p 차감)" },
+            { "v": 65, "text": "기타주택 65%" } ],
+          "doc": "loans.md#3#LTV" },
+        "dti": { "pick": [
+            { "when": { "all": [ { "f": "regulated", "is": true }, { "not": { "any": [ { "use": "bjFirst" }, { "use": "bjReal" } ] } } ] }, "v": 50, "text": "규제지역 50%(10%p 차감)" },
+            { "v": 60, "text": "60%" } ], "doc": "loans.md#3#DTI" }
+      },
+      "limit": { "terms": [
+        { "k": "cap", "label": "상품 한도" },
+        { "k": "pct", "of": "price", "fact": "ltv", "label": "집값 × LTV" },
+        { "k": "dti", "fact": "dti", "label": "DTI 기준(최고금리로 계산)" }
+      ] },
+      "rate": { "byDate": [
+          { "from": "2026-11-01", "range": [4.90, 5.30], "text": "아낌e 연 4.90~5.20%, u·t 5.00~5.30%(10~50년 고정)", "doc": "loans.md#3#금리(2026-11-01 공시" },
+          { "from": "2026-11-09", "range": [5.00, 5.40], "text": "아낌e 연 5.00~5.30%, u·t 5.10~5.40%(10~50년 고정)", "doc": "loans.md#3#금리(2026-11-09 공시)" } ],
+        "note": "우대 최대 1.0%p, 규제지역 +0.2%p" },
+      "links": { "guide": "https://aulee.tistory.com/12", "official": "https://www.hf.go.kr/ko/sub01/sub01_01_01.do" },
+      "checked": "2026-11-08", "until": "2026-12-31", "untilNote": "금리 공시 20일마다 점검", "refresh": "semimonthly", "watch": ["보금자리론"]
+    },
+
+    {
+      "id": "loan-beotimmok", "code": "J1", "order": 9, "group": "jeonse", "offer": "active",
+      "name": "버팀목 전세자금(일반)", "org": "주택도시기금",
+      "when": { "all": [
+        { "use": "adultHead" }, { "use": "noHouse" }, { "use": "noLoanRent" }, { "use": "asset345" },
+        { "use": "area85eup" },
+        { "use": "rentCommon" }
+      ] },
+      "variants": [
+        { "key": "basic", "label": "일반 가구" },
+        { "key": "kids2", "label": "2자녀 이상 가구", "when": { "f": "kidsLoan", "op": "ge", "v": 2 }, "notice": "2025-06-27 이전 계약이면 종전 한도(수도권 3억원·지방 2억원)예요" },
+        { "key": "newlywed", "label": "신혼 가구", "when": { "f": "marriage", "is": ["le7y", "soon"] }, "notice": "2025-06-27 이전 계약이면 종전 한도(수도권 3억원·지방 2억원)예요" }
+      ],
+      "facts": {
+        "inc": { "by": "incCouple", "v": { "basic": 5000, "kids2": 6000, "newlywed": 7500 }, "text": ["5천만원", "6천만원", "7.5천만원"], "doc": "policy2.md#B#소득(부부합산)" },
+        "depositMax": { "v": { "basic": { "capital": 30000, "other": 20000 }, "kids2": { "capital": 40000, "other": 30000 }, "newlywed": { "capital": 40000, "other": 30000 } },
+          "text": ["3억원", "2억원", "4억원"], "doc": "policy2.md#B#임차보증금 상한" },
+        "cap": { "v": { "basic": { "capital": 12000, "other": 8000 }, "kids2": { "capital": 25000, "other": 16000 }, "newlywed": { "capital": 25000, "other": 16000 } },
+          "text": ["1.2억원", "8천만원", "2.5억원", "1.6억원"], "doc": "policy2.md#B#호당 대출한도" },
+        "ratio": { "v": { "basic": 70, "kids2": 80, "newlywed": 80 }, "text": ["70%", "80%"], "doc": "policy2.md#B#보증금 대비 비율" }
+      },
+      "limit": { "gate": { "f": "deposit", "op": "le", "fact": "depositMax", "why": "보증금이 상한을 넘어요" },
+        "terms": [
+          { "k": "cap", "label": "상품 한도" },
+          { "k": "pct", "of": "deposit", "fact": "ratio", "label": "보증금 × 비율" },
+          { "k": "renewal", "when": { "f": "contract", "is": "renew" }, "label": "갱신: 증액금액 이내" }
+        ],
+        "notice": "보증기관(HUG·HF·SGI) 한도와 은행 심사는 반영하지 않았어요" },
+      "rate": { "range": [2.5, 3.5], "text": "연 2.5~3.5%(소득·보증금별, 지방 0.2%p 인하, 우대 별도·최저 1.0%)", "doc": "policy2.md#B#금리" },
+      "links": { "guide": "https://aulee.tistory.com/22", "official": "https://nhuf.molit.go.kr/FP/FP05/FP0502/FP05020101.jsp" },
+      "checked": "2026-11-08", "until": "2026-12-31", "untilNote": "순자산 2026년도 기준", "refresh": "monthly", "watch": ["버팀목"]
+    },
+    {
+      "id": "loan-newlywed-jeonse", "code": "J2", "order": 10, "group": "jeonse", "offer": "active",
+      "name": "신혼부부전용 전세자금", "org": "주택도시기금",
+      "when": { "all": [
+        { "f": "marriage", "is": ["le7y", "soon"], "why": "혼인 7년 이내(3개월 안 결혼 예정 포함)여야 해요" },
+        { "use": "adultHead" }, { "use": "noHouse" }, { "use": "noLoanRent" }, { "use": "asset345" }, { "use": "rentCommon" },
+        { "use": "area85eup" },
+        { "use": "notRegular" }
+      ] },
+      "variants": [ { "key": "newlywed", "label": "신혼 가구", "onePerson": true, "onePersonNote": "부부 중 1인 소득 기준이면 최초 신규 때만 보증금별 최고금리 +0.3%p예요" } ],
+      "facts": {
+        "inc": { "by": "incCouple", "v": 7500, "onePerson": { "newlywed": 5000 }, "text": ["7.5천만원", "5천만원"], "doc": "policy2.md#B#소득(부부합산)" },
+        "depositMax": { "v": { "capital": 40000, "other": 30000 }, "text": ["4억원", "3억원"], "doc": "policy2.md#B#임차보증금 상한" },
+        "cap": { "v": { "capital": 25000, "other": 16000 }, "text": ["2.5억원", "1.6억원"], "doc": "policy2.md#B#호당 대출한도" },
+        "ratio": { "v": 80, "text": "80%", "doc": "policy2.md#B#보증금 대비 비율" }
+      },
+      "limit": { "gate": { "f": "deposit", "op": "le", "fact": "depositMax", "why": "보증금이 상한을 넘어요" },
+        "terms": [
+          { "k": "cap", "label": "상품 한도" },
+          { "k": "pct", "of": "deposit", "fact": "ratio", "label": "보증금 × 80%" },
+          { "k": "renewal", "when": { "f": "contract", "is": "renew" }, "label": "갱신: 증액금액 이내" }
+        ],
+        "notice": "보증기관(HUG·HF·SGI) 한도와 은행 심사는 반영하지 않았어요" },
+      "rate": { "range": [1.9, 3.3], "text": "연 1.9~3.3%(소득·보증금별, 지방 0.2%p 인하, 우대 별도·최저 1.0%)", "doc": "policy2.md#B#금리" },
+      "links": { "guide": "https://aulee.tistory.com/22", "official": "https://nhuf.molit.go.kr/FP/FP05/FP0502/FP05020401.jsp" },
+      "checked": "2026-11-08", "until": "2026-12-31", "untilNote": "순자산 2026년도 기준", "refresh": "monthly", "watch": ["신혼부부전용 전세"]
+    },
+    {
+      "id": "loan-youth-beotimmok", "code": "J3", "order": 11, "group": "jeonse", "offer": "active",
+      "name": "청년전용 버팀목전세자금", "org": "주택도시기금",
+      "when": { "all": [
+        { "f": "age", "op": "ge", "v": 19, "why": "만 19세 이상이어야 해요" },
+        { "any": [ { "f": "age", "op": "le", "v": 34 },
+                   { "all": [ { "f": "age", "op": "le", "v": 39 }, { "f": "youthExtend", "is": true, "ask": "youthExtend" } ] } ],
+          "why": "만 34세 이하여야 해요(중소·중견기업 재직·창업 지원 + 병역 이행이면 복무기간만큼, 최대 만 39세)" },
+        { "use": "adultHead" }, { "use": "noHouse" }, { "use": "noLoanRent" }, { "use": "asset345" }, { "use": "rentCommon" },
+        { "f": "area85", "is": true, "why": "전용 85㎡ 이하만 돼요" },
+        { "any": [ { "not": { "all": [ { "f": "soloHead", "is": true }, { "f": "age", "op": "lt", "v": 25 } ] } }, { "f": "area60", "is": true } ],
+          "why": "만 25세 미만 단독세대주는 60㎡ 이하만 돼요" },
+        { "use": "notRegular" }
+      ] },
+      "variants": [
+        { "key": "basic", "label": "청년" },
+        { "key": "kids2", "label": "2자녀 이상 가구", "when": { "f": "kidsLoan", "op": "ge", "v": 2 } },
+        { "key": "newlywed", "label": "신혼 가구", "when": { "f": "marriage", "is": ["le7y", "soon"] } }
+      ],
+      "facts": {
+        "inc": { "by": "incCouple", "v": { "basic": 5000, "kids2": 6000, "newlywed": 7500 }, "text": ["5천만원", "6천만원", "7.5천만원"], "doc": "loans3.md#3#소득" },
+        "depositMax": { "v": 30000, "text": "3억원", "doc": "loans3.md#3#임차보증금" },
+        "cap": { "v": 15000, "pick": [ { "when": { "all": [ { "f": "soloHead", "is": true }, { "f": "age", "op": "lt", "v": 25 } ] }, "v": 12000, "text": "만 25세 미만 단독세대주 1.2억원" } ],
+          "text": ["1.5억원", "1.2억원"], "doc": "loans3.md#3#한도 산정" },
+        "ratio": { "v": 80, "text": "80%", "doc": "loans3.md#3#한도 산정" }
+      },
+      "limit": { "gate": { "f": "deposit", "op": "le", "fact": "depositMax", "why": "보증금이 3억원을 넘어요" },
+        "terms": [
+          { "k": "cap", "label": "상품 한도" },
+          { "k": "pct", "of": "deposit", "fact": "ratio", "label": "보증금 × 80%" },
+          { "k": "renewal", "when": { "f": "contract", "is": "renew" }, "label": "갱신: 증액금액 이내" }
+        ],
+        "notice": "보증기관(HUG·HF) 한도와 은행 심사는 반영하지 않았어요. 재직 1년 미만이면 2천만원 이하로 제한될 수 있어요" },
+      "rate": { "range": [2.2, 3.3], "text": "연 2.2~3.3%(소득별, 지방 0.2%p 인하, 우대 별도·최저 1.0%)", "doc": "loans3.md#3#소득별 금리" },
+      "links": { "guide": "https://aulee.tistory.com/58", "official": "https://nhuf.molit.go.kr/FP/FP05/FP0502/FP05020301.jsp" },
+      "checked": "2026-11-08", "until": "2026-12-31", "untilNote": "순자산 2026년도 기준", "refresh": "monthly", "watch": ["청년전용 버팀목"]
+    },
+    {
+      "id": "loan-newborn-jeonse", "code": "J4", "order": 12, "group": "jeonse", "offer": "active",
+      "name": "신생아 특례 버팀목대출", "org": "주택도시기금",
+      "when": { "all": [
+        { "f": "newborn", "is": "yes", "why": "대출 접수일 기준 2년 안에 출산(입양)한 가구여야 해요(’23.1.1 이후 출생)",
+          "unknownIf": { "when": { "f": "newborn", "is": "pregnant" }, "why": "임신 중인 태아는 포함되지 않아요 — 출산 뒤 신청할 수 있어요" } },
+        { "use": "adultHead" }, { "use": "noHouse" }, { "use": "noLoanRent" }, { "use": "asset345" }, { "use": "rentCommon" },
+        { "use": "area85eup" },
+        { "use": "notRegular" },
+        { "notice": "혼인신고 없이도 신청할 수 있어요 — 아이 부모 두 사람의 소득·순자산을 합해 봐요" },
+        { "notice": "특례금리는 기본 4년, 추가 출산 1명당 4년 연장(최장 12년)이에요" }
+      ] },
+      "variants": [
+        { "key": "single", "label": "외벌이", "when": { "f": "dual", "is": false } },
+        { "key": "dual", "label": "맞벌이", "when": { "all": [ { "f": "dual", "is": true },
+          { "f": "incSelf", "op": "le", "v": 13000, "why": "맞벌이는 부부 각각 1.3억원 이하여야 해요" },
+          { "f": "incSpouse", "op": "le", "v": 13000, "why": "맞벌이는 부부 각각 1.3억원 이하여야 해요" } ] } }
+      ],
+      "facts": {
+        "inc": { "by": "incCouple", "v": { "single": 13000, "dual": 20000 }, "text": ["1.3억원", "2억원"], "doc": "policy2.md#B#소득(부부합산)" },
+        "depositMax": { "v": { "capital": 50000, "other": 40000 }, "text": ["5억원", "4억원"], "doc": "policy2.md#B#임차보증금 상한" },
+        "cap": { "v": 24000, "text": "2.4억원", "doc": "policy2.md#B#호당 대출한도" },
+        "ratio": { "v": 80, "text": "80%", "doc": "policy2.md#B#보증금 대비 비율" }
+      },
+      "limit": { "gate": { "f": "deposit", "op": "le", "fact": "depositMax", "why": "보증금이 상한을 넘어요" },
+        "terms": [
+          { "k": "cap", "label": "상품 한도" },
+          { "k": "pct", "of": "deposit", "fact": "ratio", "label": "보증금 × 80%" },
+          { "k": "renewal", "when": { "f": "contract", "is": "renew" }, "label": "갱신: 증액금액 이내" }
+        ],
+        "notice": "보증기관(HUG·HF) 한도와 은행 심사는 반영하지 않았어요" },
+      "rate": { "range": [1.3, 4.3], "text": "연 1.3~4.3%(특례금리, 소득·보증금별, 지방 0.2%p 인하)", "doc": "policy2.md#B#금리" },
+      "links": { "guide": "https://aulee.tistory.com/22", "official": "https://nhuf.molit.go.kr/FP/FP05/FP0502/FP05021401.jsp" },
+      "checked": "2026-11-08", "until": "2026-12-31", "untilNote": "순자산 2026년도 기준", "refresh": "monthly", "watch": ["신생아 특례 버팀목"]
+    },
+
+    { "id": "loan-profit-share", "code": "X1", "order": 90, "group": "buy", "offer": "unverified", "name": "수익공유형·손익공유형 모기지",
+      "offerNote": "기금 상품 페이지는 있으나 신규 취급 여부를 확인하지 못했어요(공식 중단 공지 없음)",
+      "instead": ["loan-didimdol"], "src": ["https://nhuf.molit.go.kr/FP/FP05/FP0503/FP05030201.jsp", "https://nhuf.molit.go.kr/FP/FP05/FP0503/FP05030301.jsp"],
+      "checked": "2026-11-05", "refresh": "monthly" },
+    { "id": "loan-special-bogeumjari", "code": "X2", "order": 91, "group": "buy", "offer": "ended", "name": "특례보금자리론",
+      "offerNote": "한국주택금융공사 대출 메뉴에 없어요(2026-11-08 확인). 대신 아래 상품을 보세요",
+      "instead": ["loan-bogeumjari", "loan-newborn-buy"], "src": ["https://www.hf.go.kr/ko/sub01/sub01_01_01.do"],
+      "checked": "2026-11-08", "refresh": "monthly" },
+    { "id": "loan-better-bogeumjari", "code": "X3", "order": 92, "group": "buy", "offer": "unverified", "name": "더나은보금자리론",
+      "offerNote": "특성별 상품 페이지에서 화면에 보이지 않게 처리돼 있고 「특례보금자리론 운영 기간 중 잠정중단」 문구가 남아 있어요",
+      "instead": ["loan-bogeumjari"], "src": ["https://www.hf.go.kr/ko/sub01/sub01_01_02.do"],
+      "checked": "2026-11-08", "refresh": "monthly" },
+    { "id": "loan-youth-future-bogeumjari", "code": "X4", "order": 93, "group": "buy", "offer": "planned", "name": "청년미래보금자리론",
+      "offerNote": "만 39세 이하 생애최초, 오피스텔 포함 — 2027년 1월 출시 예정(잠정), 세부사항 추후 확정",
+      "instead": ["loan-bogeumjari"], "src": ["https://www.fsc.go.kr/no010101/87517"], "doc": "loans.md#3#예정",
+      "checked": "2026-10-23", "refresh": "monthly" },
+    { "id": "loan-sme-youth", "code": "X5", "order": 94, "group": "jeonse", "offer": "ended", "name": "중소기업취업청년 전월세보증금대출",
+      "offerNote": "취급은행 공시 기준 2024-12-31 신규 접수분까지(기금 공식 종료 공지는 미확인)",
+      "instead": ["loan-youth-beotimmok"], "src": ["https://nhuf.molit.go.kr/FP/FP05/FP0501/FP0501.jsp"],
+      "checked": "2026-11-05", "refresh": "monthly" },
+    { "id": "loan-renewal-beotimmok", "code": "X6", "order": 95, "group": "jeonse", "offer": "ended", "name": "갱신만료 임차인 지원 버팀목",
+      "offerNote": "2023-07-31까지 한시 운영(기금 상품 페이지 원문, 2026-11-05 확인)",
+      "instead": ["loan-beotimmok"], "src": ["https://nhuf.molit.go.kr/FP/FP05/FP0501/FP0501.jsp"],
+      "checked": "2026-11-05", "refresh": "monthly" }
+  ]
+}

@@ -1,0 +1,107 @@
+{
+  "schema": 1,
+  "boundaryPct": 3,
+  "boundaryNote": "설계값(사실 아님): 입력이 기준의 ±3% 안이면 「확인 필요(기준값 근처)」. docs/eligibility-calculator-design.md 5-2, 14절 Q3",
+  "calcPage": null,
+  "calcPageNote": "계산기 페이지(티스토리 일반 글) 주소. 글을 저장한 뒤 /NN을 넣는다(15-2)",
+
+  "fields": {
+    "mode":          { "type": "multi", "values": ["buy", "jeonse", "rent"], "label": "알아볼 대출" },
+    "house":         { "type": "select", "values": ["none", "own1", "other", "unknown"], "label": "집·분양권·입주권(이번 대출로 사는 집·분양받는 집 제외)" },
+    "marriage":      { "type": "select", "values": ["single", "le7y", "over7y", "soon"], "label": "혼인 상태" },
+    "kidsMinor":     { "type": "number", "min": 0, "max": 3, "label": "이미 태어난 미성년 자녀 수(입양 포함, 태아 제외, 3 = 3명 이상)" },
+    "newborn":       { "type": "select", "values": ["yes", "pregnant", "no"], "label": "2년 안 출산·입양" },
+    "age":           { "type": "number", "min": 19, "max": 99, "label": "만 나이" },
+    "head":          { "type": "select", "values": ["head", "member", "soonHead"], "label": "등본상 나" },
+    "household":     { "type": "number", "min": 1, "max": 8, "label": "같은 등본 가구원 수(곧 분가하면 분가 뒤 등본 기준)" },
+    "incSelf":       { "type": "number", "unit": "만원", "label": "본인 작년 총급여" },
+    "incSpouse":     { "type": "number", "unit": "만원", "label": "배우자 작년 총급여(혼인신고 전이어도 2년 안에 낳은 아이의 다른 부모 포함)", "askWhen": "marriage ∈ {le7y, soon} 또는 newborn = yes" },
+    "price":         { "type": "number", "unit": "만원", "label": "집값(매매·분양가)" },
+    "buyKind":       { "type": "select", "values": ["apt", "house", "officetel"], "label": "집 종류" },
+    "area":          { "type": "select", "values": ["le60", "60to85", "85to100", "over100", "unknown"], "label": "전용면적" },
+    "region":        { "type": "select", "values": ["seoul", "gyeonggiIncheon", "other"], "label": "집이 있는 곳" },
+    "netAsset":      { "type": "select", "values": ["le345", "345to511", "over511", "unknown"], "label": "순자산 구간" },
+    "loanNow":       { "type": "select", "values": ["none", "fundJeonse", "midLoan", "other", "unknown"], "label": "지금 쓰는 주택 관련 대출" },
+    "deposit":       { "type": "number", "unit": "만원", "label": "보증금(갱신이면 증액 후 총 보증금)" },
+    "rent":          { "type": "number", "unit": "만원", "label": "월세" },
+    "contract":      { "type": "select", "values": ["new", "renew"], "label": "신규·갱신" },
+    "everOwned":     { "type": "bool", "label": "세대원 누구라도 집을 가진 적" },
+    "newbornSpecialWin": { "type": "bool", "label": "신생아 특별공급 당첨" },
+    "term":          { "type": "select", "values": [10, 15, 20, 30], "default": 30, "label": "원하는 만기(년)" },
+    "otherInterest": { "type": "number", "unit": "만원", "default": 0, "label": "다른 대출 1년 이자 합계" },
+    "regulated":     { "type": "bool", "label": "규제지역 주택" },
+    "eupmyeon":      { "type": "bool", "label": "수도권 밖 도시지역이 아닌 읍·면" },
+    "saleWin":       { "type": "select", "values": ["dream", "newHope", "other", "none"], "label": "청약 당첨으로 분양받는 집(주택드림 통장 당첨·신혼희망타운·그 밖 당첨·아님)" },
+    "landLease":     { "type": "select", "values": ["none", "main", "pre"], "label": "토지임대부 분양주택 당첨(본청약·사전청약)" },
+    "landLeaseEarly":{ "type": "bool", "label": "토지임대부 공고일이 2026-08-25 이전" },
+    "dreamSaved":    { "type": "bool", "label": "청년 주택드림 통장 1년·1천만원" },
+    "youthExtend":   { "type": "bool", "label": "중소·중견 재직(창업 지원) + 병역 이행, 복무기간 빼면 만 34세 이하" },
+    "increase":      { "type": "number", "unit": "만원", "label": "갱신으로 늘어나는 보증금" }
+  },
+  "unknownValues": ["unknown"],
+  "derived": {
+    "incCouple": "incSelf + incSpouse(배우자 칸이 없으면 0)",
+    "incOne": "min(incSelf, incSpouse) — 신혼 부부 중 1인 경로. dual일 때만 쓴다(한 사람 소득이 0이면 1인 경로 없음)",
+    "dual": "incSelf > 0 ∧ incSpouse > 0",
+    "incDti": "1인 경로면 incOne, 아니면 incCouple",
+    "soloHead": "marriage = single ∧ head ∈ {head, soonHead} ∧ household = 1",
+    "capital": "region ≠ other",
+    "area60": "area = le60",
+    "area85": "area ∈ {le60, 60to85}",
+    "area100": "area ∈ {le60, 60to85, 85to100}",
+    "kidsLoan": "kidsMinor(이미 태어난 미성년 자녀. 질문이 태아를 빼고 묻는다 — 기금 다자녀는 미성년 3명 이상, 13절 C47)"
+  },
+
+  "defs": {
+    "adultHead": { "f": "head", "is": ["head", "soonHead"], "why": "세대주(대출 접수일까지 세대주가 되는 사람 포함)여야 해요",
+      "notice": { "when": { "f": "head", "is": "soonHead" }, "text": "대출 접수일에 세대주여야 해요(등본 정리 먼저)" } },
+    "noHouse": { "f": "house", "is": "none", "why": "세대원 전원이 집·분양권·입주권이 없어야 해요" },
+    "asset511": { "f": "netAsset", "is": ["le345", "345to511"], "why": "순자산이 5.11억원을 넘어요(2026년도 기준)" },
+    "asset345": { "f": "netAsset", "is": "le345", "why": "순자산이 3.45억원을 넘어요(2026년도 기준)" },
+    "area85eup": { "any": [
+      { "f": "area85", "is": true },
+      { "all": [ { "f": "area", "is": "85to100" }, { "f": "capital", "is": false }, { "f": "eupmyeon", "is": true, "ask": "eupmyeon" } ] }
+    ], "why": "전용 85㎡ 이하만 돼요(수도권 밖 도시지역이 아닌 읍·면 100㎡)" },
+    "noLoanBuy": { "f": "loanNow", "is": ["none", "fundJeonse"], "why": "지금 쓰는 기금대출·주택담보대출이 없어야 해요",
+      "unknownIf": { "when": { "f": "loanNow", "is": "midLoan" }, "why": "분양 중도금대출을 이 대출로 갚는 경로는 기금 원문을 확인하지 못했어요" },
+      "notice": { "when": { "f": "loanNow", "is": "fundJeonse" }, "text": "기금 전세대출은 이 대출 실행일 당일에 갚는 조건이에요" } },
+    "noLoanSale": { "f": "loanNow", "is": ["none", "fundJeonse", "midLoan"], "why": "지금 쓰는 기금대출·주택담보대출이 없어야 해요(분양 중도금대출은 가능)",
+      "notice": { "when": { "f": "loanNow", "is": "midLoan" }, "text": "이 대출과 중도금대출 등을 합한 금액이 분양가를 넘을 수 없어요" } },
+    "capAptNotice": { "notice": { "when": { "all": [ { "f": "capital", "is": true }, { "f": "buyKind", "is": "apt" },
+      { "not": { "all": [ { "f": "incCouple", "op": "le", "v": 4000 }, { "f": "price", "op": "le", "v": 30000 } ] } } ] },
+      "text": "수도권 아파트는 미등기 신축 아파트의 후취담보 잔금대출이 제한되고, 한도에서 소액임차보증금을 빼요(2024-12-02~)" } },
+    "rentCommon": { "notice": "보증금 5% 이상을 낸 계약이어야 하고, 공공임대주택에 사는 중이면 안 돼요(그 집으로 옮기거나 퇴거하면 가능)" },
+    "noLoanRent": { "f": "loanNow", "is": "none", "why": "지금 쓰는 기금대출·은행 전세대출·주택담보대출이 없어야 해요" },
+    "notSoloUnder30": { "not": { "all": [ { "f": "soloHead", "is": true }, { "f": "age", "op": "lt", "v": 30 } ] },
+      "skipIf": { "f": "landLease", "is": ["main", "pre"] },
+      "why": "만 30세 미만 단독세대주는 신청할 수 없어요(미성년 형제·자매를 6개월 이상 부양하면 가능)" },
+    "singleUnder30Family": { "notice": { "when": { "all": [ { "f": "marriage", "is": "single" }, { "f": "age", "op": "lt", "v": 30 }, { "f": "household", "op": "ge", "v": 2 }, { "f": "kidsLoan", "is": 0 } ] },
+      "text": "만 30세 미만 미혼세대주는 직계존속과 6개월 이상 같은 등본이어야 해요(자녀와 살면 기간 요건 없음)" } },
+    "bjFirst": { "all": [ { "f": "everOwned", "is": false, "ask": "everOwned" }, { "f": "house", "is": "none" } ], "why": "보금자리론 생애최초: 부부 모두 무주택 + 처음 사는 집" },
+    "bjReal": { "all": [ { "f": "house", "is": "none" }, { "f": "price", "op": "le", "v": 60000 }, { "f": "incCouple", "op": "le", "v": 7000 } ], "why": "보금자리론 실수요자: 무주택·6억원 이하·부부합산 7천만원 이하(구입용도)" },
+    "notRegular": { "notice": "2025-06-27 이전 계약이면 종전 한도가 적용돼요(2025-06-28 계약분부터 변경)" }
+  },
+
+  "presets": {
+    "/5": "loan:buy", "/11": "loan:buy", "/12": "loan:buy", "/15": "loan:buy", "/21": "loan:buy", "/36": "loan:buy",
+    "/22": "loan:jeonse", "/57": "loan:jeonse", "/58": "loan:jeonse",
+    "/47": "loan"
+  },
+  "presetsByCategory": { "대출·정책": "loan" },
+
+  "smallDeposit": {
+    "label": "최우선변제 소액임차보증금(주택임대차보호법 시행령 제10조)",
+    "unit": "만원",
+    "byRegion": { "seoul": [5500, 5500], "gyeonggiIncheon": [2500, 4800] },
+    "byRegionNote": "경기·인천은 시·군에 따라 다르다: 과밀억제권역(인천 대부분·경기 일부)·용인·화성·김포 4,800 / 인천 과밀억제권역 밖(군 제외)·안산·광주·파주·이천·평택 2,800 / 그 밖(인천 군 포함) 2,500",
+    "capPctOfPrice": 50,
+    "facts": [
+      { "v": 5500, "text": "5천500만원", "doc": "jeonse.md#4-1#서울특별시" },
+      { "v": 4800, "text": "4천800만원", "doc": "jeonse.md#4-1#과밀억제권역" },
+      { "v": 2800, "text": "2천800만원", "doc": "jeonse.md#4-1#광역시" },
+      { "v": 2500, "text": "2천500만원", "doc": "jeonse.md#4-1#그 밖의 지역" }
+    ],
+    "src": ["https://nhuf.molit.go.kr/FP/FP05/FP0506/050560001.jsp", "https://www.law.go.kr/법령/주택임대차보호법시행령"],
+    "checked": "2026-11-08", "until": "2027-06-30", "untilNote": "시행령 개정 시점 추정"
+  }
+}
