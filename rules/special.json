@@ -1,0 +1,173 @@
+{
+  "schema": 1,
+  "note": "특공 자격 확인기 2단계(민영·국민주택, 공공주택 특별법 적용 공고는 3단계). 판정은 예비 확인 — 공고마다 다른 조건은 notice로만 둔다. 소득 기준은 tables.json incomeTable(%). 순서는 order뿐. docs/eligibility-calculator-design.md 2-2·3-2·4-4, docs/policy/special.md",
+  "programs": [
+    {
+      "id": "sp-newlywed", "code": "A1", "order": 1, "name": "신혼부부 특별공급", "sp": "NWWDS", "offer": "active",
+      "when": { "all": [
+        { "f": "marriage", "is": "le7y", "why": "공고일 현재 혼인신고 7년 이내여야 해요(결혼 예정은 민영·국민 신혼 특공 대상이 아니에요)" },
+        { "use": "spNoHouseEx" }, { "use": "over6m" }, { "use": "specialOnceNewlywed" }, { "use": "reWinAll" },
+        { "notice": "전용 85㎡ 이하 주택에만 있어요. 같은 순위 안에서는 해당지역 → 미성년 자녀(태아 포함) 수 → 추첨 순이에요" },
+        { "notice": "혼인 중 낳은 미성년 자녀(임신·입양 포함, 전혼 자녀 제외)가 있으면 1순위, 없으면 2순위예요" }
+      ] },
+      "variants": [ { "key": "both", "label": "민영·국민", "kinds": ["private", "national"], "tiers": [
+        { "name": "우선공급", "when": { "any": [
+          { "all": [ { "f": "dual", "is": false }, { "f": "incMonth", "op": "le", "pct": 100 } ] },
+          { "all": [ { "f": "dual", "is": true }, { "f": "incMonth", "op": "le", "pct": 120 }, { "f": "incSelfMonth", "op": "le", "pct": 100 }, { "f": "incSpouseMonth", "op": "le", "pct": 100 } ] } ] } },
+        { "name": "일반공급", "when": { "any": [
+          { "all": [ { "f": "dual", "is": false }, { "f": "incMonth", "op": "le", "pct": 140 } ] },
+          { "all": [ { "f": "dual", "is": true }, { "f": "incMonth", "op": "le", "pct": 160 }, { "f": "incSelfMonth", "op": "le", "pct": 140 }, { "f": "incSpouseMonth", "op": "le", "pct": 140 } ] } ] } },
+        { "name": "추첨공급 (지금 집 제외 부동산)", "when": { "use": "spEx2", "unknownIf": { "when": { "all": [ { "use": "spEx2" }, { "f": "realEstate331", "is": false } ] }, "why": "이 예외로 신청하면 부동산가액에 지금 집을 넣지 않아요 — 지금 집을 뺀 합계로 공고문을 확인하세요" } } },
+        { "name": "추첨공급", "when": { "f": "realEstate331", "is": true, "ask": "realEstate331",
+          "unknownIf": { "when": { "all": [ { "f": "realEstate331", "is": true }, { "f": "dual", "is": true }, { "any": [ { "not": { "f": "incSelfMonth", "op": "le", "pct": 100 } }, { "not": { "f": "incSpouseMonth", "op": "le", "pct": 100 } } ] } ] },
+            "why": "맞벌이 1인 소득 100% 한도가 추첨공급에도 걸리는지 청약홈과 운용지침 표현이 달라요 — 공고문을 확인하세요" } } }
+      ] } ],
+      "failWhy": "소득 기준을 넘고 세대 부동산이 3억 3,100만원 이하가 아니에요",
+      "facts": [
+        { "text": ["100%", "120%"], "doc": "special.md#4#우선공급" },
+        { "text": ["140%", "160%"], "doc": "special.md#4#일반공급" },
+        { "text": "3억 3,100만원", "doc": "special.md#4#추첨공급" },
+        { "text": "7년", "doc": "special.md#4#혼인기간" },
+        { "text": "불가", "doc": "special.md#4#결혼 예정자" },
+        { "text": "6개월", "doc": "special.md#4#청약통장" }
+      ],
+      "links": { "guide": "https://aulee.tistory.com/26", "official": "https://www.applyhome.co.kr/ar/ara/selectSubscrptIntroSpetialView.do" },
+      "checked": "2026-11-09", "until": "2027-06-30", "untilNote": "소득표 다음 적용 시점 추정", "refresh": "yearly", "watch": ["신혼부부 특별공급"]
+    },
+    {
+      "id": "sp-first", "code": "A2", "order": 2, "name": "생애최초 특별공급", "sp": "LFE_FRST", "offer": "active",
+      "when": { "all": [
+        { "use": "spNoHouse" },
+        { "f": "everOwned", "is": false, "ask": "everOwned", "why": "세대에 속한 모든 사람이 집을 가진 적이 없어야 해요",
+          "unknownIf": { "when": { "all": [ { "f": "everOwned", "is": true }, { "f": "marriage", "is": ["le7y", "over7y"] } ] }, "why": "배우자가 혼인신고 전에 가졌던 집이면 신청할 수 있어요. 누가 언제 가졌는지 공고문 기준으로 확인하세요" } },
+        { "use": "rank1" }, { "use": "specialOnceStrict" }, { "use": "reWin1st" }, { "use": "reWinAll" },
+        { "f": "tax5y", "is": true, "ask": "tax5y", "why": "소득세를 통산 5년 이상 냈어야 해요" },
+        { "f": "taxRecent", "is": true, "ask": "taxRecent", "why": "공고일 현재 근로자·자영업자이거나 최근 1년 안에 근로·사업소득세를 냈어야 해요" },
+        { "notice": "전용 85㎡ 이하 주택에만 있어요. 배우자의 혼인 전 당첨·주택 소유 이력은 있어도 신청할 수 있어요" },
+        { "notice": { "when": { "not": { "use": "spFamily" } }, "text": "1인가구는 추첨공급만이고, 단독세대는 전용 60㎡ 이하만이에요(직계존속과 같은 등본인 1인가구는 규칙과 청약홈 표현이 달라 공고문 확인)" } }
+      ] },
+      "variants": [
+        { "key": "private", "label": "민영", "kinds": ["private"], "tiers": [
+          { "name": "우선공급", "when": { "all": [ { "use": "spFamily" }, { "f": "incMonth", "op": "le", "pct": 130 } ] } },
+          { "name": "일반공급", "when": { "all": [ { "use": "spFamily" }, { "f": "incMonth", "op": "le", "pct": 160 } ] } },
+          { "name": "추첨공급", "when": { "any": [
+            { "all": [ { "use": "spFamily" }, { "f": "realEstate331", "is": true, "ask": "realEstate331" } ] },
+            { "all": [ { "not": { "use": "spFamily" } }, { "any": [ { "f": "incMonth", "op": "le", "pct": 160 }, { "f": "realEstate331", "is": true, "ask": "realEstate331" } ] } ] } ] } }
+        ] },
+        { "key": "national", "label": "국민", "kinds": ["national"],
+          "when": { "f": "save600", "is": true, "ask": "save600", "why": "국민주택은 청약통장 저축액이 600만원 이상이어야 해요" },
+          "tiers": [
+          { "name": "우선공급", "when": { "all": [ { "use": "spFamily" }, { "f": "incMonth", "op": "le", "pct": 100 } ] } },
+          { "name": "일반공급", "when": { "all": [ { "use": "spFamily" }, { "f": "incMonth", "op": "le", "pct": 130 } ] } },
+          { "name": "추첨공급", "when": { "any": [
+            { "all": [ { "use": "spFamily" }, { "f": "realEstate331", "is": true, "ask": "realEstate331" } ] },
+            { "all": [ { "not": { "use": "spFamily" } }, { "any": [ { "f": "incMonth", "op": "le", "pct": 130 }, { "f": "realEstate331", "is": true, "ask": "realEstate331" } ] } ] } ] } }
+        ] }
+      ],
+      "failWhy": "소득 기준을 넘고 세대 부동산이 3억 3,100만원 이하가 아니에요",
+      "facts": [
+        { "text": ["130%", "100%"], "doc": "special.md#3#우선공급" },
+        { "text": ["160%", "130%"], "doc": "special.md#3#일반공급" },
+        { "text": "3억 3,100만원", "doc": "special.md#3#추첨공급" },
+        { "text": "600만원", "doc": "special.md#3#순위·저축" },
+        { "text": "5년", "doc": "special.md#3#소득세 납부" },
+        { "text": "추첨공급만", "doc": "special.md#3#가구 요건" }
+      ],
+      "links": { "guide": "https://aulee.tistory.com/39", "official": "https://www.applyhome.co.kr/ar/ara/selectSubscrptIntroSpetialView.do" },
+      "checked": "2026-11-09", "until": "2027-06-30", "untilNote": "소득표 다음 적용 시점 추정", "refresh": "yearly", "watch": ["생애최초 특별공급"]
+    },
+    {
+      "id": "sp-newborn", "code": "A3", "order": 3, "name": "신생아 특별공급", "sp": "NWBB", "offer": "active",
+      "when": { "all": [
+        { "any": [ { "f": "newborn", "is": ["yes", "pregnant"] }, { "f": "fetus", "op": "ge", "v": 1 } ], "why": "공고일 현재 2세 미만 자녀(태아·입양 포함)가 있어야 해요" },
+        { "use": "spNoHouseEx" }, { "use": "rank1" }, { "use": "over6m" }, { "use": "specialOnceBorn" }, { "use": "reWin1st" }, { "use": "reWinAll" },
+        { "notice": "공고일에 자녀가 2세 미만이어야 해요(2세가 되는 날 포함). 전용 85㎡ 이하 주택에만 있고 지역우선 뒤 추첨이에요" },
+        { "notice": "지금 규칙(민영 10%, 국민 15%)은 2026-06-15 이후 입주자모집공고 단지부터예요" },
+        { "notice": { "when": { "any": [ { "f": "newborn", "is": "pregnant" }, { "f": "fetus", "op": "ge", "v": 1 } ] }, "text": "태아로 당첨되면 입주지정기간 시작 전까지 출산 관련 서류를 내야 해요" } }
+      ] },
+      "variants": [
+        { "key": "private", "label": "민영", "kinds": ["private"], "tiers": [
+          { "name": "우선공급", "when": { "f": "incMonth", "op": "le", "pct": 130 } },
+          { "name": "일반공급", "when": { "f": "incMonth", "op": "le", "pct": 160 } },
+          { "name": "추첨공급 (지금 집 제외 부동산)", "when": { "use": "spEx2", "unknownIf": { "when": { "use": "spEx2" }, "why": "이 예외로 신청하면 소득·부동산 요건 적용이 달라져요 — 공고문을 확인하세요" } } },
+          { "name": "추첨공급", "when": { "f": "realEstate331", "is": true, "ask": "realEstate331" } }
+        ] },
+        { "key": "national", "label": "국민", "kinds": ["national"], "tiers": [
+          { "name": "우선공급", "when": { "f": "incMonth", "op": "le", "pct": 100 } },
+          { "name": "일반공급", "when": { "f": "incMonth", "op": "le", "pct": 130 } },
+          { "name": "추첨공급 (지금 집 제외 부동산)", "when": { "use": "spEx2", "unknownIf": { "when": { "use": "spEx2" }, "why": "이 예외로 신청하면 소득·부동산 요건 적용이 달라져요 — 공고문을 확인하세요" } } },
+          { "name": "추첨공급", "when": { "f": "realEstate331", "is": true, "ask": "realEstate331" } }
+        ] }
+      ],
+      "failWhy": "소득 기준을 넘고 세대 부동산이 3억 3,100만원 이하가 아니에요",
+      "facts": [
+        { "text": ["130%", "100%"], "doc": "special.md#5#우선공급" },
+        { "text": ["160%", "130%"], "doc": "special.md#5#일반공급" },
+        { "text": "2세 미만", "doc": "special.md#5#자녀" },
+        { "text": "2026.6.15", "doc": "special.md#5#신설·적용" },
+        { "text": "3억 3,100만원", "doc": "special.md#5#소득 상한" }
+      ],
+      "links": { "guide": "https://aulee.tistory.com/27", "guideLabel": "조건 자세히(내 블로그)", "official": "https://www.applyhome.co.kr/ar/ara/selectSubscrptIntroSpetialView.do" },
+      "checked": "2026-11-09", "until": "2027-06-30", "untilNote": "소득표 다음 적용 시점 추정", "refresh": "yearly", "watch": ["신생아 특별공급"]
+    },
+    {
+      "id": "sp-multi", "code": "A4", "order": 4, "name": "다자녀가구 특별공급", "sp": "MNYCH", "offer": "active",
+      "when": { "all": [
+        { "f": "kidsSpecial", "op": "ge", "v": 2, "why": "미성년 자녀(태아·입양 포함)가 2명 이상이어야 해요", "ask": "newborn",
+          "unknownIf": { "when": { "any": [
+            { "all": [ { "f": "marriage", "is": ["single", "soon"] }, { "f": "household", "op": "lt", "v": 3 }, { "f": "kidsMinor", "op": "ge", "v": 2 } ] },
+            { "all": [ { "f": "marriage", "is": ["single", "soon"] }, { "f": "household", "op": "lt", "v": 2 }, { "f": "kidsMinor", "op": "ge", "v": 1 }, { "f": "kidsSpecial", "op": "ge", "v": 2 } ] } ] }, "why": "이혼·재혼이면 자녀가 같은 등본에 있어야 인정돼요 — 등본을 확인하세요" } },
+        { "use": "spNoHouseEx" }, { "use": "over6m" }, { "use": "specialOnce" }, { "use": "reWinAll" },
+        { "notice": "경쟁하면 배점(자녀 수·영유아·세대구성·무주택기간·거주기간·통장, 100점 만점) 높은 순이에요" }
+      ] },
+      "variants": [
+        { "key": "private", "label": "민영", "kinds": ["private"], "tiers": [ { "name": "소득 기준 없음" } ] },
+        { "key": "national", "label": "국민", "kinds": ["national"], "tiers": [
+          { "name": "소득 120% 이하", "when": { "f": "incMonth", "op": "le", "pct": 120 } },
+          { "name": "민간 사업주체 공급분만", "note": "LH·지방공사 등 공공 사업주체가 공급하는 85㎡ 이하는 소득 120% 이하여야 해요" }
+        ] }
+      ],
+      "facts": [
+        { "text": "120%", "doc": "special.md#1#소득" },
+        { "text": "6개월", "doc": "special.md#1#청약통장" }
+      ],
+      "links": { "guide": "https://aulee.tistory.com/27", "guideLabel": "조건 자세히(내 블로그)", "official": "https://www.applyhome.co.kr/ar/ara/selectSubscrptIntroSpetialView.do" },
+      "checked": "2026-11-09", "until": "2027-06-30", "untilNote": "소득표 다음 적용 시점 추정", "refresh": "yearly", "watch": ["다자녀가구 특별공급"]
+    },
+    {
+      "id": "sp-parent", "code": "A5", "order": 5, "name": "노부모부양 특별공급", "sp": "OLD_PARNTS_SUPORT", "offer": "active", "later": "parent65_3y",
+      "when": { "all": [
+        { "f": "parent65_3y", "is": true, "ask": "parent65_3y", "why": "만 65세 이상 직계존속을 3년 이상 같은 등본으로 부양해야 해요" },
+        { "f": "parentNoHouse", "is": true, "ask": "parentNoHouse", "why": "모시는 부모님(과 그 배우자)도 집이 없어야 해요(60세 이상 부모 소유 예외가 적용되지 않아요)" },
+        { "f": "head", "is": "head", "why": "무주택 세대주만 신청할 수 있어요(세대원은 안 돼요)", "skipIf": { "use": "spEx2" },
+          "unknownIf": { "when": { "f": "head", "is": "soonHead" }, "why": "공고일 현재 세대주여야 하고 3년 부양 요건도 함께 봐요 — 분가 뒤 등본을 확인하세요" } },
+        { "use": "spNoHouseEx" }, { "use": "rank1" }, { "use": "specialOnce" }, { "use": "reWin1st" }, { "use": "reWinAll" },
+        { "notice": "민영은 가점제, 국민은 순차제예요. 소득을 보는 공고는 모시는 부모님 소득·가구원 수도 함께 봐요" }
+      ] },
+      "variants": [
+        { "key": "private", "label": "민영", "kinds": ["private"], "tiers": [ { "name": "소득 기준 없음" } ] },
+        { "key": "national", "label": "국민", "kinds": ["national"], "tiers": [
+          { "name": "소득 120% 이하", "when": { "f": "incMonth", "op": "le", "pct": 120 } },
+          { "name": "민간 사업주체 공급분만", "note": "LH·지방공사 등 공공 사업주체가 공급하는 85㎡ 이하는 소득 120% 이하여야 해요" }
+        ] }
+      ],
+      "facts": [
+        { "text": "65세", "doc": "special.md#2#부모 나이" },
+        { "text": "3년", "doc": "special.md#2#부양 기간" },
+        { "text": "세대주", "doc": "special.md#2#세대주" },
+        { "text": "120%", "doc": "special.md#2#소득" },
+        { "text": "1순위", "doc": "special.md#2#순위" }
+      ],
+      "links": { "guide": "https://aulee.tistory.com/42", "official": "https://www.applyhome.co.kr/ar/ara/selectSubscrptIntroSpetialView.do" },
+      "checked": "2026-11-09", "until": "2027-06-30", "untilNote": "소득표 다음 적용 시점 추정", "refresh": "yearly", "watch": ["노부모부양 특별공급"]
+    }
+  ],
+  "info": [
+    { "id": "sp-inst", "name": "기관추천 특별공급", "text": "국가유공자·장애인·중소기업 장기근속자 등 해당 기관이 선정한 대상자만 신청해요. 대상 선정은 각 기관의 기준으로 정해져 이 확인기로 볼 수 없어요.",
+      "doc": "special.md#6#자격", "docText": "관계기관의 장", "link": "https://aulee.tistory.com/45" }
+  ],
+  "warn": "부적격 당첨이면 당첨이 취소되고 일정 기간 다른 분양주택 입주자로 선정될 수 없어요. 신청 전 청약홈 청약자격확인(평일 09:00~17:30)에서 확인하세요.",
+  "diagUrl": "https://www.applyhome.co.kr/ar/ara/selectSubscrptIntroSpetialView.do",
+  "outOfScope": "이 공고는 공공주택 특별법 적용 공고라 이 확인기 계산 범위 밖이에요. 공고문과 청약홈에서 확인하세요.",
+  "outOfKind": "이 공고 종류(오피스텔·도시형·임의공급·민간임대·무순위)는 이 확인기의 특별공급 판정 대상이 아니에요. 공고문에서 확인하세요."
+}

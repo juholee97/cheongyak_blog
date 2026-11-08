@@ -14,7 +14,7 @@ const DERIVED = Object.keys(tables.derived);
 const FIELDS = new Set([...Object.keys(tables.fields), ...DERIVED]);
 const DEFS = new Set(Object.keys(tables.defs));
 const OPS = new Set(['le', 'lt', 'ge', 'gt']);
-const LEAF_KEYS = new Set(['f', 'is', 'op', 'v', 'fact', 'why', 'ask', 'skipIf', 'unknownIf', 'notice', 'softFail']);
+const LEAF_KEYS = new Set(['f', 'is', 'op', 'v', 'fact', 'pct', 'why', 'ask', 'skipIf', 'unknownIf', 'notice', 'softFail']);
 
 // 조건식 모양 점검
 function cond(c, where) {
@@ -26,6 +26,7 @@ function cond(c, where) {
   else if (c.f) {
     if (!FIELDS.has(c.f)) err(where, `모르는 칸 ${c.f}`);
     if (c.op && !OPS.has(c.op)) err(where, `모르는 op ${c.op}`);
+    if (c.pct && !tables.incomeTable.byPct[c.pct]) err(where, `소득표에 없는 % ${c.pct}`);
     if (!('is' in c) && !c.op) err(where, `${c.f}: is나 op가 없음`);
     const fd = tables.fields[c.f];
     if ('is' in c && fd?.values) for (const v of [].concat(c.is)) if (!fd.values.includes(v)) err(where, `${c.f}에 없는 값 ${v}`);
@@ -132,6 +133,42 @@ for (const p of loans.products) {
     for (const v of all) if (r.row && !r.row.includes(v.toFixed(2))) err(w, `금리표 값 ${v.toFixed(2)}가 ${p.rate.doc} 행에 없음`);
   }
 }
+// 특공(2단계): 조건·구간·문서 행·소득표
+const special = JSON.parse(await read('rules/special.json'));
+{
+  const it = tables.incomeTable;
+  for (const [pct, row] of Object.entries(it.byPct)) {
+    const r = await docRow(`${it.doc}#${pct}%`);
+    if (r.miss) { err('소득표', r.miss); continue; }
+    for (const v of Object.values(row)) if (!r.row.includes(v.toLocaleString('en-US'))) err('소득표', `${pct}% ${v}가 문서 행에 없음`);
+  }
+  const seenCode = new Set();
+  for (const p of special.programs) {
+    const w = p.code;
+    for (const k of ['id', 'name', 'order', 'sp', 'checked', 'until', 'refresh', 'links', 'when', 'variants', 'facts']) if (p[k] == null) err(w, `필수 칸 ${k} 없음`);
+    if (seenCode.has(p.code)) err(w, 'code 겹침'); seenCode.add(p.code);
+    if (p.until < today) err(w, `until ${p.until} 지남`);
+    if (!p.links?.official) err(w, 'links.official 없음');
+    cond(p.when, `${w}.when`);
+    for (const v of p.variants) {
+      if (!v.kinds?.length) err(w, `변형 ${v.key} kinds 없음`);
+      if (v.when) cond(v.when, `${w}.${v.key}.when`);
+      if (!v.tiers?.length) err(w, `변형 ${v.key} 구간 없음`);
+      for (const t of v.tiers || []) if (t.when) cond(t.when, `${w}.${v.key}.${t.name}`);
+    }
+    const kinds = p.variants.flatMap((v) => v.kinds);
+    if (!kinds.includes('private') || !kinds.includes('national')) err(w, '민영·국민 변형이 다 있어야 함');
+    for (const f of p.facts || []) await checkFact(`${w}.facts`, f);
+  }
+  for (const x of special.info || []) await checkFact(x.id, { doc: x.doc, text: x.docText });
+  const pub = new Set(Object.values(JSON.parse(await read('posts/published.json'))));
+  for (const p of special.programs) if (p.links?.guide && !pub.has(p.links.guide)) err(p.code, `links.guide ${p.links.guide}가 published에 없음`);
+  for (const p of special.programs) {
+    const ds = (rowDates[p.code] || []).sort();
+    if (ds.length && p.checked !== ds[0]) err(p.code, `checked ${p.checked}가 참조 행의 가장 이른 확인일 ${ds[0]}과 다름`);
+  }
+}
+
 // 확인일(4-5 3): checked는 참조한 문서 행들의 가장 이른 확인일. 경과는 경고만(4-5 6)
 const DAYS = { monthly: 35, semimonthly: 20, yearly: 400 };
 for (const p of loans.products.filter((x) => x.offer === 'active')) {
@@ -172,7 +209,7 @@ for (const p of loans.products.filter((x) => x.offer === 'active')) {
 // 정렬 코드 금지(9-2): order 말고 다른 값으로 정렬하지 않는다
 for (const f of ['skin/images/calc.js', 'posts/calc_post.mjs']) {
   const src = await read(f).catch(() => '');
-  for (const m of src.matchAll(/sort\(([^\n]*)/g)) if (!/order/.test(m[1])) err(f, `order가 아닌 정렬: sort(${m[1].slice(0, 60)}`);
+  for (const m of src.matchAll(/sort\(([^\n]*)/g)) if (!/order|byReceipt/.test(m[1])) err(f, `order가 아닌 정렬: sort(${m[1].slice(0, 60)}`);
 }
 
 // 사례(5-4): calc.js를 vm으로 읽어 CY.match로 cases.json을 돌린다. 합친 규칙은 build.mjs와 같은 모양
@@ -181,7 +218,7 @@ for (const f of ['skin/images/calc.js', 'posts/calc_post.mjs']) {
   const ctx = { location: { href: 'https://aulee.tistory.com/1' }, URL };
   vm.runInNewContext(await read('skin/images/calc.js'), ctx);
   const { schema, ...rest } = tables;
-  const rules = { ...rest, loans: loans.products };
+  const rules = { ...rest, loans: loans.products, special };
   const cases = JSON.parse(await read('rules/cases.json'));
   for (const c of cases.cases) {
     const ans = { ...cases.base, ...c.ans };
@@ -202,6 +239,44 @@ for (const f of ['skin/images/calc.js', 'posts/calc_post.mjs']) {
       if (ex.one && !(r.lines || []).some((l) => l.one && l.key === ex.one)) err(c.name, `${code}: ${ex.one} 1인 경로 줄 없음`);
       if (ex.note && !(r.notes || []).some((n) => n.includes(ex.note))) err(c.name, `${code}: 안내에 「${ex.note}」 없음`);
     }
+  }
+  // 특공 손 사례(5-4). kind: private·national 한쪽만, expect의 line: {변형 키: 구간 이름 또는 'no'·'check'}
+  const seenSp = {};
+  for (const c of cases.special || []) {
+    const ans = { ...cases.specialBase, ...c.ans };
+    for (const k of Object.keys(ans)) if (ans[k] === null) delete ans[k];
+    const rs = ctx.CY.matchSpecial(rules, ans, cases.today, c.kind || null);
+    for (const [code, e] of Object.entries(c.expect)) {
+      const r = rs.find((x) => x.p.code === code), ex = typeof e === 'string' ? { status: e } : e;
+      (seenSp[code] ??= new Set()).add(ex.status);
+      if (r.status !== ex.status) { err(c.name, `${code}: ${ex.status} 기대, ${r.status}(${r.why || ''})`); continue; }
+      for (const [key, want] of Object.entries(ex.line || {})) {
+        const l = (r.lines || []).find((x) => x.vt.key === key);
+        const got = !l ? '없음' : l.v === false ? 'no' : l.v === null ? 'check' : l.tier;
+        if (got !== want) err(c.name, `${code}.${key}: ${want} 기대, ${got}`);
+      }
+      if (ex.note && !(r.notes || []).some((n) => n.includes(ex.note))) err(c.name, `${code}: 안내에 「${ex.note}」 없음`);
+      if (ex.ask && !(r.asks || []).includes(ex.ask)) err(c.name, `${code}: 질문 ${ex.ask} 없음(${r.asks})`);
+    }
+  }
+  for (const p of special.programs) for (const st of ['ok', 'check', 'no']) if (!seenSp[p.code]?.has(st)) err('특공 사례 부족', `${p.code}: ${st} 손 사례 없음`);
+  // 물량 공고 목록(7-2)
+  {
+    const t = (sp) => ({ spBy: sp, spOk: true });
+    const N = { schema: 1, n: {
+      1: { name: '민영 지난', kind: 'APT', houseKind: '민영', publicLaw: false, noticeDate: '2026-09-01', types: [t({ NWWDS: 3 })] },
+      2: { name: '민영 뒤', kind: 'APT', houseKind: '민영', publicLaw: false, noticeDate: '2026-10-01', types: [t({ NWWDS: 2 }), t({ NWWDS: 1 })] },
+      3: { name: '민영 앞', kind: 'APT', houseKind: '민영', publicLaw: false, noticeDate: '2026-10-01', types: [t({ NWWDS: 1 })] },
+      4: { name: '공공', kind: 'APT', houseKind: '국민', publicLaw: true, noticeDate: '2026-10-01', types: [t({ NWWDS: 9 })] },
+      5: { name: '물량 0', kind: 'APT', houseKind: '민영', publicLaw: false, noticeDate: '2026-10-01', types: [t({ NWWDS: 0 })] },
+      6: { name: '옛 민영', kind: 'APT', houseKind: '민영', publicLaw: false, noticeDate: '2026-05-01', types: [t({ NWBB: 2 })] },
+    } };
+    const ph = (d) => ({ phases: [{ k: 'sp', date: d, end: d }] });
+    const S = { items: [1, 2, 3, 4, 5, 6].map((i) => ({ id: `${i}-${i}`, applyhomeUrl: `u${i}`, ...ph(i === 1 ? '2026-11-01' : i === 2 ? '2026-11-20' : i === 3 ? '2026-11-10' : '2026-11-15') })) };
+    const got = ctx.CY.supplyList(N, S, 'NWWDS', '2026-11-09', ['private', 'national'], false);
+    if (JSON.stringify(got.map((x) => [x.no, x.units])) !== JSON.stringify([['3', 1], ['2', 3]])) err('물량 공고', JSON.stringify(got));
+    if (ctx.CY.supplyList(N, S, 'NWBB', '2026-11-09', ['private'], true).length) err('물량 공고', '2026-06-15 전 민영 공고가 신생아 목록에 들어감');
+    if (ctx.CY.supplyList(N, S, 'NWWDS', '2026-11-09', ['national'], false).length) err('물량 공고', '공공주택 특별법 공고가 들어감');
   }
   // 상품마다 손 사례로 ok·check·no를 한 번씩 본다(5-4)
   const seen = {};
@@ -271,7 +346,8 @@ for (const f of ['skin/images/calc.js', 'posts/calc_post.mjs']) {
     [{ cat: '/category/분양분석', link: LINK }, '/70', '#n=2026000496', '분석 글'],
     [{ cat: '/category/분양분석' }, '/70', '', '링크 없는 분석 글'],
     [{ cat: '/category/청약일정', link: LINK }, '/71', '', '링크가 많은 주간 글'],
-    [{ cat: '/category/청약가이드', link: LINK }, '/72', '', '가이드 글'],
+    [{ cat: '/category/청약가이드', link: LINK }, '/72', '#calc=special', '가이드 글'],
+    [{ cat: '/category/청약가이드' }, '/42', '#calc=special', '노부모 글'],
     [{ id: 'tt-body-index', cat: '/category/분양분석', link: LINK }, '/', '', '글이 아닌 화면'],
     [{ cat: '/category/대출·정책' }, '/99', '#calc=loan', '대출 카테고리 글'],
     [{ cat: '/category/대출·정책' }, '/22', '#calc=loan&t=jeonse', '전세 글'],
@@ -299,7 +375,7 @@ for (const f of ['skin/images/calc.js', 'posts/calc_post.mjs']) {
   const { BANNED } = await import('../posts/check.mjs');
   const CALC_BANNED = ['대출 가능', '승인', '당첨 가능', '자격 있음', '대상입니다', '통과', '유리', '가장 낮은', '꼭 신청', '최저 금리', '더 많이', '신청하기'];
   const words = [...BANNED, ...CALC_BANNED];
-  const texts = [await read('skin/images/calc.js'), JSON.stringify(loans), JSON.stringify(tables.defs)];
+  const texts = [await read('skin/images/calc.js'), JSON.stringify(loans), JSON.stringify(tables.defs), JSON.stringify(special)];
   for (const t of texts) for (const w of words) if (t.split('기관추천').join('').includes(w)) err('금지 표현', `「${w}」`);
 }
 

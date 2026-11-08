@@ -17,11 +17,13 @@ export async function buildRules() {
   const read = async (f) => JSON.parse(await readFile(new URL(f, import.meta.url), 'utf8'));
   const tables = await read('./tables.json'), loans = await read('./loans.json');
   const scheduled = await read('../posts/scheduled.json');
+  const special = await read('./special.json');
   if (tables.schema !== 1 || loans.schema !== 1) throw new Error('rules schema가 1이 아님');
   if (!tables.defs || !tables.fields || !loans.products?.some((p) => p.offer === 'active' && p.when && p.variants)) throw new Error('rules 필수 칸이 없음');
   const { schema, ...rest } = tables;
   const now = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 16).replace('T', ' ');
-  return { schema: 1, built: new Date().toISOString(), ...rest, loans: hideUnpublished(loans.products, scheduled, now) };
+  if (special.schema !== 1 || !special.programs?.length) throw new Error('special.json 모양이 다름');
+  return { schema: 1, built: new Date().toISOString(), ...rest, loans: hideUnpublished(loans.products, scheduled, now), special: { ...special, programs: hideUnpublished(special.programs, scheduled, now) } };
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

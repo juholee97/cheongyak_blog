@@ -478,8 +478,15 @@ a.hero-row:hover { background: var(--tint3); text-decoration: none; color: var(-
 .cy-calc p { margin: 0; }
 .cy-live { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .cy-calc h4:focus, .cy-sum:focus { outline: none; }
-.cy-calc button { font: inherit; cursor: pointer; }
+.cy-calc button { font: inherit; cursor: pointer; white-space: normal; }
 .cy-calc button:focus-visible, .cy-calc input:focus-visible, .cy-calc a:focus-visible, .cy-calc summary:focus-visible { outline: 3px solid var(--navy); outline-offset: 2px; }
+.cy-tabs { display: flex; gap: 4px; margin-bottom: 14px; border-bottom: 2px solid var(--line); }
+.cy-tabs [role=tab] { flex: 1; min-height: 44px; border: none; border-bottom: 3px solid transparent; margin-bottom: -2px; background: none; color: var(--muted); font-size: 15px; font-weight: 700; }
+.cy-tabs [role=tab][aria-selected=true] { color: var(--primary); border-bottom-color: var(--primary); }
+.cy-pf { margin: 8px 0 0; padding-left: 18px; font-size: 14px; line-height: 1.7; color: var(--sub); }
+.cy-sup { margin-top: 10px !important; font-size: 13px; color: var(--sub); }
+.cy-sup ul { margin: 6px 0 0; padding-left: 18px; line-height: 1.7; }
+.cy-sup a { display: inline-flex; align-items: center; min-height: 44px; }
 .cy-prog { font-size: 13px; font-weight: 700; color: var(--primary); }
 .cy-prog:focus, .cy-prog-t:focus { outline: none; }
 .cy-grp { margin-top: 12px !important; font-size: 13px; font-weight: 700; color: var(--sub); }
@@ -487,7 +494,7 @@ a.hero-row:hover { background: var(--tint3); text-decoration: none; color: var(-
 .cy-qt { font-size: 15px; font-weight: 700; color: var(--ink); line-height: 1.5; }
 .cy-qh { margin-top: 2px !important; font-size: 13px; color: var(--muted); line-height: 1.5; }
 .cy-opts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
-.cy-opt { min-height: 44px; padding: 8px 12px; border: 1px solid var(--line-strong); border-radius: 3px; background: #fff; color: var(--ink); font-size: 14px; line-height: 1.35; text-align: left; }
+.cy-opt { flex: 0 1 auto; min-height: 44px; padding: 8px 12px; border: 1px solid var(--line-strong); border-radius: 3px; background: #fff; color: var(--ink); font-size: 14px; line-height: 1.35; text-align: left; }
 .cy-opt[aria-pressed="true"] { border-color: var(--primary); background: var(--tag-bg); color: var(--primary); font-weight: 700; box-shadow: inset 0 0 0 1px var(--primary); }
 .cy-num { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 14px; color: var(--sub); }
 .cy-num input { width: 9em; min-height: 44px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: 3px; background: #fff; font: inherit; font-size: 16px; text-align: right; }

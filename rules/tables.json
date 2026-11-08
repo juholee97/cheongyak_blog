@@ -36,7 +36,28 @@
     "landLeaseEarly":{ "type": "bool", "label": "토지임대부 공고일이 2026-08-25 이전" },
     "dreamSaved":    { "type": "bool", "label": "청년 주택드림 통장 1년·1천만원" },
     "youthExtend":   { "type": "bool", "label": "중소·중견 재직(창업 지원) + 병역 이행, 복무기간 빼면 만 34세 이하" },
-    "increase":      { "type": "number", "unit": "만원", "label": "갱신으로 늘어나는 보증금" }
+    "increase":      { "type": "number", "unit": "만원", "label": "갱신으로 늘어나는 보증금" },
+
+    "bankbook":      { "type": "select", "values": ["rank1", "over6m", "under6m", "unknown"], "label": "청약통장(특공)" },
+    "wonRecent":     { "type": "select", "values": ["none", "le5y", "le10y", "unknown"], "label": "세대의 최근 10년 안 청약 당첨(일반·특별)" },
+    "wonSpecial":    { "type": "bool", "label": "세대가 특별공급에 당첨된 적(계약 안 했어도)" },
+    "otherAdults":   { "type": "bool", "label": "부부 말고 같은 등본에 성인 가족" },
+    "incOthers":     { "type": "number", "unit": "만원", "label": "그 밖 성인 가족 작년 총급여 합계" },
+    "fullYearSelf":  { "type": "bool", "label": "본인이 작년에 1년 내내 일함" },
+    "fullYearSpouse":{ "type": "bool", "label": "배우자가 작년에 1년 내내 일함" },
+    "tax5y":         { "type": "bool", "label": "소득세를 통산 5년 이상 냄" },
+    "taxRecent":     { "type": "bool", "label": "지금 일하거나 최근 1년 안 소득세 냄" },
+    "save600":       { "type": "bool", "label": "청약통장 저축액 600만원 이상" },
+    "parent65_3y":   { "type": "bool", "label": "만 65세 이상 부모를 3년 이상 같은 등본으로 부양" },
+    "parentNoHouse": { "type": "bool", "label": "부모(와 그 배우자)도 무주택" },
+    "realEstate331": { "type": "bool", "label": "세대 부동산 합계 3억 3,100만원 이하" },
+    "childAfter20240619": { "type": "bool", "label": "2024-06-19 이후 출생 자녀(태아·입양 포함)" },
+    "onceExceptionUsed":  { "type": "bool", "label": "그 예외로 특공을 이미 한 번 더 씀" },
+    "wonByCouple":   { "type": "bool", "label": "특공 당첨자가 본인 또는 배우자" },
+    "wonPremarital": { "type": "select", "values": ["self", "spouse", "no", "unknown"], "label": "그 특공 당첨이 혼인신고 전 이력인지" },
+    "fullYearOthers":{ "type": "bool", "label": "그 밖 성인 가족 모두 작년에 1년 내내 일함" },
+    "fetus":         { "type": "number", "min": 0, "max": 2, "label": "지금 임신 중인 태아 수(2 = 2명 이상)" },
+    "unmarriedChild":{ "type": "bool", "label": "같은 등본에 미혼 자녀(성년 포함)" }
   },
   "unknownValues": ["unknown"],
   "derived": {
@@ -49,7 +70,12 @@
     "area60": "area = le60",
     "area85": "area ∈ {le60, 60to85}",
     "area100": "area ∈ {le60, 60to85, 85to100}",
-    "kidsLoan": "kidsMinor(이미 태어난 미성년 자녀. 질문이 태아를 빼고 묻는다 — 기금 다자녀는 미성년 3명 이상, 13절 C47)"
+    "kidsLoan": "kidsMinor(이미 태어난 미성년 자녀. 질문이 태아를 빼고 묻는다 — 기금 다자녀는 미성년 3명 이상, 13절 C47)",
+    "kidsSpecial": "kidsMinor + 태아(fetus, newborn = pregnant면 최소 1). 자녀가 2명 미만이고 newborn을 모르면 모름. 특공은 태아 포함",
+    "incMonth": "세대 월평균소득(원) = (incSelf + incSpouse + incOthers) × 10000 ÷ 12. 1년 내내 일하지 않은 사람이 있으면 모름",
+    "incSelfMonth": "본인 월평균소득(원)",
+    "incSpouseMonth": "배우자 월평균소득(원)",
+    "reWinExempt": "규제지역이 아닌 공고의 민영주택(재당첨 제한 제외 대상). 공고를 가져왔을 때만 참"
   },
 
   "defs": {
@@ -79,7 +105,64 @@
       "text": "만 30세 미만 미혼세대주는 직계존속과 6개월 이상 같은 등본이어야 해요(자녀와 살면 기간 요건 없음)" } },
     "bjFirst": { "all": [ { "f": "everOwned", "is": false, "ask": "everOwned" }, { "f": "house", "is": "none" } ], "why": "보금자리론 생애최초: 부부 모두 무주택 + 처음 사는 집" },
     "bjReal": { "all": [ { "f": "house", "is": "none" }, { "f": "price", "op": "le", "v": 60000 }, { "f": "incCouple", "op": "le", "v": 7000 } ], "why": "보금자리론 실수요자: 무주택·6억원 이하·부부합산 7천만원 이하(구입용도)" },
-    "notRegular": { "notice": "2025-06-27 이전 계약이면 종전 한도가 적용돼요(2025-06-28 계약분부터 변경)" }
+    "notRegular": { "notice": "2025-06-27 이전 계약이면 종전 한도가 적용돼요(2025-06-28 계약분부터 변경)" },
+
+    "spNoHouse": { "f": "house", "is": "none", "why": "세대원 전원이 무주택이어야 해요(무주택세대구성원)" },
+    "spEx2": { "all": [ { "f": "house", "is": ["own1", "other"] }, { "f": "wonSpecial", "is": true }, { "f": "wonByCouple", "is": true, "ask": "wonByCouple" }, { "f": "childAfter20240619", "is": true, "ask": "childAfter20240619" } ] },
+    "spNoHouseEx": { "any": [
+      { "f": "house", "is": "none" },
+      { "all": [
+        { "not": { "f": "onceExceptionUsed", "is": true }, "ask": "onceExceptionUsed" },
+        { "use": "spEx2", "unknownIf": { "when": { "use": "spEx2" },
+          "why": "2024-06-19 이후 출생 자녀 예외로 특공 이력이 있고 본인·배우자가 집을 가진 경우라면 신청할 수 있어요(다른 세대원 소유는 제외). 당첨되면 소유권이전등기 전까지 기존 집을 처분하는 조건이에요 — 공고문을 확인하세요" } }
+      ] }
+    ], "why": "세대원 전원이 무주택이어야 해요(무주택세대구성원)" },
+    "rank1": { "f": "bankbook", "is": "rank1", "why": "청약통장 1순위여야 해요", "skipIf": { "use": "spEx2" },
+      "unknownIf": { "when": { "all": [ { "f": "bankbook", "is": "rank1" }, { "f": "regulated", "is": true }, { "f": "head", "is": ["member", "soonHead"] } ] }, "why": "이 공고는 투기과열지구·청약과열지역이라 1순위는 공고일 현재 세대주여야 해요 — 공고문을 확인하세요" },
+      "notice": { "when": { "f": "head", "is": "member" }, "text": "투기과열지구·청약과열지역 공고의 1순위는 세대주여야 하고 가입 2년이 필요해요" } },
+    "over6m": { "f": "bankbook", "is": ["rank1", "over6m"], "why": "청약통장 가입 6개월이 지나야 해요(국민 6회 납입, 민영 예치기준금액)",
+      "notice": { "when": { "f": "bankbook", "is": "over6m" }, "text": "국민주택은 월납입금 6회 이상, 민영주택은 지역별 예치기준금액까지 있어야 해요" } },
+    "exChild": { "all": [ { "f": "wonByCouple", "is": true, "ask": "wonByCouple" }, { "f": "childAfter20240619", "is": true, "ask": "childAfter20240619" }, { "f": "onceExceptionUsed", "is": false, "ask": "onceExceptionUsed" } ] },
+    "specialOnce": { "any": [ { "f": "wonSpecial", "is": false }, { "use": "exChild" } ],
+      "why": "세대에 특별공급 당첨 이력이 있어요(평생 1회. 본인·배우자 이력만 2024-06-19 이후 출생 자녀 예외로 한 번 더 신청할 수 있어요)",
+      "notice": { "when": { "all": [ { "f": "wonSpecial", "is": true }, { "use": "exChild" } ] },
+        "text": "2024-06-19 이후 출생 자녀 예외로 한 번 더 신청하는 경우예요. 재당첨 제한은 그대로예요" } },
+    "specialOnceNewlywed": { "any": [ { "f": "wonSpecial", "is": false }, { "use": "exChild" },
+        { "all": [ { "f": "marriage", "is": "le7y" }, { "f": "wonPremarital", "is": ["self", "spouse"], "ask": "wonPremarital" } ] } ],
+      "why": "세대에 특별공급 당첨 이력이 있어요(평생 1회. 혼인신고 전 이력이나 2024-06-19 이후 출생 자녀 예외만 신청할 수 있어요)",
+      "notice": { "when": { "all": [ { "f": "wonSpecial", "is": true }, { "f": "wonPremarital", "is": ["self", "spouse"] } ] }, "text": "혼인신고 전 당첨 이력 특례로 보는 경우예요(본인 이력은 신혼 특공 한 차례) — 공고문을 확인하세요" } },
+    "specialOnceBorn": { "any": [ { "f": "wonSpecial", "is": false }, { "use": "exChild" },
+        { "all": [ { "f": "marriage", "is": ["le7y", "over7y"] }, { "f": "wonPremarital", "is": "spouse", "ask": "wonPremarital" } ] } ],
+      "why": "세대에 특별공급 당첨 이력이 있어요(평생 1회. 배우자의 혼인신고 전 이력이나 2024-06-19 이후 출생 자녀 예외만 신청할 수 있어요)",
+      "notice": { "when": { "all": [ { "f": "wonSpecial", "is": true }, { "f": "wonPremarital", "is": "spouse" } ] }, "text": "배우자의 혼인신고 전 당첨 이력 특례로 보는 경우예요 — 공고문을 확인하세요" } },
+    "specialOnceStrict": { "any": [ { "f": "wonSpecial", "is": false },
+        { "all": [ { "f": "marriage", "is": ["le7y", "over7y"] }, { "f": "wonPremarital", "is": "spouse", "ask": "wonPremarital" } ] } ],
+      "why": "세대에 특별공급 당첨 이력이 있어요(평생 1회, 생애최초는 2024-06-19 출생 자녀 예외 대상이 아니에요)",
+      "notice": { "when": { "all": [ { "f": "wonSpecial", "is": true }, { "f": "wonPremarital", "is": "spouse" } ] }, "text": "배우자의 혼인신고 전 당첨 이력 특례로 보는 경우예요 — 공고문을 확인하세요" } },
+    "reWin1st": { "skipIf": { "f": "regulated", "is": false }, "unknownIf": { "when": { "f": "wonRecent", "is": "le5y" }, "why": "세대에 최근 5년 안 당첨이 있으면 투기과열지구·청약과열지역 공고에서는 1순위가 되지 않아요. 그 밖 지역 공고는 공고문을 확인하세요" } },
+    "reWinAll": { "f": "wonRecent", "is": ["none", "le5y", "le10y"], "why": "세대의 최근 당첨 이력을 확인해야 해요", "ask": "wonRecent", "skipIf": { "f": "reWinExempt", "is": true },
+      "unknownIf": { "when": { "f": "wonRecent", "is": ["le5y", "le10y"] }, "why": "이전 당첨 주택에 따라 재당첨 제한(1~10년)이 남아 있을 수 있어요 — 청약홈 청약제한사항 확인에서 보세요" } },
+    "spFamily": { "any": [
+      { "f": "marriage", "is": ["le7y", "over7y"] },
+      { "f": "newborn", "is": "pregnant" },
+      { "f": "fetus", "op": "ge", "v": 1 },
+      { "all": [ { "f": "kidsMinor", "op": "ge", "v": 1 }, { "f": "household", "op": "ge", "v": 2 } ] },
+      { "all": [ { "f": "household", "op": "ge", "v": 2 }, { "f": "unmarriedChild", "is": true, "ask": "unmarriedChild" } ] }
+    ] }
+  },
+
+  "incomeTable": {
+    "label": "2025년도 도시근로자 가구원수별 월평균소득(청약홈 게시, 2026년 적용)",
+    "unit": "원",
+    "byPct": {
+      "100": { "3": 7533763, "4": 8802202, "5": 9326985 },
+      "120": { "3": 9040516, "4": 10562642, "5": 11192382 },
+      "130": { "3": 9793892, "4": 11442863, "5": 12125081 },
+      "140": { "3": 10547268, "4": 12323083, "5": 13057779 },
+      "160": { "3": 12054021, "4": 14083523, "5": 14923176 }
+    },
+    "over5Note": "6인 이상 금액은 공고문 확인(청약홈 표 없음). LH 공공분양 값이 있으나 민영 공고와 같은지 미확인이라 판정하지 않는다",
+    "doc": "special.md#0", "checked": "2026-11-09", "until": "2027-06-30", "untilNote": "다음 해 통계 적용 시점 추정(공고일 기준, 공고문 우선)"
   },
 
   "smallDeposit": {

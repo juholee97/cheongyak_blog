@@ -7,6 +7,7 @@ import { chromium } from 'playwright';
 
 const BASE = 'http://localhost:5178';
 const fails = [];
+const A = '[role=tabpanel]:not([hidden]) ';
 const ok = (cond, msg) => { if (!cond) fails.push(msg); };
 const alive = () => fetch(`${BASE}/rules.json`).then((r) => r.ok, () => false);
 
@@ -21,6 +22,7 @@ const type = (ty, ex, top, spOk = true) => ({ ty, ex, sa: ex * 1.3, top, gen: 40
 const NOTICES = {
   schema: 1,
   n: {
+    700: { name: '아주 긴 단지 이름을 가진 표본 공고 무슨무슨지구 공공분양 본청약 후속사업 조합원 취소분 그리고 더 긴 이름', kind: 'APT', houseKind: '민영', publicLaw: false, regFlags: ['투기과열', '조정'], region: '경기', address: '경기', buyKind: 'apt', areaExact: true, noticeDate: '2026-10-01', types: [type('059.0000A', 59, 48000), type('084.0000A', 84, 63000)] },
     100: { name: '표본 민영', kind: 'APT', houseKind: '민영', publicLaw: false, regFlags: [], region: '경기', address: '경기도 화성시', buyKind: 'apt', areaExact: true, types: [type('059.9800A', 59.98, 48000), type('084.9700A', 84.97, 63000), type('101.0000A', 101, 90000)] },
     200: { name: '표본 국민', kind: 'APT', houseKind: '국민', publicLaw: true, regFlags: ['투기과열'], region: '서울', address: '서울특별시', buyKind: 'apt', areaExact: true, types: [type('074.0000A', 74, 70000)] },
     300: { name: '표본 신혼희망', kind: 'APT', houseKind: '국민', publicLaw: true, regFlags: null, region: '부산', address: '부산', buyKind: 'apt', areaExact: true, types: [type('046.0000A', 46, 30000, false)] },
@@ -45,10 +47,10 @@ async function open(path, { width = 375, height = 812, routes = {} } = {}) {
   await page.goto(BASE + path);
   return { page, ctx, seen };
 }
-const q = (page, t) => page.locator('.cy-q', { has: page.locator(`.cy-qt:has-text("${t}")`) }).first();
+const q = (page, t) => page.locator(A + '.cy-q', { has: page.locator(`.cy-qt:has-text("${t}")`) }).first();
 const pick = (page, t, label) => q(page, t).locator('button', { hasText: label }).first().click();
 const fill = (page, t, v) => q(page, t).locator('input').fill(String(v));
-const next = (page) => page.click('[data-act=next]');
+const next = (page) => page.click(A + '[data-act=next]');
 async function noOverflow(page, where) {
   const over = await page.evaluate(() => document.documentElement.scrollWidth - innerWidth);
   ok(over <= 0, `${where}: 가로로 ${over}px 넘침`);
@@ -105,8 +107,8 @@ try {
   // ③ 질문 → 결과: 엔진 결과가 화면과 같은지, 저장·전송·form 없음
   {
     const { page, ctx, seen } = await open('/calc#calc=loan&t=buy');
-    await page.waitForSelector('[data-act=next]');
-    ok((await page.locator('[data-v=buy]').getAttribute('aria-pressed')) === 'true', '#t=buy 미리 선택');
+    await page.waitForSelector(A + '[data-act=next]');
+    ok((await page.locator(A + '[data-v=buy]').getAttribute('aria-pressed')) === 'true', '#t=buy 미리 선택');
     ok(!seen.requests.some((r) => r.url.includes('notices.json')), '#n= 없이 notices.json을 받음');
     ok((await page.locator('.cy-calc form').count()) === 0, 'form이 있음');
     const before = seen.requests.length, urlBefore = page.url();
@@ -123,13 +125,13 @@ try {
       const rules = await fetch('/rules.json').then((r) => r.json());
       return window.CY.match(rules, a, today, 'buy').filter((r) => r.status === 'ok' || r.status === 'check').map((r) => ({ code: r.p.code, st: r.status, amt: r.lines.map((l) => l.limit && window.CY.man(l.limit.hi)) }));
     }, [ans, new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10)]);
-    const cards = await page.$$eval('.cy-card', (es) => es.map((e) => ({ code: e.dataset.p, st: e.className.includes('is-ok') ? 'ok' : 'check', txt: e.innerText })));
+    const cards = await page.$$eval(A + '.cy-card', (es) => es.map((e) => ({ code: e.dataset.p, st: e.className.includes('is-ok') ? 'ok' : 'check', txt: e.innerText })));
     ok(JSON.stringify(cards.map((c) => [c.code, c.st])) === JSON.stringify(eng.map((c) => [c.code, c.st])), `카드와 엔진이 다름 ${JSON.stringify(cards.map((c) => c.code))}`);
     eng.forEach((e, i) => e.amt.filter(Boolean).forEach((m) => ok(cards[i]?.txt.includes(m), `${e.code} 카드에 ${m} 없음`)));
-    ok((await page.locator('.cy-live').textContent()).includes('공통 요건 충족'), '요약 알림 없음');
-    ok((await page.locator('.cy-card .cy-st').first().textContent()).length > 2, '상태가 글자로 없음');
+    ok((await page.locator(A + '.cy-live').textContent()).includes('공통 요건 충족'), '요약 알림 없음');
+    ok((await page.locator(A + '.cy-card .cy-st').first().textContent()).length > 2, '상태가 글자로 없음');
     // 순서: 상품 번호 순
-    const orders = await page.$$eval('.cy-card', (es) => es.map((e) => e.dataset.p));
+    const orders = await page.$$eval(A + '.cy-card', (es) => es.map((e) => e.dataset.p));
     ok(JSON.stringify(orders) === JSON.stringify([...orders].sort()), `카드 순서 ${orders}`);
     // 펼침 안 글자, 금지 표현
     await page.$$eval('.cy-calc details', (ds) => ds.forEach((d) => { d.open = true; }));
@@ -143,19 +145,19 @@ try {
     await page.mouse.click(box.x + 5, box.y + 5);
     await page.waitForTimeout(50);
     ok((await q(page, '규제지역').locator('button', { hasText: '아니오' }).getAttribute('aria-pressed')) === 'true', '숫자 칸 뒤 첫 클릭이 사라짐');
-    ok((await page.locator('input[data-f=otherInterest]').inputValue()) === '123', '숫자 칸 값이 사라짐');
+    ok((await page.locator(A + 'input[data-f=otherInterest]').inputValue()) === '123', '숫자 칸 값이 사라짐');
     // 다시 하기: 답이 지워진다(공고 없음)
-    await page.click('[data-act=reset]');
+    await page.click(A + '[data-act=reset]');
     await next(page);
-    ok((await page.locator('.cy-opt[aria-pressed=true]').count()) === 0, '다시 하기 뒤 답이 남음');
+    ok((await page.locator(A + '.cy-opt[aria-pressed=true]').count()) === 0, '다시 하기 뒤 답이 남음');
     ok(!seen.errors.length, `스크립트 오류 ${seen.errors}`);
     await ctx.close();
   }
   // ③-2 전세 + 구입 둘 다: 카드가 여럿일 때 상품 번호 순, 집 칸은 구입·전세 따로
   {
     const { page, ctx } = await open('/calc#calc=loan&t=jeonse');
-    await page.waitForSelector('[data-act=next]');
-    await page.click('[data-v=buy]');
+    await page.waitForSelector(A + '[data-act=next]');
+    await page.click(A + '[data-v=buy]');
     await next(page);
     await pick(page, '본인·배우자', '모두 없음'); await pick(page, '혼인', '미혼'); await next(page);
     await pick(page, '이미 태어난', '0명'); await pick(page, '2년 안에', '없음'); await next(page);
@@ -167,97 +169,97 @@ try {
     // 전세 집은 구입 집과 따로 묻는다(앞 답이 눌려 있지 않아야 한다)
     ok((await q(page, '전용').locator('[aria-pressed=true]').count()) === 0, '전세 면적이 구입 답을 물려받음');
     await pick(page, '전용', '60㎡ 이하'); await pick(page, '집이 있는', '경기·인천'); await pick(page, '지금 쓰는', '없음'); await next(page);
-    const codes = await page.$$eval('.cy-card', (es) => es.map((e) => e.dataset.p));
+    const codes = await page.$$eval(A + '.cy-card', (es) => es.map((e) => e.dataset.p));
     ok(codes.length >= 3, `카드가 적음 ${codes}`);
     const order = await page.evaluate(async (cs) => { const r = await fetch('/rules.json').then((x) => x.json()); return cs.map((c) => r.loans.find((p) => p.code === c).order); }, codes);
     ok(order.every((o, i) => !i || o > order[i - 1]), `카드가 order 순서가 아님 ${codes}`);
-    ok((await page.locator('.cy-group h3').allInnerTexts()).join().includes('집 살 때'), '구입 묶음 없음');
-    ok((await page.locator('.cy-group').count()) === 2, '묶음 2개가 아님');
+    ok((await page.locator(A + '.cy-group h3').allInnerTexts()).join().includes('집 살 때'), '구입 묶음 없음');
+    ok((await page.locator(A + '.cy-group').count()) === 2, '묶음 2개가 아님');
     await noOverflow(page, '구입+전세 결과');
     await ctx.close();
   }
   // ④ 공고: 묻기 → 주택형 → 채움(면적 경계·규제·집값), 고친 칸 유지, 빼기
   {
     const { page, ctx, seen } = await open('/calc#n=100');
-    await page.waitForSelector('[data-act=nyes]');
+    await page.waitForSelector(A + '[data-act=nyes]');
     ok(seen.requests.some((r) => r.url.includes('notices.json')), '#n=인데 notices.json을 받지 않음');
-    await page.click('[data-act=nyes]');
-    const rows = await page.locator('[data-act=ntype]').allInnerTexts();
+    await page.click(A + '[data-act=nyes]');
+    const rows = await page.locator(A + '[data-act=ntype]').allInnerTexts();
     ok(rows[0].startsWith('59A') && rows[1].startsWith('84A') && rows[2].startsWith('101A') && rows[3].includes('못 정했'), `주택형 순서 ${rows}`);
-    await page.click('[data-act=ntype][data-i="1"]');
-    const bar = await page.locator('.cy-nbar').innerText();
+    await page.click(A + '[data-act=ntype][data-i="1"]');
+    const bar = await page.locator(A + '.cy-nbar').innerText();
     for (const w of ['표본 민영', '84A', '집 살 때', '아파트', '60~85㎡', '경기·인천', '6억 3,000만원', '규제지역 아님']) ok(bar.includes(w), `공고 줄에 「${w}」 없음`);
     await walkBuy(page, { price: 0, region: null });
-    ok((await page.locator('.cy-sum').count()) === 1, '공고로 결과까지 못 감');
-    ok(/집값 6억 3,000만원/.test(await page.locator('.cy-nbar').innerText()), '결과에 공고 집값 없음');
+    ok((await page.locator(A + '.cy-sum').count()) === 1, '공고로 결과까지 못 감');
+    ok(/집값 6억 3,000만원/.test(await page.locator(A + '.cy-nbar').innerText()), '결과에 공고 집값 없음');
     ok((await q(page, '규제지역').locator('button', { hasText: '아니오' }).getAttribute('aria-pressed')) === 'true', '규제 값이 안 채워짐');
-    await page.click('[data-act=nchange]');
-    await page.click('[data-act=ntype][data-i="0"]');
-    const bar2 = await page.locator('.cy-nbar').innerText();
+    await page.click(A + '[data-act=nchange]');
+    await page.click(A + '[data-act=ntype][data-i="0"]');
+    const bar2 = await page.locator(A + '.cy-nbar').innerText();
     ok(bar2.includes('59A'), '주택형 바꾸기');
     ok(!bar2.includes('60~85㎡'), '직접 누른 면적이 공고 값으로 표시됨');
     ok(bar2.includes('4억 8,000만원'), `주택형을 바꿔도 집값이 그대로: ${bar2}`);
     // 사람이 고친 집값은 주택형을 바꿔도 공고 값으로 덮지 않는다
-    await page.click('[data-act=edit]');
+    await page.click(A + '[data-act=edit]');
     for (let i = 0; i < 4; i++) await next(page);
     await fill(page, '집값', 55555);
-    await page.click('[data-act=nchange]');
-    await page.click('[data-act=ntype][data-i="1"]');
-    ok((await page.locator('input[data-f=price]').inputValue()) === '55555', '사람이 고친 집값을 공고 값으로 덮음');
+    await page.click(A + '[data-act=nchange]');
+    await page.click(A + '[data-act=ntype][data-i="1"]');
+    ok((await page.locator(A + 'input[data-f=price]').inputValue()) === '55555', '사람이 고친 집값을 공고 값으로 덮음');
     ok((await q(page, '집값').locator('.cy-tag').count()) === 0, '사람이 고친 집값에 공고 표시');
-    await page.click('[data-act=nremove]');
-    ok((await page.locator('input[data-f=price]').inputValue()) === '55555', '공고 빼기가 사람이 고친 집값까지 지움');
-    ok((await page.locator('[data-act=noffer]').count()) === 1, '공고 빼기 뒤 채우기 줄 없음');
+    await page.click(A + '[data-act=nremove]');
+    ok((await page.locator(A + 'input[data-f=price]').inputValue()) === '55555', '공고 빼기가 사람이 고친 집값까지 지움');
+    ok((await page.locator(A + '[data-act=noffer]').count()) === 1, '공고 빼기 뒤 채우기 줄 없음');
     ok(!seen.errors.length, `공고 스크립트 오류 ${seen.errors}`);
     await ctx.close();
     // 번호별: 하나짜리·유형 0·대체본 경계·오피스텔·임대
-    const go = async (no) => { const o = await open(`/calc#n=${no}`); await o.page.waitForSelector('[data-act=nyes]'); return o; };
+    const go = async (no) => { const o = await open(`/calc#n=${no}`); await o.page.waitForSelector(A + '[data-act=nyes]'); return o; };
     let o = await go(200);
-    await o.page.click('[data-act=nyes]');
-    let t = await o.page.locator('.cy-nbar').innerText();
+    await o.page.click(A + '[data-act=nyes]');
+    let t = await o.page.locator(A + '.cy-nbar').innerText();
     ok(t.includes('공공주택특별법') && t.includes('서울') && t.includes('규제지역('), `국민 공고 줄 ${t}`);
     await o.ctx.close();
     o = await go(300);
-    await o.page.click('[data-act=nyes]');
-    t = await o.page.locator('.cy-nbar').innerText();
+    await o.page.click(A + '[data-act=nyes]');
+    t = await o.page.locator(A + '.cy-nbar').innerText();
     ok(!t.includes('규제지역'), '규제 모름인데 채움');
     await o.ctx.close();
     o = await go(400);
-    await o.page.click('[data-act=nyes]');
-    t = await o.page.locator('.cy-nbar').innerText();
+    await o.page.click(A + '[data-act=nyes]');
+    t = await o.page.locator(A + '.cy-nbar').innerText();
     ok(!/60㎡|60~85/.test(t), `대체본 60㎡ 경계를 채움: ${t}`);
     await o.ctx.close();
     o = await go(500);
     ok((await o.page.locator('.cy-calc').innerText()).includes('지역·주택 종류를'), '오피스텔 묻는 문구');
-    await o.page.click('[data-act=nyes]');
-    t = await o.page.locator('.cy-nbar').innerText();
+    await o.page.click(A + '[data-act=nyes]');
+    t = await o.page.locator(A + '.cy-nbar').innerText();
     ok(t.includes('주거용 오피스텔') && !t.includes('집값'), `오피스텔 공고 줄 ${t}`);
     await o.ctx.close();
     o = await go(600);
     ok((await o.page.locator('.cy-calc').innerText()).includes('지역을 채워'), '임대 묻는 문구');
-    await o.page.click('[data-act=nyes]');
+    await o.page.click(A + '[data-act=nyes]');
     await walkBuy(o.page, { price: 50000, region: null });
     ok(!(await o.page.locator('.cy-calc').innerText()).includes('분양받는 집이에요'), '임대 공고에 분양 문구');
     await o.ctx.close();
     // 아니요 → 채우기 줄 → 예
     o = await go(100);
-    await o.page.click('[data-act=nno]');
-    await o.page.click('[data-act=noffer]');
-    ok((await o.page.locator('[data-act=ntype]').count()) === 4, '채우기 줄에서 주택형 고르기');
+    await o.page.click(A + '[data-act=nno]');
+    await o.page.click(A + '[data-act=noffer]');
+    ok((await o.page.locator(A + '[data-act=ntype]').count()) === 4, '채우기 줄에서 주택형 고르기');
     await o.ctx.close();
   }
   // ⑤ 실패: 공고 파일 실패·없는 번호는 묻지 않고 빈 계산기, 규칙 실패·다른 schema는 안내만
   {
     let o = await open('/calc#n=100', { routes: { notices: (r) => r.fulfill({ status: 404, body: '' }) } });
-    await o.page.waitForSelector('[data-act=next]');
-    ok((await o.page.locator('[data-act=nyes]').count()) === 0, '공고 404인데 물음');
+    await o.page.waitForSelector(A + '[data-act=next]');
+    ok((await o.page.locator(A + '[data-act=nyes]').count()) === 0, '공고 404인데 물음');
     await o.ctx.close();
     o = await open('/calc#n=100', { routes: { notices: (r) => r.fulfill({ status: 200, body: '{not json' }) } });
-    await o.page.waitForSelector('[data-act=next]');
+    await o.page.waitForSelector(A + '[data-act=next]');
     await o.ctx.close();
     o = await open('/calc#n=999');
-    await o.page.waitForSelector('[data-act=next]');
-    ok((await o.page.locator('[data-act=nyes]').count()) === 0, '없는 번호인데 물음');
+    await o.page.waitForSelector(A + '[data-act=next]');
+    ok((await o.page.locator(A + '[data-act=nyes]').count()) === 0, '없는 번호인데 물음');
     await o.ctx.close();
     o = await open('/calc', { routes: { rules: (r) => r.fulfill({ status: 500, body: '' }) } });
     await o.page.waitForSelector('.cy-calc-fail');
@@ -270,15 +272,189 @@ try {
   // ⑥ 키보드: 다음을 누르면 화면 머리로 포커스, 답한 질문이 사라지면 카드 제목으로
   {
     const { page, ctx } = await open('/calc#calc=loan&t=buy');
-    await page.waitForSelector('[data-act=next]');
-    await page.focus('[data-act=next]');
+    await page.waitForSelector(A + '[data-act=next]');
+    await page.focus(A + '[data-act=next]');
     await page.keyboard.press('Enter');
     ok(await page.evaluate(() => document.activeElement.classList.contains('cy-prog')), '다음 뒤 포커스');
     await page.goBack().catch(() => {});
     await ctx.close();
   }
+  // ⑦ 특공 탭(2단계): 탭 고르기, 값 미리 채우기, 탭별 답 분리, 공고 표, 공공주택 범위 밖, 물량 공고
+  {
+    const walkSpecial = async (page) => {
+      await pick(page, '본인·배우자', '모두 없음'); await pick(page, '혼인', '혼인신고 7년 이내'); await next(page);
+      await pick(page, '이미 태어난', '1명'); await pick(page, '공고일 기준 2세', '있음'); await next(page);
+      await fill(page, '만 나이', 34); await pick(page, '등본상', '세대주'); await fill(page, '같은 등본', 3); await pick(page, '부부 말고', '아니오'); await next(page);
+      await fill(page, '본인', 4800); await pick(page, '본인이 작년', '예'); await fill(page, '배우자', 3600); await pick(page, '배우자가 작년', '예'); await next(page);
+      await pick(page, '청약통장', '1순위'); await next(page);
+      await pick(page, '본인·배우자·같은', '없음'); await pick(page, '특별공급에', '아니오'); await next(page);
+    };
+    const { page, ctx, seen } = await open('/calc#calc=special');
+    await page.waitForSelector(A + '[data-act=next]');
+    ok((await page.locator('#cy-tab-special').getAttribute('aria-selected')) === 'true', '#calc=special인데 특공 탭이 아님');
+    ok(await page.locator('#cy-pane-loan').isHidden(), '정책대출 패널이 보임');
+    ok(!seen.requests.some((r) => r.url.includes('notices.json')), '#n= 없이 notices.json을 받음(특공)');
+    await targets44(page, '특공 질문');
+    const before = seen.requests.length, storeBefore = await page.evaluate(() => JSON.stringify([localStorage, sessionStorage, document.cookie]));
+    await walkSpecial(page);
+    const sum = await page.locator(A + '.cy-sum').innerText();
+    ok(sum.includes('공통 요건 충족'), `특공 요약 ${sum}`);
+    const cards = await page.$$eval(A + '.cy-card', (es) => es.map((e) => e.dataset.p));
+    ok(JSON.stringify(cards) === JSON.stringify(['A1', 'A2', 'A3']), `특공 카드 순서 ${cards}`);
+    const text = await page.locator(A + '.cy-card[data-p=A1]').innerText();
+    ok(text.includes('우선공급') && text.includes('민영·국민'), `신혼 카드 ${text.slice(0, 80)}`);
+    ok((await page.locator(A + '.cy-card[data-p=A2] .cy-asks .cy-q').count()) > 0, '생애최초 카드에 질문 없음');
+    const after = seen.requests.slice(before);
+    ok(!after.some((r) => r.method !== 'GET' || /4800|3600/.test(r.url + r.post)), '특공 입력값이 요청에 실림');
+    ok((await page.evaluate(() => JSON.stringify([localStorage, sessionStorage, document.cookie]))) === storeBefore, '특공 저장소·쿠키가 바뀜');
+    const all = await page.locator('.cy-calc').innerText();
+    for (const w of ['대출 가능', '승인', '당첨 가능', '자격 있음', '신청하기', '유리', '통과']) ok(!all.includes(w), `특공 화면에 금지 표현 「${w}」`);
+    ok(!/undefined|NaN|null/.test(all), '특공 화면에 undefined·NaN·null');
+    await noOverflow(page, '특공 결과'); await targets44(page, '특공 결과');
+    // 물량 공고: 표본 공고 표에서 고른다(일정은 가짜)
+    await page.route('**/schedule.json', (r) => r.fulfill({ json: { items: [{ id: '100-100', applyhomeUrl: 'https://www.applyhome.co.kr/x', phases: [{ k: 'sp', date: '2099-01-02', end: '2099-01-03' }] }] } }));
+    await page.click(A + '.cy-card[data-p=A1] [data-act=supply]');
+    await page.waitForSelector(A + '.cy-card[data-p=A1] .cy-sup ul, ' + A + '.cy-card[data-p=A1] .cy-sup .cy-qh');
+    ok((await page.locator(A + '.cy-card[data-p=A1] .cy-sup').innerText()).includes('자격은 공고문 확인'), '물량 공고 제목');
+    // 키보드: 탭 화살표
+    await page.focus('#cy-tab-special'); await page.keyboard.press('ArrowLeft');
+    ok((await page.locator('#cy-tab-loan').getAttribute('aria-selected')) === 'true', '화살표로 탭이 안 바뀜');
+    // 특공에서 답한 값 → 정책대출 처음 열 때 확인
+    ok((await page.locator(A + '.cy-pf').count()) === 1, '정책대출 탭에 미리 채우기 확인이 없음');
+    const pf = await page.locator(A + '.cy-pf').innerText();
+    ok(pf.includes('34') && pf.includes('4800'), `미리 채우기 값 ${pf}`);
+    await page.click(A + '[data-act=pfok]');
+    await page.click(A + '[data-v=buy]');
+    await next(page);
+    ok((await page.locator(A + '.cy-qt', { hasText: '세대 순자산' }).count()) === 1, '맞아요 뒤 공통 질문을 건너뛰지 않음');
+    ok(!seen.errors.length, `특공 스크립트 오류 ${seen.errors}`);
+    await ctx.close();
+    // 정책대출에서 답한 값 → 특공 처음 열 때, 고치면 특공에만
+    let o = await open('/calc#calc=loan&t=buy');
+    await o.page.waitForSelector(A + '[data-act=next]');
+    await next(o.page);
+    await pick(o.page, '본인·배우자', '모두 없음'); await pick(o.page, '혼인', '미혼'); await next(o.page);
+    await o.page.click('#cy-tab-special');
+    ok((await o.page.locator(A + '.cy-pf').count()) === 1, '특공 탭에 미리 채우기 확인이 없음');
+    await o.page.click(A + '[data-act=pfedit]');
+    await pick(o.page, '혼인', '혼인신고 7년 이내');
+    await o.page.click('#cy-tab-loan');
+    ok((await q(o.page, '이미 태어난').count()) === 1, '정책대출 화면이 유지되지 않음');
+    await o.page.click(A + '[data-act=prev]');
+    ok((await q(o.page, '혼인').locator('[aria-pressed=true]').innerText()) === '미혼', '특공에서 고친 값이 정책대출로 넘어감');
+    await o.ctx.close();
+    // 고칠게요·맞아요가 뒤 단계에서 깨지지 않는지, 확인한 값만 건너뛰는지, 값이 복사본인지
+    o = await open('/calc#calc=loan&t=buy');
+    await o.page.waitForSelector(A + '[data-act=next]');
+    for (let i = 0; i < 6; i++) await next(o.page);
+    await o.page.click('#cy-tab-special');
+    await pick(o.page, '본인·배우자', '모두 없음'); await pick(o.page, '혼인', '혼인신고 7년 이내');
+    await o.page.click('#cy-tab-loan');
+    ok((await o.page.locator(A + '.cy-pf li').count()) === 2, '확인 화면에 답한 값만 나오지 않음');
+    await o.page.click(A + '[data-act=pfok]');
+    ok((await o.page.locator(A + '[data-act=next]').count()) === 1 && !o.seen.errors.length, `맞아요 뒤 화면이 깨짐 ${o.seen.errors}`);
+    await next(o.page);
+    ok((await o.page.locator(A + '.cy-qt', { hasText: '이미 태어난' }).count()) === 1, '답하지 않은 공통 질문까지 건너뜀');
+    for (let i = 0; i < 5; i++) await next(o.page);
+    await o.page.click(A + '[data-act=edit]');
+    ok((await o.page.locator(A + '.cy-qt', { hasText: '혼인' }).count()) === 1, '답 고치기에서 공통 질문을 못 고침');
+    await o.ctx.close();
+    o = await open('/calc#calc=special');
+    await o.page.waitForSelector(A + '[data-act=next]');
+    await pick(o.page, '본인·배우자', '애매함');
+    await o.page.click('#cy-tab-loan');
+    ok((await o.page.locator(A + '.cy-pf').count()) === 0, '애매함만 답했는데 확인 화면이 뜸');
+    await o.ctx.close();
+    // 카드에서만 답한 값을 고칠 수 있는지, 긴 선택지가 좁은 화면에서 넘치지 않는지
+    o = await open('/calc#calc=special');
+    await o.page.waitForSelector(A + '[data-act=next]');
+    await walkSpecial(o.page);
+    await pick(o.page, '소득세를 통산', '아니오');
+    await o.page.locator(A + 'details.cy-asks summary').click();
+    await o.page.locator(A + 'details.cy-asks .cy-q', { hasText: '소득세를 통산' }).locator('button', { hasText: '예' }).click();
+    ok((await o.page.locator(A + '.cy-card[data-p=A2]').count()) === 1, '카드에서만 답한 값을 고쳐도 카드가 돌아오지 않음');
+    await o.ctx.close();
+    o = await open('/calc#calc=special', { width: 320, height: 700 });
+    await o.page.waitForSelector(A + '[data-act=next]');
+    await noOverflow(o.page, '320px 질문 1');
+    for (let i = 0; i < 4; i++) await next(o.page);
+    await noOverflow(o.page, '320px 청약통장');
+    await next(o.page); await next(o.page);
+    await noOverflow(o.page, '320px 빈 답 결과');
+    await o.ctx.close();
+    // 정책대출 「그 밖」은 특공으로 넘기지 않는다, 특공 자녀 수 풀이는 미리 채워도 보인다
+    o = await open('/calc#calc=loan&t=buy');
+    await o.page.waitForSelector(A + '[data-act=next]');
+    await next(o.page);
+    await pick(o.page, '본인·배우자', '그 밖'); await pick(o.page, '혼인', '혼인신고 7년 이내'); await next(o.page);
+    await pick(o.page, '이미 태어난', '1명');
+    await o.page.click('#cy-tab-special');
+    ok(!(await o.page.locator(A + '.cy-pf').innerText()).includes('그 밖'), '「그 밖」이 특공으로 넘어감');
+    await o.page.click(A + '[data-act=pfok]');
+    ok((await o.page.locator(A + '.cy-qt', { hasText: '갖고 있나요' }).count()) === 1, '넘기지 않은 집 질문을 다시 묻지 않음');
+    await next(o.page);
+    ok((await o.page.locator(A + '.cy-q', { hasText: '같은 등본 자녀만' }).count()) === 1, '미리 채운 자녀 수의 풀이가 안 보임');
+    await o.ctx.close();
+    // 공고 종류·물량 목록 실패·긴 이름·특공 탭 공고 줄 버튼
+    o = await open('/calc#n=500');
+    await o.page.waitForSelector(A + '[data-act=nyes]');
+    await o.page.click(A + '[data-act=nyes]');
+    await o.page.click('#cy-tab-special');
+    await walkSpecial(o.page);
+    ok((await o.page.locator(A + '.cy-card').count()) === 0, '오피스텔 공고에 특공 카드가 나옴');
+    ok((await o.page.locator(A + '.cy-why').first().innerText()).includes('판정 대상이 아니'), '오피스텔 범위 밖 안내 없음');
+    await o.ctx.close();
+    o = await open('/calc#n=700');
+    await o.page.waitForSelector(A + '[data-act=nno]');
+    await o.page.click(A + '[data-act=nno]');
+    await noOverflow(o.page, '공고 채우기 줄');
+    await o.page.click(A + '[data-act=noffer]');
+    await noOverflow(o.page, '주택형 고르기');
+    await o.page.click(A + '[data-act=ntype][data-i="0"]');
+    await o.page.click('#cy-tab-special');
+    await pick(o.page, '본인·배우자', '모두 없음'); await pick(o.page, '혼인', '혼인신고 7년 이내'); await next(o.page);
+    await pick(o.page, '이미 태어난', '1명'); await pick(o.page, '공고일 기준 2세', '있음'); await next(o.page);
+    await fill(o.page, '만 나이', 34); await pick(o.page, '등본상', '세대원'); await fill(o.page, '같은 등본', 3); await pick(o.page, '부부 말고', '아니오'); await next(o.page);
+    await fill(o.page, '본인', 4800); await pick(o.page, '본인이 작년', '예'); await fill(o.page, '배우자', 3600); await pick(o.page, '배우자가 작년', '예'); await next(o.page);
+    await pick(o.page, '청약통장', '1순위'); await next(o.page);
+    await pick(o.page, '본인·배우자·같은', '없음'); await pick(o.page, '특별공급에', '아니오'); await next(o.page);
+    ok((await o.page.locator(A + '.cy-card[data-p=A3]').getAttribute('class')).includes('is-check'), '규제 공고의 세대원 신생아가 확인 필요가 아님');
+    await noOverflow(o.page, '긴 이름 특공 결과');
+    await o.page.route('**/schedule.json', (r) => r.fulfill({ status: 500, body: '' }));
+    await o.page.click(A + '.cy-card[data-p=A1] [data-act=supply]');
+    await o.page.waitForFunction(() => /불러오지 못했어요/.test(document.querySelector('.cy-card[data-p=A1]').innerText));
+    await o.page.click(A + '[data-act=nchange]');
+    ok((await o.page.locator('#cy-tab-loan').getAttribute('aria-selected')) === 'true' && (await o.page.locator(A + '[data-act=ntype]').count()) === 3, '특공 탭 주택형 바꾸기');
+    ok(await o.page.evaluate(() => document.activeElement.classList.contains('cy-prog-t')), '주택형 바꾸기 뒤 포커스');
+    await o.page.click(A + '[data-act=ntype][data-i="1"]');
+    await o.page.click('#cy-tab-special');
+    ok((await o.page.locator(A + '.cy-nbar').innerText()).includes('84A'), '주택형 바꾼 값이 특공 탭에 반영되지 않음');
+    await o.page.click(A + '[data-act=nremove]');
+    ok((await o.page.locator(A + '.cy-nbar').count()) === 0, '특공 탭 공고 정보 빼기');
+    ok(!o.seen.errors.length, `공고 탭 오류 ${o.seen.errors}`);
+    await o.ctx.close();
+    // 공고: 세대 표·공공주택 범위 밖
+    o = await open('/calc#n=100');
+    await o.page.waitForSelector(A + '[data-act=nyes]');
+    await o.page.click(A + '[data-act=nyes]');
+    await o.page.click(A + '[data-act=ntype][data-i="1"]');
+    await o.page.click('#cy-tab-special');
+    await walkSpecial(o.page);
+    const nb = await o.page.locator(A + '.cy-nbar').innerText();
+    ok(nb.includes('표본 민영') && nb.includes('84A') && nb.includes('민영'), `특공 공고 줄 ${nb}`);
+    ok((await o.page.locator(A + '.cy-card .cy-vl', { hasText: /^국민$/ }).count()) === 0, '민영 공고인데 국민 줄이 나옴');
+    await o.ctx.close();
+    o = await open('/calc#n=200');
+    await o.page.waitForSelector(A + '[data-act=nyes]');
+    await o.page.click(A + '[data-act=nyes]');
+    await o.page.click('#cy-tab-special');
+    await walkSpecial(o.page);
+    ok((await o.page.locator(A + '.cy-card').count()) === 0, '공공주택 특별법 공고에 카드가 나옴');
+    ok((await o.page.locator(A + '.cy-why').first().innerText()).includes('계산 범위 밖'), '범위 밖 안내 없음');
+    await o.ctx.close();
+  }
 } catch (e) {
-  fails.push(`점검 중단: ${e.message.split('\n')[0]}`);
+  fails.push(`점검 중단: ${e.message.replace(/\s+/g, ' ').slice(0, 260)}`);
 } finally {
   await browser.close();
   if (server) server.kill();
