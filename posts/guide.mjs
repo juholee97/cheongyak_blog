@@ -48,7 +48,7 @@ export async function checkGuide(d) {
   const text = textOf(d).split('기관추천').join('기관'); // 공식 명칭 '기관추천 특별공급'은 권유 표현이 아님
   BANNED.forEach((b) => { if (text.includes(b)) issues.push(`금지 표현 "${b}"`); });
   // 숫자 대조: 근거 문서에 같은 숫자가 있어야 한다(쉼표 무시, 연도·날짜 조각 포함)
-  const doc = (await readFile(join(ROOT, d.factsDoc), 'utf8')).replace(/,/g, '');
+  const doc = (await Promise.all([].concat(d.factsDoc).map((f) => readFile(join(ROOT, f), 'utf8')))).join('\n').replace(/,/g, ''); // 근거 문서가 여럿일 수 있다(계산기 페이지)
   const nums = new Set(doc.match(/\d+(\.\d+)?/g));
   for (const m of new Set(text.replace(/,/g, '').match(/\d+(\.\d+)?/g) || [])) if (!nums.has(m)) issues.push(`숫자 "${m}"가 근거 문서(${d.factsDoc})에 없습니다`);
   return issues;

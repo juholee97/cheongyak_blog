@@ -172,7 +172,7 @@
       "variants": [
         { "key": "single", "label": "미혼", "when": { "f": "marriage", "is": "single" } },
         { "key": "newlywed", "label": "신혼가구", "onePerson": true, "when": { "f": "marriage", "is": ["le7y", "soon"] } },
-        { "key": "over7y", "label": "혼인 7년 넘음", "when": { "all": [ { "f": "marriage", "is": "over7y" },
+        { "key": "over7y", "label": "혼인 7년 넘음", "list": false, "when": { "all": [ { "f": "marriage", "is": "over7y" },
           { "unknownIf": { "when": { "f": "marriage", "is": "over7y" }, "why": "기준이 미혼·신혼가구로만 나뉘어 혼인 7년 넘은 가구의 소득 기준은 원문에 없어요" } } ] } }
       ],
       "facts": {
@@ -461,12 +461,12 @@
       "checked": "2026-11-08", "until": "2026-12-31", "untilNote": "순자산 2026년도 기준", "refresh": "monthly", "watch": ["신생아 특례 버팀목"]
     },
 
-    { "id": "loan-profit-share", "code": "X1", "order": 90, "group": "buy", "offer": "unverified", "name": "수익공유형·손익공유형 모기지",
+    { "id": "loan-profit-share", "code": "X1", "order": 90, "group": "buy", "offer": "unverified", "name": "공유형 모기지(기금)",
       "offerNote": "기금 상품 페이지는 있으나 신규 취급 여부를 확인하지 못했어요(공식 중단 공지 없음)",
       "instead": ["loan-didimdol"], "src": ["https://nhuf.molit.go.kr/FP/FP05/FP0503/FP05030201.jsp", "https://nhuf.molit.go.kr/FP/FP05/FP0503/FP05030301.jsp"],
       "checked": "2026-11-05", "refresh": "monthly" },
     { "id": "loan-special-bogeumjari", "code": "X2", "order": 91, "group": "buy", "offer": "ended", "name": "특례보금자리론",
-      "offerNote": "한국주택금융공사 대출 메뉴에 없어요(2026-11-08 확인). 대신 아래 상품을 보세요",
+      "offerNote": "한국주택금융공사 대출 메뉴에 없어요(2026-11-08 확인)",
       "instead": ["loan-bogeumjari", "loan-newborn-buy"], "src": ["https://www.hf.go.kr/ko/sub01/sub01_01_01.do"],
       "checked": "2026-11-08", "refresh": "monthly" },
     { "id": "loan-better-bogeumjari", "code": "X3", "order": 92, "group": "buy", "offer": "unverified", "name": "더나은보금자리론",

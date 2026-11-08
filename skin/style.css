@@ -465,3 +465,14 @@ a.hero-row:hover { background: var(--tint3); text-decoration: none; color: var(-
   .post-title { font-size: 23px; }
   .post-body table:not([style*="table-layout"]) { display: block; overflow-x: auto; white-space: nowrap; } /* 넓은 표는 옆으로 밀어 보기(단계별 수 표는 그대로) */
 }
+
+/* 정책대출 확인 리모컨(skin/images/calc.js) — 오른쪽 아래 글자 버튼 하나, 누르면 계산기 페이지. z 45: 탭 바(40) 위, 달력 상세(50)·시트(55·60) 아래 */
+.cy-remote { position: fixed; right: 16px; bottom: 16px; z-index: 45; display: inline-flex; white-space: nowrap; align-items: center; min-height: 44px; padding: 0 16px; border-radius: 3px; background: var(--primary); color: #fff; font-size: 13px; font-weight: 700; box-shadow: 0 2px 8px rgba(15, 37, 87, .25); }
+.cy-remote:hover { color: #fff; text-decoration: none; background: var(--navy); }
+.cy-remote:focus-visible { outline: 3px solid var(--navy); outline-offset: 2px; }
+.cy-calc { margin: 16px 0 28px; padding: 16px; border: 1px solid var(--line); border-radius: 3px; background: var(--tint3); }
+.cy-calc-loading, .cy-calc-fail { margin: 0; font-size: 14px; color: var(--sub); }
+@media (max-width: 700px) {
+  .cy-remote { right: 12px; bottom: calc(64px + 12px + env(safe-area-inset-bottom)); font-size: 12px; }
+}
+@media print { .cy-remote { display: none; } }

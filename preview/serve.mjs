@@ -8,6 +8,7 @@ import { join, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { draftOf, IMG_RE } from '../posts/weekly.mjs';
 import { checkDraft } from '../posts/check.mjs';
+import { buildRules } from '../rules/build.mjs';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const SKIN = join(ROOT, 'skin');
@@ -82,6 +83,7 @@ export async function render(page, post = POSTS[0]) {
     'var_schedule-url': '/schedule.json', prev_page: 'href="#"', next_page: 'href="#"', no_more_prev: 'no-more-prev', no_more_next: '',
   });
   html = html.replace(/\[##_[\w-]+_##\]/g, ''); // 광고 등 나머지는 빈 값
+  html = html.replace("window.CHEONGYAK_SCHEDULE_URL = '/schedule.json';", "window.CHEONGYAK_SCHEDULE_URL = '/schedule.json'; window.CY_CALC_PAGE = '/calc';"); // 계산기 페이지 주소(미리보기)
   html = html.replace(/(href|src)="\.\//g, '$1="/'); // 티스토리처럼 스킨 파일은 절대 경로로(/category/... 아래에서도 열리게)
   const leftover = [...html.matchAll(/<\/?s_\w+>|\[##_/g)].map((m) => m[0]);
   return { html, unknown: [...unknown], leftover };
@@ -107,7 +109,8 @@ async function check() {
     if (page === 'post' && !r.html.includes('class="post"')) fail('post: 본문 없음');
     console.log(`  ${page} 렌더 확인`);
   }
-  try { execFileSync(process.execPath, ['--check', join(SKIN, 'images', 'calendar.js')]); console.log('  calendar.js 문법 확인'); } catch (e) { fail('calendar.js 문법 오류\n' + e.stderr); }
+  for (const js of ['calendar.js', 'calc.js']) try { execFileSync(process.execPath, ['--check', join(SKIN, 'images', js)]); console.log(`  ${js} 문법 확인`); } catch (e) { fail(`${js} 문법 오류\n` + e.stderr); }
+  try { execFileSync(process.execPath, [join(ROOT, 'rules', 'check.mjs')], { stdio: 'inherit' }); } catch { fail('rules/check.mjs 실패'); }
   try { execFileSync(process.execPath, [join(ROOT, 'crawler', 'check.mjs')], { stdio: 'inherit' }); } catch { fail('crawler/check.mjs 실패'); }
   try { execFileSync(process.execPath, [join(ROOT, 'posts', 'map.check.mjs')], { stdio: 'inherit' }); } catch { fail('posts/map.check.mjs 실패'); }
   try { execFileSync(process.execPath, [join(ROOT, 'posts', 'nearby.check.mjs')], { stdio: 'inherit' }); } catch { fail('posts/nearby.check.mjs 실패'); }
@@ -142,6 +145,22 @@ if (process.argv.includes('--check')) {
         const { html } = await render('post', { cat: d.category, title: d.title, date: '[발행일]', rp: 0, link: '#', summary: '', thumb: '', desc });
         res.writeHead(200, { 'content-type': TYPES['.html'] });
         return res.end(html);
+      }
+      // 계산기 페이지(/calc, 본문은 drafts/guide_loan-calculator.json이 있으면 그 글)와 분양분석 글 표본(/post-analysis, 본문 청약홈 링크)
+      if (path === '/calc' || path === '/post-analysis') {
+        const d = path === '/calc' ? JSON.parse(await readFile(join(ROOT, 'drafts', 'guide_loan-calculator.json'), 'utf8').catch(() => '{}')) : null;
+        const post = path === '/calc'
+          ? { cat: '대출·정책', title: d?.title || '정책대출 확인(계산기 페이지)', date: '[발행일]', rp: 0, link: '/calc', summary: '', thumb: '', desc: d?.html?.replace(IMG_RE, '') || '<p>(계산기 페이지 본문)</p>' }
+          : { cat: '분양분석', title: '청라 아크원 푸르지오 분양가·청약 분석', date: '2026. 10. 28.', rp: 0, link: '/post-analysis', summary: '', thumb: '', desc: '<p>분석 본문 예시</p><p><a href="https://www.applyhome.co.kr/ai/aia/selectAPTLttotPblancDetail.do?houseManageNo=2026000496&amp;pblancNo=2026000496">청약홈 공고</a></p>' };
+        const { html } = await render('post', post);
+        res.writeHead(200, { 'content-type': TYPES['.html'] });
+        return res.end(html);
+      }
+      if (path === '/rules.json') { res.writeHead(200, { 'content-type': TYPES['.json'] }); return res.end(JSON.stringify(await buildRules())); }
+      if (path === '/notices.json') {
+        const real = join(ROOT, 'site', 'notices.json');
+        const f = await access(real).then(() => real, () => join(ROOT, 'crawler', 'fallback-notices.json'));
+        res.writeHead(200, { 'content-type': TYPES['.json'] }); return res.end(await readFile(f));
       }
       const page = path.startsWith('/category') ? 'category' : { '/': 'index', '/post': 'post' }[path];
       if (page) {

@@ -118,7 +118,7 @@ for (const p of loans.products) {
 // 정렬 코드 금지(9-2): order 말고 다른 값으로 정렬하지 않는다
 for (const f of ['skin/images/calc.js', 'posts/calc_post.mjs']) {
   const src = await read(f).catch(() => '');
-  for (const m of src.matchAll(/sort\(([^)]*)\)/g)) if (!/order/.test(m[1])) err(f, `order가 아닌 정렬: sort(${m[1]})`);
+  for (const m of src.matchAll(/sort\(([^\n]*)/g)) if (!/order/.test(m[1])) err(f, `order가 아닌 정렬: sort(${m[1].slice(0, 60)}`);
 }
 
 for (const x of warns) console.warn('경고', x);

@@ -82,13 +82,6 @@
     "notRegular": { "notice": "2025-06-27 이전 계약이면 종전 한도가 적용돼요(2025-06-28 계약분부터 변경)" }
   },
 
-  "presets": {
-    "/5": "loan:buy", "/11": "loan:buy", "/12": "loan:buy", "/15": "loan:buy", "/21": "loan:buy", "/36": "loan:buy",
-    "/22": "loan:jeonse", "/57": "loan:jeonse", "/58": "loan:jeonse",
-    "/47": "loan"
-  },
-  "presetsByCategory": { "대출·정책": "loan" },
-
   "smallDeposit": {
     "label": "최우선변제 소액임차보증금(주택임대차보호법 시행령 제10조)",
     "unit": "만원",
