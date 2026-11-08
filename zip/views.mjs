@@ -84,7 +84,13 @@ export async function siteMap(no, out) {
   }
   const st = sts[0], near = st && st.d <= 3000;
   // 학교·대형마트(브이월드 검색)
-  const search = async (query, d = 0.03) => { useApi('vworld'); const bbox = [lon - d * 1.25, lat - d, lon + d * 1.25, lat + d].join(','); const j = await fetch(`https://api.vworld.kr/req/search?service=search&request=search&version=2.0&crs=EPSG:4326&bbox=${bbox}&size=100&query=${encodeURIComponent(query)}&type=place&format=json&key=${key}`).then((r) => r.json()).catch(() => ({})); return (j.response?.result?.items || []).map((i) => ({ title: i.title, cat: i.category || '', lon: +i.point.x, lat: +i.point.y })); };
+  const search = async (query, d = 0.03, [sx, sy] = [lon, lat]) => { useApi('vworld'); const bbox = [sx - d * 1.25, sy - d, sx + d * 1.25, sy + d].join(','); const j = await fetch(`https://api.vworld.kr/req/search?service=search&request=search&version=2.0&crs=EPSG:4326&bbox=${bbox}&size=100&query=${encodeURIComponent(query)}&type=place&format=json&key=${key}`).then((r) => r.json()).catch(() => ({})); return (j.response?.result?.items || []).map((i) => ({ title: i.title, cat: i.category || '', lon: +i.point.x, lat: +i.point.y })); };
+  // 역 점은 배경 지도와 같은 브이월드 좌표로(OSM 역 좌표는 지도의 역 표시와 수십 m 어긋난다, 2026-11-09 사용자). 호선 표기 > 지하철역 > 가까운 순, 500m 안에 없으면 OSM 좌표 그대로
+  for (const s of sts) {
+    const rank = (i) => (i.title.includes('호선') ? 0 : /지하철역$/.test(i.cat) ? 1 : 2) + meters(s.lon, s.lat, i.lon, i.lat) / 1e4;
+    const v = (await search(s.name, 0.008, [s.lon, s.lat])).filter((i) => /철도\/지하철 > (지하철역|일반철도역)$/.test(i.cat) && (i.title === s.name || (i.title.startsWith(s.name + '(') && i.title.includes('호선'))) && meters(s.lon, s.lat, i.lon, i.lat) <= 500).sort((a, b) => rank(a) - rank(b))[0];
+    if (v) Object.assign(s, { lon: v.lon, lat: v.lat, d: dist(v.lon, v.lat) });
+  }
   const ps = [];
   for (const [lv, ab] of [['초등학교', '초'], ['중학교', '중'], ['고등학교', '고']]) {
     const s = (await search(lv, 0.018)).filter((i) => new RegExp(`교육부 > ${lv}$`).test(i.cat) && !/입구|병설|유치원|정류장/.test(i.title)).map((i) => ({ ...i, d: dist(i.lon, i.lat) })).filter((i) => i.d <= 1500).sort((a, b) => a.d - b.d)[0];
@@ -115,7 +121,7 @@ export async function siteMap(no, out) {
   const land = poly ? `<path d="${poly.map(([a, b], i) => `${i ? 'L' : 'M'}${a.toFixed(1)},${b.toFixed(1)}`).join('')}Z" fill="rgba(255,216,77,.72)" stroke="#17212b" stroke-width="3.5" stroke-linejoin="round"/>`
     : `<circle cx="${hx}" cy="${hy}" r="30" fill="rgba(255,216,77,.3)" stroke="#17212b" stroke-width="2" stroke-dasharray="5 4"/><circle cx="${hx}" cy="${hy}" r="11" fill="#ffd84d" stroke="#17212b" stroke-width="4"/>`;
   // 역: 3km 안이면 실제 자리, 멀면 그 방향 지도 가장자리에 「가장 가까운 ○○역」
-  const VIEW = { x0: 24, x1: 776, y0: 48, y1: 276 }, inView = ([x, y]) => x >= VIEW.x0 && x <= VIEW.x1 && y >= VIEW.y0 && y <= VIEW.y1;
+  const VIEW = { x0: 24, x1: 776, y0: 48, y1: 276 }, inView = ([x, y]) => x >= VIEW.x0 && x <= VIEW.x1 && y >= VIEW.y0 && y <= VIEW.y1, inPic = ([x, y]) => x >= 0 && x <= W && y >= 0 && y <= H;
   const toEdge = ([x, y]) => { const dx = x - hx, dy = y - hy, k = Math.min((dx > 0 ? VIEW.x1 - 60 - hx : hx - VIEW.x0 - 60) / Math.abs(dx || 1e-9), (dy > 0 ? VIEW.y1 - 6 - hy : hy - VIEW.y0 - 6) / Math.abs(dy || 1e-9)); return [hx + dx * k, hy + dy * k]; };
   const ARROW = (x, y) => '→↘↓↙←↖↑↗'[Math.round(((Math.atan2(y - hy, x - hx) + 2 * Math.PI) % (2 * Math.PI)) / (Math.PI / 4)) % 8];
   const spos = sts.map((x) => { const p = xy(x.lon, x.lat); return inView(p) ? p : toEdge(p); });
@@ -146,8 +152,8 @@ export async function siteMap(no, out) {
     const bx = out ? x : x + (dx / len) * 34, by = out ? y : y + (dy / len) * 26;
     const c = findSpot(bx, by, w, 32);
     if (!c) return '';
-    if (!out) lead(x, y, c);
-    return `${out ? '' : '<!--dot-->'}<div style="position:absolute;left:${x - 7}px;top:${y - 7}px;display:${out ? 'none' : 'block'};width:14px;height:14px;border-radius:50%;background:${bg};border:3px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)"></div><div style="position:absolute;left:${c.x}px;top:${c.y}px;transform:translate(-50%,-50%);background:${bg};color:${fg};font-weight:700;font-size:18px;padding:3px 10px;border-radius:999px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.35);border:2px solid ${fg === '#fff' ? '#fff' : '#cbd5e1'};display:flex;align-items:center;gap:6px">${inner ?? esc(text)} <span style="font-weight:500;opacity:.9">${sub}</span></div>`;
+    if (inPic([x0, y0])) lead(x0, y0, c); // 가장자리로 밀린 표시도 그림 안이면 실제 자리까지 선으로
+    return `<div style="position:absolute;left:${x0 - 7}px;top:${y0 - 7}px;display:${inPic([x0, y0]) ? 'block' : 'none'};width:14px;height:14px;border-radius:50%;background:${bg};border:3px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)"></div><div style="position:absolute;left:${c.x}px;top:${c.y}px;transform:translate(-50%,-50%);background:${bg};color:${fg};font-weight:700;font-size:18px;padding:3px 10px;border-radius:999px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.35);border:2px solid ${fg === '#fff' ? '#fff' : '#cbd5e1'};display:flex;align-items:center;gap:6px">${inner ?? esc(text)} <span style="font-weight:500;opacity:.9">${sub}</span></div>`;
   };
   const color = { 초: '#16a34a', 중: '#0d9488', 고: '#7c3aed', 마트: '#e11d48' };
   const logos = {};
@@ -174,7 +180,7 @@ export async function siteMap(no, out) {
       placed.push(...dots);
     }
     if (!c) return '';
-    if (!out) lead(px, py, { ...c, y: c.y + h / 2 });
+    if (inPic(p0)) lead(...p0, { ...c, y: c.y + h / 2 }); // 밀려난 기둥도 지도의 실제 역 자리까지 선으로 잇는다
     const top = c.y - h / 2;
     // 면 하나: 왼쪽 면은 오른쪽(접힌 모서리)을 축으로, 오른쪽 면은 왼쪽을 축으로 기울여 가운데 모서리가 아래로 내려온 v 모양
     // 위에서 내려다본 두 면 기둥(면 사이 130°): 뚜껑(마름모) + 왼쪽 면 + 오른쪽 면을 한 그림으로, 글씨는 똑바로 세워 얹는다
@@ -182,7 +188,7 @@ export async function siteMap(no, out) {
     const body = `<svg width="${PW}" height="${PH}" style="position:absolute;left:0;top:0"><polygon points="${pt([[0, SKH], [FW, SKH * 2], [FW, SKH * 2 + FH], [0, SKH + FH]])}" fill="#5f6553"/><polygon points="${pt([[FW, SKH * 2], [PW, SKH], [PW, SKH + FH], [FW, SKH * 2 + FH]])}" fill="#484d3f"/><polygon points="${pt([[FW, 0], [0, SKH], [FW, SKH * 2], [PW, SKH]])}" fill="#8b917b" stroke="#3a3f32" stroke-width="1"/></svg>`;
     // 글씨·그림도 면 기울기대로: 왼쪽 면은 바깥(왼쪽) 모서리를 축으로 +25°, 오른쪽 면은 바깥(오른쪽) 모서리를 축으로 −25°
     const col = (left) => `<div style="width:${FW}px;height:${fh}px;box-sizing:border-box;transform:skewY(${left ? SK : -SK}deg);transform-origin:${left ? 'left' : 'right'} top;display:flex;flex-direction:column;align-items:center;padding:3px 0">${TRAIN}<div style="writing-mode:vertical-rl;text-orientation:upright;font-size:${fs}px;font-weight:700;color:#fff;letter-spacing:3px;margin:5px 0;white-space:nowrap">${esc(label)}</div><div style="display:flex;flex-direction:column;align-items:center;gap:3px">${x.lines.map((l) => lineBadge(l, x.op, true)).join('')}</div></div>`;
-    return `${out ? '' : `<div style="position:absolute;left:${px - 6}px;top:${py - 6}px;width:12px;height:12px;border-radius:50%;background:#3a3f32;border:3px solid #fff"></div>`}
+    return `${inPic(p0) ? `<div style="position:absolute;left:${p0[0] - 6}px;top:${p0[1] - 6}px;width:12px;height:12px;border-radius:50%;background:#3a3f32;border:3px solid #fff"></div>` : ''}
 <div style="position:absolute;left:${c.x}px;top:${top}px;z-index:2;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;filter:drop-shadow(0 3px 5px rgba(0,0,0,.4))">
 <div style="position:relative;width:${PW}px;height:${PH}px">${body}<div style="position:absolute;left:0;top:${SKH}px;display:flex">${col(true)}${col(false)}</div></div>
 <div style="margin-top:3px;background:#3a3f32;color:#fff;font-size:13px;font-weight:700;padding:0 6px;border-radius:999px;white-space:nowrap">${tag}</div></div>`;
@@ -195,9 +201,9 @@ export async function siteMap(no, out) {
     const w = lg ? 104 : p.brand.length * 22 + 10, h = 54;
     const c = findSpot(x, y - 30, w, h);
     if (!c) return '';
-    if (!out) lead(x, y, c);
+    if (inPic(p0)) lead(...p0, c);
     const mark = lg ? `<img src="${lg}" style="height:28px;max-width:104px;object-fit:contain;display:block">` : `<div style="font-size:21px;font-weight:800;color:#e11d48;letter-spacing:-.02em">${esc(p.brand)}</div>`;
-    return `${out ? '' : `<div style="position:absolute;left:${x - 6}px;top:${y - 6}px;width:12px;height:12px;border-radius:50%;background:#e11d48;border:3px solid #fff"></div>`}<div style="position:absolute;left:${c.x}px;top:${c.y}px;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:1px;${HALO}">${mark}<div style="font-size:16px;font-weight:700;color:#17212b">${tag}</div></div>`;
+    return `${inPic(p0) ? `<div style="position:absolute;left:${p0[0] - 6}px;top:${p0[1] - 6}px;width:12px;height:12px;border-radius:50%;background:#e11d48;border:3px solid #fff"></div>` : ''}<div style="position:absolute;left:${c.x}px;top:${c.y}px;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:1px;${HALO}">${mark}<div style="font-size:16px;font-weight:700;color:#17212b">${tag}</div></div>`;
   };
   const rank = { 초: 0, 마트: 1, 중: 2, 고: 3 };
   // 기둥이 학교·마트 점을 덮지 않게, 역을 놓는 동안만 그 점 자리를 막아 둔다
