@@ -38,7 +38,7 @@ export function draftOf(rules, today) {
     subtitle: '구입 8종 · 전세 4종 · 소득 기준 · 한도 · 정책 금리 범위',
     thumbStats: [['구입·전세', `${active.length}종`]],
     tags: ['정책대출', '디딤돌대출', '보금자리론', '버팀목전세자금대출', '신생아특례대출', '청년전세대출', '신혼부부대출', '주택도시기금', '대출조건', '대출·정책'],
-    checked: rules.checkedAll || today,
+    checked: active.reduce((m, p) => (!m || p.checked < m ? p.checked : m), '') || today, // 가장 오래된 확인일(2-4)
     factsDoc: docs,
     answer: '국가 정책대출은 집 살 때 8종, 전세 4종이 지금 신규로 취급돼요. 상품마다 소득·집값(보증금)·한도가 달라, 아래 표로 먼저 맞는 상품을 고르고 신청 방법은 상품별 글에서 확인하세요.',
     intro: [

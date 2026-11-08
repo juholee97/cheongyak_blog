@@ -59,7 +59,7 @@
         "dtiRates": { "by": "incCouple", "cols": [10, 15, 20, 30],
           "rows": [ [2000, [2.85, 2.95, 3.05, 3.10]], [4000, [3.20, 3.30, 3.40, 3.45]], [7000, [3.55, 3.65, 3.75, 3.80]], [8500, [3.90, 4.00, 4.10, 4.15]] ] } },
       "links": { "guide": "https://aulee.tistory.com/11", "official": "https://nhuf.molit.go.kr/FP/FP05/FP0503/FP05030101.jsp" },
-      "checked": "2026-11-08", "until": "2026-12-31", "untilNote": "순자산 2026년도 기준", "refresh": "monthly", "watch": ["디딤돌"]
+      "checked": "2026-10-23", "until": "2026-12-31", "untilNote": "순자산 2026년도 기준", "refresh": "monthly", "watch": ["디딤돌"]
     },
     {
       "id": "loan-newborn-buy", "code": "P2", "order": 2, "group": "buy", "offer": "active",
@@ -112,7 +112,7 @@
           "rows": [ [2000, [1.80, 1.90, 2.00, 2.05]], [4000, [2.15, 2.25, 2.35, 2.40]], [6000, [2.40, 2.50, 2.60, 2.65]], [8500, [2.65, 2.75, 2.85, 2.90]],
                     [10000, [2.90, 3.00, 3.10, 3.20]], [13000, [3.20, 3.30, 3.40, 3.50]], [15000, [3.50, 3.60, 3.70, 3.80]], [17000, [3.85, 3.95, 4.05, 4.15]], [20000, [4.20, 4.30, 4.40, 4.50]] ] } },
       "links": { "guide": "https://aulee.tistory.com/15", "official": "https://nhuf.molit.go.kr/FP/FP05/FP0503/FP05030801.jsp" },
-      "checked": "2026-11-08", "until": "2026-12-31", "untilNote": "순자산 2026년도 기준", "refresh": "monthly", "watch": ["신생아 특례"]
+      "checked": "2026-10-23", "until": "2026-12-31", "untilNote": "순자산 2026년도 기준", "refresh": "monthly", "watch": ["신생아 특례"]
     },
     {
       "id": "loan-newlywed-buy", "code": "P3", "order": 3, "group": "buy", "offer": "active",
@@ -203,7 +203,7 @@
           "rows": [ [2000, [2.40, 2.45, 2.55, 2.70]], [4000, [2.80, 2.85, 2.95, 3.10]], [7000, [3.20, 3.25, 3.35, 3.50]], [8500, [3.55, 3.60, 3.70, 3.85]], [10000, [3.90, 3.95, 4.05, 4.15]] ],
           "note": "신혼가구이면서 7천만원 이하인 줄은 표에 없어 미혼 줄로 계산(13절 C28)" } },
       "links": { "guide": "https://aulee.tistory.com/21", "official": "https://nhuf.molit.go.kr/FP/FP05/FP0503/FP05030901.jsp" },
-      "checked": "2026-11-08", "until": "2026-12-31", "untilNote": "순자산 2026년도 기준", "refresh": "monthly", "watch": ["청년 주택드림"]
+      "checked": "2026-10-23", "until": "2026-12-31", "untilNote": "순자산 2026년도 기준", "refresh": "monthly", "watch": ["청년 주택드림"]
     },
     {
       "id": "loan-newhome-landlease", "code": "P5", "order": 5, "group": "buy", "offer": "active",
@@ -328,7 +328,7 @@
           { "from": "2026-11-09", "range": [5.00, 5.40], "text": "아낌e 연 5.00~5.30%, u·t 5.10~5.40%(10~50년 고정)", "doc": "loans.md#3#금리(2026-11-09 공시)" } ],
         "note": "우대 최대 1.0%p, 규제지역 +0.2%p" },
       "links": { "guide": "https://aulee.tistory.com/12", "official": "https://www.hf.go.kr/ko/sub01/sub01_01_01.do" },
-      "checked": "2026-11-08", "until": "2026-12-31", "untilNote": "금리 공시 20일마다 점검", "refresh": "semimonthly", "watch": ["보금자리론"]
+      "checked": "2026-10-23", "until": "2026-12-31", "untilNote": "금리 공시 20일마다 점검", "refresh": "semimonthly", "watch": ["보금자리론"]
     },
 
     {
@@ -361,7 +361,7 @@
         "notice": "보증기관(HUG·HF·SGI) 한도와 은행 심사는 반영하지 않았어요" },
       "rate": { "range": [2.5, 3.5], "text": "연 2.5~3.5%(소득·보증금별, 지방 0.2%p 인하, 우대 별도·최저 1.0%)", "doc": "policy2.md#B#금리" },
       "links": { "guide": "https://aulee.tistory.com/22", "official": "https://nhuf.molit.go.kr/FP/FP05/FP0502/FP05020101.jsp" },
-      "checked": "2026-11-08", "until": "2026-12-31", "untilNote": "순자산 2026년도 기준", "refresh": "monthly", "watch": ["버팀목"]
+      "checked": "2026-10-23", "until": "2026-12-31", "untilNote": "순자산 2026년도 기준", "refresh": "monthly", "watch": ["버팀목"]
     },
     {
       "id": "loan-newlywed-jeonse", "code": "J2", "order": 10, "group": "jeonse", "offer": "active",
@@ -388,7 +388,7 @@
         "notice": "보증기관(HUG·HF·SGI) 한도와 은행 심사는 반영하지 않았어요" },
       "rate": { "range": [1.9, 3.3], "text": "연 1.9~3.3%(소득·보증금별, 지방 0.2%p 인하, 우대 별도·최저 1.0%)", "doc": "policy2.md#B#금리" },
       "links": { "guide": "https://aulee.tistory.com/22", "official": "https://nhuf.molit.go.kr/FP/FP05/FP0502/FP05020401.jsp" },
-      "checked": "2026-11-08", "until": "2026-12-31", "untilNote": "순자산 2026년도 기준", "refresh": "monthly", "watch": ["신혼부부전용 전세"]
+      "checked": "2026-10-23", "until": "2026-12-31", "untilNote": "순자산 2026년도 기준", "refresh": "monthly", "watch": ["신혼부부전용 전세"]
     },
     {
       "id": "loan-youth-beotimmok", "code": "J3", "order": 11, "group": "jeonse", "offer": "active",
@@ -425,7 +425,7 @@
         "notice": "보증기관(HUG·HF) 한도와 은행 심사는 반영하지 않았어요. 재직 1년 미만이면 2천만원 이하로 제한될 수 있어요" },
       "rate": { "range": [2.2, 3.3], "text": "연 2.2~3.3%(소득별, 지방 0.2%p 인하, 우대 별도·최저 1.0%)", "doc": "loans3.md#3#소득별 금리" },
       "links": { "guide": "https://aulee.tistory.com/58", "official": "https://nhuf.molit.go.kr/FP/FP05/FP0502/FP05020301.jsp" },
-      "checked": "2026-11-08", "until": "2026-12-31", "untilNote": "순자산 2026년도 기준", "refresh": "monthly", "watch": ["청년전용 버팀목"]
+      "checked": "2026-10-23", "until": "2026-12-31", "untilNote": "순자산 2026년도 기준", "refresh": "monthly", "watch": ["청년전용 버팀목"]
     },
     {
       "id": "loan-newborn-jeonse", "code": "J4", "order": 12, "group": "jeonse", "offer": "active",
@@ -460,7 +460,7 @@
         "notice": "보증기관(HUG·HF) 한도와 은행 심사는 반영하지 않았어요" },
       "rate": { "range": [1.3, 4.3], "text": "연 1.3~4.3%(특례금리, 소득·보증금별, 지방 0.2%p 인하)", "doc": "policy2.md#B#금리" },
       "links": { "guide": "https://aulee.tistory.com/22", "official": "https://nhuf.molit.go.kr/FP/FP05/FP0502/FP05021401.jsp" },
-      "checked": "2026-11-08", "until": "2026-12-31", "untilNote": "순자산 2026년도 기준", "refresh": "monthly", "watch": ["신생아 특례 버팀목"]
+      "checked": "2026-10-23", "until": "2026-12-31", "untilNote": "순자산 2026년도 기준", "refresh": "monthly", "watch": ["신생아 특례 버팀목"]
     },
 
     { "id": "loan-profit-share", "code": "X1", "order": 90, "group": "buy", "offer": "unverified", "name": "공유형 모기지(기금)",
