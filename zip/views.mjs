@@ -59,7 +59,8 @@ export async function siteMap(no, out) {
   // 단지 경계(OSM)
   useApi('overpass');
   const q = `[out:json][timeout:25];(way(around:300,${lat},${lon})[landuse~"residential|construction"];relation(around:300,${lat},${lon})[landuse~"residential|construction"];);out geom;`;
-  const oj = await fetch('https://overpass-api.de/api/interpreter', { method: 'POST', body: 'data=' + encodeURIComponent(q), headers: { 'user-agent': 'auleezip-map/1.0 (auleezip.com)', 'content-type': 'application/x-www-form-urlencoded' } }).then((r) => r.json()).catch(() => ({}));
+  const ask = () => fetch('https://overpass-api.de/api/interpreter', { method: 'POST', body: 'data=' + encodeURIComponent(q), headers: { 'user-agent': 'auleezip-map/1.0 (auleezip.com)', 'content-type': 'application/x-www-form-urlencoded' } }).then((r) => r.json());
+  const oj = await ask().catch(async () => { await new Promise((r) => setTimeout(r, 4000)); useApi('overpass'); return ask().catch(() => ({})); }); // 공용 서버가 가끔 바쁘다(429·504)
   const ringOf = (e) => (e.type === 'way' ? (e.geometry || []).map((p) => [p.lon, p.lat]) : (e.members || []).filter((m) => m.role === 'outer' && m.geometry).flatMap((m) => m.geometry.map((p) => [p.lon, p.lat])));
   const inside = (r) => { let c = false; for (let i = 0, k = r.length - 1; i < r.length; k = i++) { const [xi, yi] = r[i], [xj, yj] = r[k]; if ((yi > lat) !== (yj > lat) && lon < ((xj - xi) * (lat - yi)) / (yj - yi) + xi) c = !c; } return c; };
   const cen = (r) => [r.reduce((a, p) => a + p[0], 0) / r.length, r.reduce((a, p) => a + p[1], 0) / r.length];
@@ -67,17 +68,26 @@ export async function siteMap(no, out) {
   const els = (oj.elements || []).map((e) => ({ name: e.tags?.name, use: e.tags?.landuse, r: ringOf(e) })).filter((e) => e.r.length > 3);
   const ol = els.find((e) => e.name && norm(e.name).includes(key4)) || els.find((e) => !e.name && inside(e.r))
     || els.filter((e) => !e.name && e.use === 'construction').map((e) => ({ ...e, d: meters(lon, lat, ...cen(e.r)) })).filter((e) => e.d <= 200).sort((a, b) => a.d - b.d)[0] || null;
-  // 가까운 역(OSM 전국 철도역)
-  // 8km 안 가장 가까운 역 + 거리 차이가 크지 않은(가장 가까운 역의 1.6배·+800m 안, 3km 안) 다른 호선 역(최대 3곳) — 2026-11-08 사용자
-  const all = JSON.parse(await readFile(join(ROOT, 'posts/stations.json'), 'utf8')).stations.map((s) => ({ name: s.name.endsWith('역') ? s.name : s.name + '역', op: s.operator || '', lines: s.lines || [], lon: s.lon, lat: s.lat, d: meters(lon, lat, s.lon, s.lat) })).sort((a, b) => a.d - b.d);
+  // 거리는 단지 한가운데(경계 면의 중심, 없으면 주소 좌표)에서 잰다 — 주소 좌표는 단지 한쪽 끝일 때가 있다(망미동: 민락역이 수영역보다 가깝게 나옴)
+  const [cx0, cy0] = ol ? cen(ol.r) : [lon, lat], dist = (x, y) => meters(cx0, cy0, x, y);
+  // 역(OSM 전국 철도역): 8km 안 가장 가까운 역 + 거리 차이가 크지 않은(가장 가까운 역의 1.6배·+800m 안, 3km 안) 다른 호선 역 최대 3곳 — 2026-11-08 사용자
+  // 같은 새 호선을 주는 역이 여럿이면 환승역(노선 수 많은 역) → 가까운 역 순
+  const all = JSON.parse(await readFile(join(ROOT, 'posts/stations.json'), 'utf8')).stations.map((s) => ({ name: s.name.endsWith('역') ? s.name : s.name + '역', op: s.operator || '', lines: s.lines || [], lon: s.lon, lat: s.lat, d: dist(s.lon, s.lat) })).sort((a, b) => a.d - b.d);
   const sts = all[0]?.d <= 8000 ? [all[0]] : [], seen = new Set(all[0]?.lines);
-  if (all[0]?.d <= 3000) for (const s of all.slice(1)) { if (s.d > Math.min(3000, Math.max(all[0].d * 1.6, all[0].d + 800)) || sts.length >= 3) break; if (s.lines.some((l) => !seen.has(l)) && !sts.some((x) => x.name === s.name)) { sts.push(s); s.lines.forEach((l) => seen.add(l)); } }
+  if (all[0]?.d <= 3000) {
+    const pool = all.slice(1).filter((s) => s.d <= Math.min(3000, Math.max(all[0].d * 1.6, all[0].d + 800)) && s.name !== all[0].name);
+    for (;;) {
+      const best = pool.filter((s) => !sts.includes(s)).map((s) => ({ s, n: s.lines.filter((l) => !seen.has(l)).length })).filter((x) => x.n).sort((a, b) => b.n - a.n || b.s.lines.length - a.s.lines.length || a.s.d - b.s.d)[0];
+      if (!best || sts.length >= 3) break;
+      sts.push(best.s); best.s.lines.forEach((l) => seen.add(l));
+    }
+  }
   const st = sts[0], near = st && st.d <= 3000;
   // 학교·대형마트(브이월드 검색)
   const search = async (query, d = 0.03) => { useApi('vworld'); const bbox = [lon - d * 1.25, lat - d, lon + d * 1.25, lat + d].join(','); const j = await fetch(`https://api.vworld.kr/req/search?service=search&request=search&version=2.0&crs=EPSG:4326&bbox=${bbox}&size=100&query=${encodeURIComponent(query)}&type=place&format=json&key=${key}`).then((r) => r.json()).catch(() => ({})); return (j.response?.result?.items || []).map((i) => ({ title: i.title, cat: i.category || '', lon: +i.point.x, lat: +i.point.y })); };
   const ps = [];
   for (const [lv, ab] of [['초등학교', '초'], ['중학교', '중'], ['고등학교', '고']]) {
-    const s = (await search(lv, 0.018)).filter((i) => new RegExp(`교육부 > ${lv}$`).test(i.cat) && !/입구|병설|유치원|정류장/.test(i.title)).map((i) => ({ ...i, d: meters(lon, lat, i.lon, i.lat) })).filter((i) => i.d <= 1500).sort((a, b) => a.d - b.d)[0];
+    const s = (await search(lv, 0.018)).filter((i) => new RegExp(`교육부 > ${lv}$`).test(i.cat) && !/입구|병설|유치원|정류장/.test(i.title)).map((i) => ({ ...i, d: dist(i.lon, i.lat) })).filter((i) => i.d <= 1500).sort((a, b) => a.d - b.d)[0];
     if (s) { const base = s.title.replace(/^서울(?=.)/, '').replace(/(초등학교|중학교|고등학교|초교|중교|고교)$/, ''); ps.push({ kind: ab, name: base === s.title ? s.title : base + ab, lon: s.lon, lat: s.lat, d: s.d }); }
   }
   // 대형마트·가전(2km 안, 브랜드마다 가장 가까운 곳, 가까운 2곳). 로고는 data/zip_logos/<brand>.png(위키미디어 공용 퍼블릭 도메인·CC0), 없으면 이름 배지
@@ -86,7 +96,7 @@ export async function siteMap(no, out) {
   for (const qn of ['이마트', '트레이더스', '홈플러스', '롯데마트', '코스트코', '하이마트']) for (const i of await search(qn)) {
     if (/24|에브리데이|익스프레스|편의점|슈퍼|노브랜드|일렉트로마트|입구|주차|창고|물류|정류장|정류소|코리아$|본사/.test(i.title + i.cat)) continue;
     const brand = BR.find(([, re]) => re.test(i.title))?.[0]; if (!brand) continue;
-    const d = meters(lon, lat, i.lon, i.lat); if (d <= 2000 && (!marts.has(brand) || d < marts.get(brand).d)) marts.set(brand, { kind: '마트', brand, name: i.title, lon: i.lon, lat: i.lat, d });
+    const d = dist(i.lon, i.lat); if (d <= 2000 && (!marts.has(brand) || d < marts.get(brand).d)) marts.set(brand, { kind: '마트', brand, name: i.title, lon: i.lon, lat: i.lat, d });
   }
   ps.push(...[...marts.values()].sort((a, b) => a.d - b.d).slice(0, 2));
   // 줌: 단지·(3km 안) 가장 가까운 역·1km 안 학교·마트가 위 60% 상자에 들어오는 가장 큰 줌(14~16). 상자 밖 표시는 가장자리에 방향 화살표로(멀리 넓혀 글자가 뭉개지지 않게)
@@ -113,46 +123,95 @@ export async function siteMap(no, out) {
   const route = spos.map(([sx, sy], i) => `<line x1="${hx}" y1="${hy}" x2="${sx}" y2="${sy}" stroke="${i ? '#64748b' : '#1d4ed8'}" stroke-width="${i ? 5 : 6}" stroke-dasharray="1 11" stroke-linecap="round"/>`).join('');
   const rate = JSON.parse(await readFile(join(ROOT, 'data/deals.json'), 'utf8')).items.find((x) => x.no === no)?.rate;
   const stat = rate >= 0.05 ? `<div style="position:absolute;left:16px;top:14px;background:#17212b;border-radius:10px;padding:7px 13px"><div style="font-size:34px;font-weight:700;color:#ffd84d;line-height:1">−${Math.round(rate * 100)}%</div><div style="font-size:15px;color:#dfe6ee;margin-top:3px">주변 단지 실거래 대비</div></div>` : '';
+  const tw = (t, f = 18) => [...String(t)].reduce((a, ch) => a + (/[가-힣]/.test(ch) ? f : f * 0.6), 0);
   const km = (d) => (d >= 1000 ? (d / 1000).toFixed(1) + 'km' : Math.round(d / 10) * 10 + 'm');
   // 칩은 점에서 단지 반대쪽으로 비켜 놓고, 겹치면 위아래로 민다(단지 이름·출처·숫자 상자 자리는 비워 둔다)
   const nw = Math.min(W - 20, name.length * 21 + 24), below = hy - 32 - 34 < 46, nx = Math.max(nw / 2 + 8, Math.min(W - nw / 2 - 8, hx)), ny = below ? hy + 49 : hy - 49; // 단지가 위쪽 끝이면 이름을 아래로
   const placed = [{ x: nx, y: ny, w: nw, h: 34 }, { x: hx, y: hy, w: 70, h: 70 }, { x: 640, y: 16, w: 330, h: 26 }, ...(stat ? [{ x: 100, y: 52, w: 180, h: 84 }] : [])];
   const hit = (c) => placed.some((o) => Math.abs(o.x - c.x) < (o.w + c.w) / 2 + 4 && Math.abs(o.y - c.y) < (o.h + c.h) / 2 + 2);
+  // 빈자리 찾기: 원하는 중심(bx,by)에서 둘레를 20px씩 넓히며 16방향(위 40px~아래 290px, 좌우 6px 안). 멀리 밀리면 점까지 가는 가는 선을 긋는다
+  const leaders = [];
+  const findSpot = (bx, by, w, h) => {
+    for (let r = 0; r <= 300; r += 20) for (let a = 0; a < (r ? 16 : 1); a++) {
+      const t = { x: bx + r * Math.cos((a * Math.PI) / 8), y: by + r * 0.75 * Math.sin((a * Math.PI) / 8), w, h };
+      if (t.x - w / 2 >= 6 && t.x + w / 2 <= W - 6 && t.y - h / 2 >= 40 && t.y + h / 2 <= 292 && !hit(t)) { placed.push(t); return t; }
+    }
+    return null;
+  };
+  const lead = (x, y, c) => { if (Math.hypot(c.x - x, c.y - y) > Math.max(c.w, c.h) / 2 + 30) leaders.push(`<line x1="${x}" y1="${y}" x2="${c.x}" y2="${c.y}" stroke="#334155" stroke-width="1.5" opacity=".6"/>`); };
   const chip = (x0, y0, text, sub, bg, inner = null, w0 = 0, fg = '#fff') => {
     const out = !inView([x0, y0]), arrow = out ? ARROW(x0, y0) : '', [x, y] = out ? toEdge([x0, y0]) : [x0, y0];
     if (arrow) { sub = arrow + ' ' + sub; }
-    const dx = x - hx, dy = y - hy, len = Math.hypot(dx, dy) || 1, w = (w0 || (text.length + sub.length) * 12 + 30) + (arrow ? 14 : 0);
+    const dx = x - hx, dy = y - hy, len = Math.hypot(dx, dy) || 1, w = (w0 || tw(text) + tw(sub) + 34) + (arrow ? 14 : 0);
     // 점 바깥쪽부터 둘레를 넓혀 가며 빈자리를 찾고(지도 위 60% 안), 없으면 이 표시는 뺀다 — 칩이 겹쳐 읽히지 않는 것보다 낫다
     const bx = out ? x : x + (dx / len) * 34, by = out ? y : y + (dy / len) * 26;
-    let c = null;
-    for (const r of [0, 30, 60, 95, 130]) { for (let a = 0; a < 8 && !c; a++) { const t = { x: bx + r * Math.cos((a * Math.PI) / 4), y: by + r * 0.7 * Math.sin((a * Math.PI) / 4), w, h: 32 }; if (t.x >= w / 2 + 6 && t.x <= W - w / 2 - 6 && t.y >= 46 && t.y <= 282 && !hit(t)) c = t; if (!r) break; } if (c) break; }
+    const c = findSpot(bx, by, w, 32);
     if (!c) return '';
-    placed.push(c);
+    if (!out) lead(x, y, c);
     return `${out ? '' : '<!--dot-->'}<div style="position:absolute;left:${x - 7}px;top:${y - 7}px;display:${out ? 'none' : 'block'};width:14px;height:14px;border-radius:50%;background:${bg};border:3px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4)"></div><div style="position:absolute;left:${c.x}px;top:${c.y}px;transform:translate(-50%,-50%);background:${bg};color:${fg};font-weight:700;font-size:18px;padding:3px 10px;border-radius:999px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.35);border:2px solid ${fg === '#fff' ? '#fff' : '#cbd5e1'};display:flex;align-items:center;gap:6px">${inner ?? esc(text)} <span style="font-weight:500;opacity:.9">${sub}</span></div>`;
   };
   const color = { 초: '#16a34a', 중: '#0d9488', 고: '#7c3aed', 마트: '#e11d48' };
   const logos = {};
   for (const m of ps.filter((p) => p.kind === '마트')) logos[m.brand] ??= await readFile(join(ROOT, 'data/zip_logos', ({ 이마트: 'emart', 홈플러스: 'homeplus', 롯데마트: 'lottemart', 코스트코: 'costco' }[m.brand] || 'none') + '.png')).then((b) => 'data:image/png;base64,' + b.toString('base64')).catch(() => null);
-  const stChip = (x, i) => { const t = (near ? '' : '가장 가까운 ') + x.name; return chip(...xy(x.lon, x.lat), t, km(x.d), '#fff', `${x.lines.map((l) => lineBadge(l, x.op)).join('')}<span>${esc(t)}</span>`, (t.length + km(x.d).length) * 12 + x.lines.reduce((a, l) => a + lineW(l), 0) + 40, '#17212b'); };
-  const martChip = (p) => { const [x, y] = xy(p.lon, p.lat), lg = logos[p.brand]; return lg ? chip(x, y, p.brand, km(p.d), '#fff', `<img src="${lg}" style="height:22px;max-width:96px;object-fit:contain">`, 96 + km(p.d).length * 12 + 40, '#17212b') : chip(x, y, p.brand, km(p.d), color.마트); };
-  const chips = sts.map(stChip).join('') + ps.map((p) => { if (p.kind === '마트') return martChip(p); const [x, y] = xy(p.lon, p.lat); return chip(x, y, p.name, km(p.d), color[p.kind]); }).join('');
+  // 역은 지하철역 기둥 표지처럼: 위에 노선 배지, 아래로 역 이름을 세로로, 기둥 밑에 거리(2026-11-08 사용자)
+  const pillar = (x) => {
+    if (!near) { // 3km 넘게 먼 역: 지도 왼쪽 위(숫자 상자 아래)에 방향과 거리만 — 기둥을 엉뚱한 자리에 세우지 않는다
+      const t = `가장 가까운 ${x.name} ${ARROW(...xy(x.lon, x.lat))} ${km(x.d)}`, w = tw(t, 17) + x.lines.reduce((a, l) => a + lineW(l), 0) + 36, c = { x: 16 + w / 2, y: stat ? 118 : 30, w, h: 34 };
+      while (hit(c) && c.y < 250) c.y += 40;
+      placed.push(c);
+      return `<div style="position:absolute;left:16px;top:${c.y - 17}px;height:34px;box-sizing:border-box;background:#fff;border:2px solid #17212b;border-radius:8px;padding:0 10px;display:flex;align-items:center;gap:6px;font-size:17px;font-weight:700;color:#17212b;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.3)">${x.lines.map((l) => lineBadge(l, x.op)).join('')}${esc(t)}</div>`;
+    }
+    const p0 = xy(x.lon, x.lat), out = !inView(p0), [px, py] = out ? toEdge(p0) : p0, label = x.name.replace(/역$/, '');
+    const bh = x.lines.length * 30 + 8, nh = label.length * 21 + 14, tag = `${out ? ARROW(...p0) + ' ' : ''}${km(x.d)}`, w = Math.max(48, tw(tag, 15) + 22), h = bh + nh + 6 + 10 + 26;
+    const c = findSpot(px, Math.min(290, Math.max(40 + h, py)) - h / 2, w, h);
+    if (!c) return '';
+    if (!out) lead(px, py, { ...c, y: c.y + h / 2 });
+    const top = c.y - h / 2, c1 = lineColor(x.lines[0], x.op);
+    return `${out ? '' : `<div style="position:absolute;left:${px - 6}px;top:${py - 6}px;width:12px;height:12px;border-radius:50%;background:#17212b;border:3px solid #fff"></div>`}
+<div style="position:absolute;left:${c.x}px;top:${top}px;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;filter:drop-shadow(0 3px 5px rgba(0,0,0,.35))">
+<div style="width:42px;background:#fff;border:3px solid #17212b;border-radius:7px;overflow:hidden;display:flex;flex-direction:column;align-items:center">
+<div style="width:100%;background:${c1};padding:4px 0;display:flex;flex-direction:column;align-items:center;gap:4px">${x.lines.map((l) => lineBadge(l, x.op, true)).join('')}</div>
+<div style="writing-mode:vertical-rl;text-orientation:upright;font-size:18px;font-weight:700;color:#17212b;letter-spacing:1px;padding:6px 0">${esc(label)}</div></div>
+<div style="width:7px;height:10px;background:#17212b"></div>
+<div style="background:#17212b;color:#fff;font-size:15px;font-weight:700;padding:1px 8px;border-radius:999px;white-space:nowrap">${tag}</div></div>`;
+  };
+  const stChip = (x) => pillar(x);
+  // 마트는 캡슐 없이 로고(없으면 브랜드 이름 글자) 아래에 거리 — 지도 위에서 읽히게 흰 테두리 그림자(2026-11-08 사용자)
+  const HALO = 'filter:drop-shadow(0 0 1.5px #fff) drop-shadow(0 0 1.5px #fff) drop-shadow(0 0 3px #fff)';
+  const martChip = (p) => {
+    const p0 = xy(p.lon, p.lat), out = !inView(p0), [x, y] = out ? toEdge(p0) : p0, lg = logos[p.brand], tag = (out ? ARROW(...p0) + ' ' : '') + km(p.d);
+    const w = lg ? 104 : p.brand.length * 22 + 10, h = 54;
+    const c = findSpot(x, y - 30, w, h);
+    if (!c) return '';
+    if (!out) lead(x, y, c);
+    const mark = lg ? `<img src="${lg}" style="height:28px;max-width:104px;object-fit:contain;display:block">` : `<div style="font-size:21px;font-weight:800;color:#e11d48;letter-spacing:-.02em">${esc(p.brand)}</div>`;
+    return `${out ? '' : `<div style="position:absolute;left:${x - 6}px;top:${y - 6}px;width:12px;height:12px;border-radius:50%;background:#e11d48;border:3px solid #fff"></div>`}<div style="position:absolute;left:${c.x}px;top:${c.y}px;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;gap:1px;${HALO}">${mark}<div style="font-size:16px;font-weight:700;color:#17212b">${tag}</div></div>`;
+  };
+  const rank = { 초: 0, 마트: 1, 중: 2, 고: 3 };
+  const chips = sts.map((x) => stChip(x)).join('') + [...ps].sort((a, b) => rank[a.kind] - rank[b.kind]).map((p) => { if (p.kind === '마트') return martChip(p); const [x, y] = xy(p.lon, p.lat); return chip(x, y, p.name, km(p.d), color[p.kind]); }).join('');
   const html = `<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;700&display=swap"><style>body{margin:0;width:${W}px;height:${H}px;overflow:hidden;position:relative;font-family:'IBM Plex Sans KR',sans-serif;background:#eef1f5}</style>
 <div style="position:absolute;inset:0;filter:saturate(.85) brightness(1.02)">${tiles.join('')}</div><div style="position:absolute;inset:0;background:rgba(255,255,255,.18)"></div>
-<svg width="${W}" height="${H}" style="position:absolute;left:0;top:0">${route}${land}</svg>${chips}
+<svg width="${W}" height="${H}" style="position:absolute;left:0;top:0">${route}${land}</svg><!--chips-->
 <div style="position:absolute;left:${nx}px;top:${ny}px;transform:translate(-50%,-50%);background:#17212b;color:#ffd84d;font-weight:700;font-size:20px;padding:4px 12px;border-radius:8px;white-space:nowrap">${esc(name)}</div>${stat}
 <div style="position:absolute;right:8px;top:8px;font-size:13px;color:#33404d;background:rgba(255,255,255,.85);padding:1px 7px;border-radius:4px">지도 브이월드 · 경계·역 © OpenStreetMap · 직선거리</div>`;
   const { chromium } = await import('playwright'), b = await chromium.launch();
-  try { const p = await b.newPage({ viewport: { width: W, height: H } }); await p.setContent(html); await p.waitForTimeout(1000); await p.screenshot({ path: out, type: 'jpeg', quality: 86 }); } finally { await b.close(); }
+  try { const p = await b.newPage({ viewport: { width: W, height: H } }); await p.setContent(html.replace('<!--chips-->', `<svg width="${W}" height="${H}" style="position:absolute;left:0;top:0">${leaders.join('')}</svg>${chips}`)); await p.waitForTimeout(1000); await p.screenshot({ path: out, type: 'jpeg', quality: 86 }); } finally { await b.close(); }
   return { zoom: z, outline: ol ? ol.name || '이름 없는 면' : null, station: sts.map((x) => `${x.name}(${x.lines.join('·')}) ${x.d}m`).join(', '), pois: ps.map((x) => `${x.name} ${x.d}m`) };
 }
 // 노선 배지: 「3호선」은 노선색 동그라미에 숫자(운영사 이름으로 지역 구분), 이름 노선은 노선색 알약 — 2026-11-08 사용자: 몇 호선인지 한눈에
 const LINE = { 서울: ['#0052A4', '#00A84D', '#EF7C1C', '#00A5DE', '#996CAC', '#CD7C2F', '#747F00', '#E6186C', '#BDB092'], 부산: ['#F06A00', '#81BF48', '#BB8C00', '#217DCB'], 인천: ['#7CA8D5', '#ED8B00'], 대구: ['#D93F5C', '#00AA80', '#FFB100'], 광주: ['#009088'], 대전: ['#007448'] };
 const NAMED = [[/수인|분당/, '#F5A200', '수인분당'], [/신분당/, '#D4003B', '신분당'], [/경의|중앙/, '#77C4A3', '경의중앙'], [/공항/, '#0090D2', '공항철도'], [/경춘/, '#0C8E72', '경춘'], [/경강/, '#003DA5', '경강'], [/서해/, '#8FC31F', '서해'], [/동해/, '#0054A6', '동해'], [/GTX-?A/i, '#9A6292', 'GTX-A'], [/우이/, '#B0CE18', '우이신설'], [/신림/, '#6789CA', '신림'], [/김포/, '#AD8605', '김포골드'], [/의정부/, '#FDA600', '의정부'], [/에버라인|용인/, '#509F22', '에버라인'], [/김해/, '#8652A1', '김해']];
-function lineBadge(l, op = '') {
+function lineColor(l = '', op = '') {
   const n = (l.match(/^(\d)호선$/) || [])[1];
-  if (n) { const reg = Object.keys(LINE).find((k) => op.includes(k)) || '서울', c = LINE[reg][n - 1] || '#555'; return `<span style="flex:none;width:24px;height:24px;border-radius:50%;background:${c};color:#fff;font-size:15px;font-weight:700;display:inline-flex;align-items:center;justify-content:center">${n}</span>`; }
-  const [, c, t] = NAMED.find(([re]) => re.test(l)) || [0, '#555', l.replace(/선$/, '')];
-  return `<span style="flex:none;background:${c};color:#fff;font-size:13px;font-weight:700;padding:2px 7px;border-radius:999px">${t}</span>`;
+  if (n) return LINE[Object.keys(LINE).find((k) => op.includes(k)) || '서울'][n - 1] || '#555';
+  return (NAMED.find(([re]) => re.test(l)) || [0, '#555'])[1];
+}
+function lineBadge(l, op = '', ring = false) {
+  const n = (l.match(/^(\d)호선$/) || [])[1], c = lineColor(l, op), b = ring ? 'border:2px solid #fff;' : '';
+  if (n) return `<span style="flex:none;width:26px;height:26px;box-sizing:border-box;${b}border-radius:50%;background:${c};color:#fff;font-size:15px;font-weight:700;display:inline-flex;align-items:center;justify-content:center">${n}</span>`;
+  const t = (NAMED.find(([re]) => re.test(l)) || [0, 0, l.replace(/선$/, '')])[2];
+  return ring ? `<span style="flex:none;width:30px;box-sizing:border-box;${b}background:${c};color:#fff;font-size:11px;font-weight:700;line-height:1.05;padding:3px 0;border-radius:6px;text-align:center;word-break:keep-all">${t.length > 2 ? t.slice(0, 2) + '<br>' + t.slice(2, 4) : t}</span>`
+    : `<span style="flex:none;background:${c};color:#fff;font-size:13px;font-weight:700;padding:2px 7px;border-radius:999px">${t}</span>`;
 }
 const lineW = (l) => (/^\d호선$/.test(l) ? 30 : (NAMED.find(([re]) => re.test(l)) || [0, 0, l])[2].length * 13 + 20);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
