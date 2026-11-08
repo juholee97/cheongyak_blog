@@ -85,7 +85,8 @@ try {
     await c.ctx.close();
     const d = await open('/post-analysis', { width: 1280, height: 800 });
     const rd = await d.page.locator('a.cy-remote').boundingBox();
-    ok(rd.x + rd.width <= 1280 - 16 + 0.5 && rd.y + rd.height <= 800 - 16 + 0.5, 'PC: 버튼 자리');
+    // 실제 블로그의 티스토리 「구독하기」 도구 막대가 화면 아래 20~50px를 덮는다(미리보기에는 없다) — 그 위에 있어야 한다
+    ok(rd.x + rd.width <= 1280 - 16 + 0.5 && rd.y + rd.height <= 800 - 50, `PC: 버튼이 도구 막대 자리와 겹침 ${rd.y + rd.height}`);
     await d.ctx.close();
     const h = await open('/');
     ok((await h.page.locator('a.cy-remote').getAttribute('href')) === '/calc', '홈 버튼 주소');
