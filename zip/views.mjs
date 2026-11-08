@@ -154,8 +154,8 @@ export async function siteMap(no, out) {
   const logos = {};
   for (const m of ps.filter((p) => p.kind === '마트')) logos[m.brand] ??= await readFile(join(ROOT, 'data/zip_logos', ({ 이마트: 'emart', 홈플러스: 'homeplus', 롯데마트: 'lottemart', 코스트코: 'costco' }[m.brand] || 'none') + '.png')).then((b) => 'data:image/png;base64,' + b.toString('base64')).catch(() => null);
   // 역은 지하철 출입구 기둥 표지처럼: 짙은 올리브색 두 면 기둥(위에서 내려다본 v 모양), 면마다 노란 열차 표지 → 세로 역 이름 → 노선 배지, 기둥 밑에 거리(2026-11-08 사용자)
-  const TRAIN = '<svg width="16" height="16" viewBox="0 0 26 26" style="display:block;flex:none"><rect width="26" height="26" fill="#f5c400"/><rect x="6" y="3.5" width="14" height="14.5" rx="2.5" fill="none" stroke="#3a3f32" stroke-width="2"/><rect x="8.5" y="6" width="9" height="4.5" fill="#3a3f32"/><circle cx="10" cy="14.3" r="1.4" fill="#3a3f32"/><circle cx="16" cy="14.3" r="1.4" fill="#3a3f32"/><path d="M8.5 18.5 6 22.5M17.5 18.5 20 22.5M7 21h12" stroke="#3a3f32" stroke-width="1.7" fill="none"/></svg>';
-  const SK = 25, FW = 20, SKH = Math.round(FW * Math.tan((SK * Math.PI) / 180));
+  const TRAIN = '<svg width="14" height="14" viewBox="0 0 26 26" style="display:block;flex:none"><rect width="26" height="26" fill="#f5c400"/><rect x="6" y="3.5" width="14" height="14.5" rx="2.5" fill="none" stroke="#3a3f32" stroke-width="2"/><rect x="8.5" y="6" width="9" height="4.5" fill="#3a3f32"/><circle cx="10" cy="14.3" r="1.4" fill="#3a3f32"/><circle cx="16" cy="14.3" r="1.4" fill="#3a3f32"/><path d="M8.5 18.5 6 22.5M17.5 18.5 20 22.5M7 21h12" stroke="#3a3f32" stroke-width="1.7" fill="none"/></svg>';
+  const SK = 25, FW = 17, SKH = Math.round(FW * Math.tan((SK * Math.PI) / 180));
   const pillar = (x) => {
     if (!near) { // 3km 넘게 먼 역: 지도 왼쪽 위(숫자 상자 아래)에 방향과 거리만 — 기둥을 엉뚱한 자리에 세우지 않는다
       const t = `가장 가까운 ${x.name} ${ARROW(...xy(x.lon, x.lat))} ${km(x.d)}`, w = tw(t, 17) + x.lines.reduce((a, l) => a + lineW(l), 0) + 36, c = { x: 16 + w / 2, y: stat ? 118 : 30, w, h: 34 };
@@ -164,7 +164,7 @@ export async function siteMap(no, out) {
       return `<div style="position:absolute;left:16px;top:${c.y - 17}px;height:34px;box-sizing:border-box;background:#fff;border:2px solid #17212b;border-radius:8px;padding:0 10px;display:flex;align-items:center;gap:6px;font-size:17px;font-weight:700;color:#17212b;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.3)">${x.lines.map((l) => lineBadge(l, x.op)).join('')}${esc(t)}</div>`;
     }
     const p0 = xy(x.lon, x.lat), out = !inView(p0), [px, py] = out ? toEdge(p0) : p0, label = x.name.replace(/역$/, '');
-    const fs = label.length > 5 ? 10 : 13, fh = 3 + 16 + 3 + label.length * Math.ceil(fs * 1.2 + 1) + 3 + x.lines.length * 19 + 6, tag = `${out ? ARROW(...p0) + ' ' : ''}${km(x.d)}`, w = Math.max(FW * 2 + 4, tw(tag, 13) + 16), h = fh + SKH * 2 + 3 + 20;
+    const fs = label.length > 5 ? 10 : 12, fh = 3 + 14 + 5 + label.length * Math.ceil(fs * 1.2 + 3) + 5 + x.lines.length * 17 + 6, tag = `${out ? ARROW(...p0) + ' ' : ''}${km(x.d)}`, w = Math.max(FW * 2 + 4, tw(tag, 13) + 16), h = fh + SKH * 2 + 3 + 20;
     const by = Math.min(290, Math.max(40 + h, py)) - h / 2;
     let c = findSpot(px, by, w, h);
     // 점을 피하느라 역 방향과 엉뚱하게 멀어지면 점 위에 겹치는 쪽을 택한다(점은 기둥 밑에 깔린다)
@@ -182,7 +182,7 @@ export async function siteMap(no, out) {
     const PW = FW * 2, FH = fh, PH = FH + SKH * 2, pt = (a) => a.map(([u, v]) => `${u},${v}`).join(' ');
     const body = `<svg width="${PW}" height="${PH}" style="position:absolute;left:0;top:0"><polygon points="${pt([[0, SKH], [FW, SKH * 2], [FW, SKH * 2 + FH], [0, SKH + FH]])}" fill="#5f6553"/><polygon points="${pt([[FW, SKH * 2], [PW, SKH], [PW, SKH + FH], [FW, SKH * 2 + FH]])}" fill="#484d3f"/><polygon points="${pt([[FW, 0], [0, SKH], [FW, SKH * 2], [PW, SKH]])}" fill="#8b917b" stroke="#3a3f32" stroke-width="1"/></svg>`;
     // 글씨·그림도 면 기울기대로: 왼쪽 면은 바깥(왼쪽) 모서리를 축으로 +25°, 오른쪽 면은 바깥(오른쪽) 모서리를 축으로 −25°
-    const col = (left) => `<div style="width:${FW}px;height:${fh}px;box-sizing:border-box;transform:skewY(${left ? SK : -SK}deg);transform-origin:${left ? 'left' : 'right'} top;display:flex;flex-direction:column;align-items:center;padding:3px 0">${TRAIN}<div style="writing-mode:vertical-rl;text-orientation:upright;font-size:${fs}px;font-weight:700;color:#fff;letter-spacing:1px;margin:3px 0;white-space:nowrap">${esc(label)}</div><div style="display:flex;flex-direction:column;align-items:center;gap:3px">${x.lines.map((l) => lineBadge(l, x.op, true)).join('')}</div></div>`;
+    const col = (left) => `<div style="width:${FW}px;height:${fh}px;box-sizing:border-box;transform:skewY(${left ? SK : -SK}deg);transform-origin:${left ? 'left' : 'right'} top;display:flex;flex-direction:column;align-items:center;padding:3px 0">${TRAIN}<div style="writing-mode:vertical-rl;text-orientation:upright;font-size:${fs}px;font-weight:700;color:#fff;letter-spacing:3px;margin:5px 0;white-space:nowrap">${esc(label)}</div><div style="display:flex;flex-direction:column;align-items:center;gap:3px">${x.lines.map((l) => lineBadge(l, x.op, true)).join('')}</div></div>`;
     return `${out ? '' : `<div style="position:absolute;left:${px - 6}px;top:${py - 6}px;width:12px;height:12px;border-radius:50%;background:#3a3f32;border:3px solid #fff"></div>`}
 <div style="position:absolute;left:${c.x}px;top:${top}px;z-index:2;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;filter:drop-shadow(0 3px 5px rgba(0,0,0,.4))">
 <div style="position:relative;width:${PW}px;height:${PH}px">${body}<div style="position:absolute;left:0;top:${SKH}px;display:flex">${col(true)}${col(false)}</div></div>
@@ -225,10 +225,10 @@ function lineColor(l = '', op = '') {
   return (NAMED.find(([re]) => re.test(l)) || [0, '#555'])[1];
 }
 function lineBadge(l, op = '', ring = false) {
-  const n = (l.match(/^(\d)호선$/) || [])[1], c = lineColor(l, op), b = ring ? 'border:1.5px solid #fff;' : '';
-  if (n) return `<span style="flex:none;width:${ring ? 16 : 26}px;height:${ring ? 16 : 26}px;box-sizing:border-box;${b}border-radius:50%;background:${c};color:#fff;font-size:${ring ? 10 : 15}px;font-weight:700;display:inline-flex;align-items:center;justify-content:center">${n}</span>`;
+  const n = (l.match(/^(\d)호선$/) || [])[1], c = lineColor(l, op), b = ring ? 'border:1px solid #fff;' : '';
+  if (n) return `<span style="flex:none;width:${ring ? 14 : 26}px;height:${ring ? 14 : 26}px;box-sizing:border-box;${b}border-radius:50%;background:${c};color:#fff;font-size:${ring ? 9 : 15}px;font-weight:700;display:inline-flex;align-items:center;justify-content:center">${n}</span>`;
   const t = (NAMED.find(([re]) => re.test(l)) || [0, 0, l.replace(/선$/, '')])[2];
-  return ring ? `<span style="flex:none;width:18px;box-sizing:border-box;${b}background:${c};color:#fff;font-size:7px;font-weight:700;line-height:1.05;padding:2px 0;border-radius:4px;text-align:center;word-break:keep-all">${t.length > 2 ? t.slice(0, 2) + '<br>' + t.slice(2, 4) : t}</span>`
+  return ring ? `<span style="flex:none;width:16px;box-sizing:border-box;${b}background:${c};color:#fff;font-size:7px;font-weight:700;line-height:1.05;padding:2px 0;border-radius:4px;text-align:center;word-break:keep-all">${t.length > 2 ? t.slice(0, 2) + '<br>' + t.slice(2, 4) : t}</span>`
     : `<span style="flex:none;background:${c};color:#fff;font-size:13px;font-weight:700;padding:2px 7px;border-radius:999px">${t}</span>`;
 }
 const lineW = (l) => (/^\d호선$/.test(l) ? 30 : (NAMED.find(([re]) => re.test(l)) || [0, 0, l])[2].length * 13 + 20);
