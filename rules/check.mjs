@@ -152,6 +152,19 @@ for (const f of ['skin/images/calc.js', 'posts/calc_post.mjs']) {
   // DTI 검산(4-5 12): money.mjs principalOf와 같은 값
   for (const [inc, rate, want] of [[2000, 3.10, 23418], [5000, 3.80, 53652], [8400, 2.90, 100905]])
     if (Math.floor((0.6 * inc) / 12 / ctx.CY.pmt1(rate, 30)) !== want) err('DTI 검산', `${inc}만원·${rate}% → ${want} 아님`);
+  // 공고 가져오기(16-5): 면적 경계, 대체본 경계, 지역 묶음, 규제 표시, 주택형 표기
+  const same = (a, b) => JSON.stringify(Object.entries(a).sort()) === JSON.stringify(Object.entries(b).sort());
+  const NF = [
+    [{ buyKind: 'apt', region: '경기', regFlags: [] }, { ex: 59.98, top: 48000 }, { buyKind: 'apt', region: 'gyeonggiIncheon', regulated: false, price: 48000, area: 'le60' }],
+    [{ buyKind: 'apt', region: '서울', regFlags: ['투기과열'] }, { ex: 84.97, top: 63000 }, { buyKind: 'apt', region: 'seoul', regulated: true, price: 63000, area: '60to85' }],
+    [{ buyKind: 'apt', region: '부산', regFlags: null }, { ex: 60, top: 0 }, { buyKind: 'apt', region: 'other', area: 'le60' }],
+    [{ buyKind: 'apt', region: '인천', regFlags: null, areaExact: false }, { ex: 60, top: 40000 }, { buyKind: 'apt', region: 'gyeonggiIncheon', price: 40000 }],
+    [{ buyKind: 'officetel', region: '경기', regFlags: null }, null, { buyKind: 'officetel', region: 'gyeonggiIncheon' }],
+    [{ buyKind: null, region: '대전', regFlags: null }, null, { region: 'other' }],
+    [{ buyKind: 'apt', region: '서울', regFlags: [] }, { ex: 100.01, top: 90000 }, { buyKind: 'apt', region: 'seoul', regulated: false, price: 90000, area: 'over100' }],
+  ];
+  NF.forEach(([n, t, want], i) => { const got = ctx.CY.noticeFill(n, t); if (!same({ ...got }, want)) err(`공고 채우기 ${i}`, JSON.stringify(got)); });
+  for (const [ty, want] of [['084.9443A', '84A'], ['066.0000A', '66A'], ['059', '59']]) if (ctx.CY.typeLabel(ty) !== want) err('주택형 표기', `${ty} → ${ctx.CY.typeLabel(ty)}`);
   console.log(`사례 ${cases.cases.length}건 실행`);
 }
 

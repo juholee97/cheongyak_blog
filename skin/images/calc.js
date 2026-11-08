@@ -357,6 +357,21 @@
     return rules.loans.filter(function (p) { return p.offer === 'active'; }).reduce(function (m, p) { return !m || p.checked < m ? p.checked : m; }, '');
   };
 
+  /* ---------- 공고 정보 가져오기(16절). 공고 한 줄 + 주택형 → 채울 칸. 사람 칸(소득·가구·무주택)은 채우지 않는다 ---------- */
+  CY.typeLabel = function (ty) { var m = /^0*(\d+)(?:\.\d+)?(.*)$/.exec(String(ty)); return m ? m[1] + m[2] : String(ty); };
+  CY.noticeFill = function (n, t) {
+    var o = {};
+    if (n.buyKind === 'apt' || n.buyKind === 'officetel') o.buyKind = n.buyKind;
+    if (n.region) o.region = n.region === '서울' ? 'seoul' : n.region === '경기' || n.region === '인천' ? 'gyeonggiIncheon' : 'other';
+    if (Array.isArray(n.regFlags)) o.regulated = n.regFlags.length > 0;
+    if (t) {
+      if (t.top > 0) o.price = t.top;
+      // 대체본은 정수 면적 묶음이라 경계값(60·85·100)이면 어느 쪽인지 몰라 채우지 않는다(16-5)
+      if (t.ex > 0 && !(n.areaExact === false && (t.ex === 60 || t.ex === 85 || t.ex === 100))) o.area = t.ex <= 60 ? 'le60' : t.ex <= 85 ? '60to85' : t.ex <= 100 ? '85to100' : 'over100';
+    }
+    return o;
+  };
+
   if (typeof document === 'undefined') return;
 
   /* ---------- 계산기 화면(2절·15-2). 답은 mount 안 변수(S)에만 둔다 — 저장·전송하지 않는다(9-4). form을 쓰지 않는다(2-1) ---------- */
@@ -425,10 +440,13 @@
   function amt(lo, hi, approx) { return lo === hi ? (approx ? '약 ' : '') + man(hi) : man(lo) + '~' + man(hi); }
   function pctTxt(r) { return r[0] === r[1] ? r[0] + '%' : r[0] + '~' + r[1] + '%'; }
 
-  CY.mount = function (box, rules, hash) {
+  CY.mount = function (box, rules, hash, notice) {
     var today = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
+    if (notice && !Array.isArray(notice.types)) notice.types = [];
     var groups = GROUPS.filter(function (g) { return rules.loans.some(function (p) { return p.group === g[0] && p.offer === 'active'; }); });
     var S = { step: 0, result: false, mode: {}, c: {}, g: { buy: {}, jeonse: {}, rent: {} } };
+    // 공고 상태: nstep(ask·type 화면), applied(채움), typeOf(고른 주택형), filled(공고에서 채운 칸 — 사람이 고치면 빠진다), offer(「공고 정보로 채우기」 줄)
+    var N = { nstep: notice ? 'ask' : null, applied: false, typeOf: null, filled: {}, offer: false };
     var m = /[#&]t=(buy|jeonse|rent)/.exec(hash || '');
     var preset = m ? m[1] : /[#&]n=\d/.test(hash || '') ? 'buy' : null;
     if (preset) S.mode[preset] = true;
@@ -439,13 +457,65 @@
 
     function store(f, g) { return GROUP_FIELDS.indexOf(f) >= 0 ? S.g[g] : S.c; }
     function get(f, g) { return f === 'saleWin' ? S.c.saleWinQ : store(f, g)[f]; }
+    function fk(f, g) { return (GROUP_FIELDS.indexOf(f) >= 0 ? g : 'c') + ':' + f; }
     function set(f, g, v) {
+      if (get(f, g) !== v) delete N.filled[fk(f, g)];
       if (f === 'saleWin') {
         var s = SALE.filter(function (o) { return o[0] === v; })[0];
         S.c.saleWinQ = v; S.c.saleWin = s[2]; S.c.landLease = s[3];
         return;
       }
       store(f, g)[f] = v;
+    }
+    function clearFilled() {
+      for (var k in N.filled) {
+        var a = k.split(':');
+        delete (a[0] === 'c' ? S.c : S.g[a[0]])[a[1]];
+      }
+      N.filled = {};
+    }
+    // 공고 값 채우기. 사람이 이미 넣은 칸은 건드리지 않는다(16-4)
+    function applyNotice(t) {
+      clearFilled();
+      var o = CY.noticeFill(notice, t);
+      for (var f in o) {
+        var st = store(f, 'buy');
+        if (st[f] != null) continue;
+        st[f] = o[f]; N.filled[fk(f, 'buy')] = 1;
+      }
+      S.mode.buy = true; N.applied = true; N.typeOf = t; N.offer = false; N.nstep = null;
+    }
+    function isFilled(f, g) { return !!N.filled[fk(f, g)]; }
+    function labelOf(f) { var o = optsOf(f, 'buy'), v = S.g.buy[f], x = (o || []).filter(function (e) { return e[0] === v; })[0]; return x ? x[1] : ''; }
+    function noticeBar() {
+      if (N.offer) return '<div class="cy-nbar"><button type="button" class="cy-btn2" data-act="noffer">「' + esc(notice.name) + '」 공고 정보로 채우기</button></div>';
+      if (!N.applied) return '';
+      var t = N.typeOf, parts = S.mode.buy ? ['집 살 때'] : [];
+      if (isFilled('buyKind', 'buy')) parts.push(labelOf('buyKind'));
+      if (isFilled('area', 'buy')) parts.push(labelOf('area'));
+      if (isFilled('region', 'buy')) parts.push(labelOf('region'));
+      if (isFilled('price', 'buy')) parts.push('집값 ' + man(S.g.buy.price) + '(최고가 기준)');
+      if (isFilled('regulated')) parts.push((S.c.regulated ? '규제지역' : '규제지역 아님') + '(공고 기준. 대출은 접수일 기준이에요)');
+      var kind = [notice.houseKind, notice.publicLaw ? '공공주택특별법 적용' : ''].filter(Boolean).join(' · ');
+      return '<div class="cy-nbar"><p class="cy-nt">「' + esc(notice.name) + '」' + (t ? ' ' + esc(CY.typeLabel(t.ty)) : '') + ' 공고 정보로 계산했어요' + (kind ? ' <span>(' + esc(kind) + ')</span>' : '') + '</p>' +
+        ((S.result || S.step === 0) && parts.length ? '<p class="cy-qh">공고에서 채운 값: ' + esc(parts.join(' · ')) + '</p>' : '') +
+        '<div class="cy-opts">' + (notice.types.length > 1 ? '<button type="button" class="cy-btn2" data-act="nchange">주택형 바꾸기</button>' : '') + '<button type="button" class="cy-btn2" data-act="nremove">공고 정보 빼기</button></div></div>';
+    }
+    function renderNotice() {
+      var h, types = notice.types;
+      if (N.nstep === 'ask') {
+        var what = types.length ? '분양가·지역·전용면적·주택 종류를' : notice.buyKind ? '지역·주택 종류를' : '지역을';
+        h = '<div class="cy-q"><p class="cy-qt cy-prog-t" tabindex="-1">보고 있던 「' + esc(notice.name) + '」 공고 정보로 계산할까요?</p><p class="cy-qh">' + what + ' 채워 드려요. 언제든 고칠 수 있어요.</p></div>' +
+          '<div class="cy-nav cy-nav-col"><button type="button" class="cy-btn" data-act="nyes">예, 채워 주세요</button><button type="button" class="cy-btn2" data-act="nno">아니요, 직접 입력할게요</button></div>';
+      } else {
+        h = '<div class="cy-q"><p class="cy-qt cy-prog-t" tabindex="-1">주택형을 골라 주세요</p><p class="cy-qh">공고의 순서예요. 분양가는 주택형의 최고가이고, 층·동에 따라 더 낮을 수 있어요.</p><div class="cy-types">' +
+          types.map(function (t, i) {
+            return '<button type="button" class="cy-opt" data-act="ntype" data-i="' + i + '" aria-pressed="' + (N.typeOf === t) + '"><b>' + esc(CY.typeLabel(t.ty)) + '</b>' + (t.ex > 0 ? ' · 전용 ' + t.ex.toFixed(2) + '㎡' : '') + (t.top > 0 ? ' · 최고 분양가 ' + man(t.top) : '') + ' · 일반 ' + t.gen + ' · 특별 ' + t.sp + '세대</button>';
+          }).join('') +
+          '<button type="button" class="cy-opt" data-act="ntype" data-i="-1">아직 못 정했어요</button></div></div>';
+      }
+      box.innerHTML = h;
+      live.textContent = '';
     }
     function ansFor(g) { var a = {}, k; for (k in S.c) a[k] = S.c[k]; for (k in S.g[g]) a[k] = S.g[g][k]; return a; }
     function optsOf(f, g) {
@@ -462,7 +532,10 @@
     }
     function qHtml(f, g, c) {
       var q = Q[f] || { t: (rules.fields[f] || {}).label || f }, id = 'cyq-' + f + '-' + (g || 'c') + (c ? '-' + c : ''), v = get(f, g), opts = optsOf(f, g), dc = c ? ' data-c="' + c + '"' : '';
-      var h = '<div class="cy-q"><p class="cy-qt" id="' + id + '">' + esc(q.t) + '</p>' + (q.h ? '<p class="cy-qh">' + esc(q.h) + '</p>' : '');
+      var h = '<div class="cy-q"><p class="cy-qt" id="' + id + '">' + esc(q.t) + (isFilled(f, g) ? ' <span class="cy-tag">공고</span>' : '') + '</p>' + (q.h ? '<p class="cy-qh">' + esc(q.h) + '</p>' : '');
+      if (f === 'saleWin' && N.applied && !(notice.kind === '공공지원 민간임대' || (/임대/.test(notice.name) && !/토지임대부/.test(notice.name)))) h += '<p class="cy-qh">이 공고로 당첨되면 분양받는 집이에요</p>';
+      if (f === 'price' && isFilled(f, g)) h += '<p class="cy-qh">최고가 기준이에요. 층·동에 따라 더 낮을 수 있어 고칠 수 있어요</p>';
+      if (f === 'regulated' && isFilled(f, g)) h += '<p class="cy-qh">공고 기준이에요. 대출은 접수일 기준이라 그 사이 바뀔 수 있어요</p>';
       if (opts) {
         h += '<div class="cy-opts" role="group" aria-labelledby="' + id + '">' + opts.map(function (o, i) {
           return '<button type="button" class="cy-opt" data-act="pick" data-f="' + f + '" data-g="' + (g || '') + '" data-i="' + i + '"' + dc + ' aria-pressed="' + (v === o[0]) + '">' + esc(o[1]) + '</button>';
@@ -481,7 +554,7 @@
 
     function renderStep() {
       var sc = screens(), st = sc[S.step], last = S.step === sc.length - 1;
-      var h = '<p class="cy-prog" tabindex="-1">정책대출 예비 확인 · ' + (S.step + 1) + '/' + sc.length + '</p>';
+      var h = '<p class="cy-prog" tabindex="-1">정책대출 예비 확인 · ' + (S.step + 1) + '/' + sc.length + '</p>' + noticeBar();
       if (st.mode) {
         h += '<div class="cy-q"><p class="cy-qt" id="cyq-mode">어떤 정책대출을 알아볼까요?(여러 개 선택)</p><div class="cy-opts" role="group" aria-labelledby="cyq-mode">' +
           groups.map(function (g) { return '<button type="button" class="cy-opt" data-act="mode" data-v="' + g[0] + '" aria-pressed="' + !!S.mode[g[0]] + '">' + g[1] + '</button>'; }).join('') + '</div></div>';
@@ -558,25 +631,41 @@
       var sum = [cnt.ok && '공통 요건 충족 ' + cnt.ok, cnt.check && '확인 필요 ' + cnt.check, cnt.no && '해당 안 됨 ' + cnt.no].filter(Boolean).join(' · ');
       box.innerHTML = '<div class="cy-res-head"><p class="cy-prog" tabindex="-1">정책대출 예비 확인</p><button type="button" class="cy-btn2" data-act="edit">답 고치기</button><button type="button" class="cy-btn2" data-act="reset">다시 하기</button></div>' +
         '<p class="cy-fix">입력하신 값으로만 본 예비 확인이에요(기준일 ' + esc(CY.checkedOf(rules)) + '). 실제 대상·한도·금리는 취급은행·기금 심사에서 정해져요.</p>' +
-        '<p class="cy-sum" tabindex="-1">' + esc(sum || '결과 없음') + '</p>' + body +
+        noticeBar() + '<p class="cy-sum" tabindex="-1">' + esc(sum || '결과 없음') + '</p>' + body +
         '<p class="cy-foot">입력값은 이 계산기 코드가 저장하거나 보내지 않아요. 결과를 남기려면 화면을 캡처하세요.</p>';
       live.textContent = sum || '결과 없음';
     }
     function render(focusSel) {
-      if (S.result) renderResult(); else renderStep();
+      if (N.nstep) renderNotice(); else if (S.result) renderResult(); else renderStep();
       var el = focusSel && box.querySelector(focusSel);
       if (el) el.focus();
     }
     function top() {
-      render('.cy-prog');
+      render(N.nstep ? '.cy-prog-t' : '.cy-prog');
       if (box.getBoundingClientRect().top < 0) box.scrollIntoView({ block: 'start' });
     }
     function num(v) { var n = parseInt(String(v).replace(/[^\d]/g, ''), 10); return isNaN(n) ? undefined : n; }
 
+    var pressing = false, redraw = false;
+    box.addEventListener('mousedown', function (e) { pressing = !!(e.target.closest && e.target.closest('button, a, summary')); });
+    document.addEventListener('mouseup', function () {
+      if (!pressing) return;
+      pressing = false;
+      setTimeout(function () { if (redraw) { redraw = false; render(); } }, 0);
+    });
     box.addEventListener('click', function (e) {
       var b = e.target.closest && e.target.closest('button[data-act]');
       if (!b) return;
+      redraw = false; // 아래 동작이 어차피 다시 그린다
       var act = b.getAttribute('data-act'), f = b.getAttribute('data-f'), g = b.getAttribute('data-g');
+      if (act === 'nyes' || act === 'noffer' || act === 'nchange') {
+        if (notice.types.length > 1) N.nstep = 'type';
+        else applyNotice(notice.types[0] || null);
+        return top();
+      }
+      if (act === 'nno') { N.nstep = null; N.offer = true; return top(); }
+      if (act === 'ntype') { var ti = +b.getAttribute('data-i'); applyNotice(ti >= 0 ? notice.types[ti] : null); return top(); }
+      if (act === 'nremove') { clearFilled(); N.applied = false; N.typeOf = null; N.offer = true; return top(); }
       if (act === 'mode') { var v = b.getAttribute('data-v'); S.mode[v] = !S.mode[v]; return render('[data-act="mode"][data-v="' + v + '"]'); }
       if (act === 'pick') {
         var c = b.getAttribute('data-c'), cs = c ? '[data-c="' + c + '"]' : ':not([data-c])';
@@ -593,18 +682,25 @@
       }
       if (act === 'prev') { S.step--; return top(); }
       if (act === 'edit') { S.result = false; S.step = 1; return top(); }
-      if (act === 'reset') { S = { step: 0, result: false, mode: S.mode, c: {}, g: { buy: {}, jeonse: {}, rent: {} } }; return top(); }
+      if (act === 'reset') {
+        // 다시 하기: 답만 지운다. 가져온 공고 값은 다시 채운다(2-4)
+        S = { step: 0, result: false, mode: S.mode, c: {}, g: { buy: {}, jeonse: {}, rent: {} } };
+        N.filled = {};
+        if (N.applied) applyNotice(N.typeOf);
+        return top();
+      }
     });
     // 숫자 칸: 질문 화면에서는 고칠 때마다 담기만, 결과 화면에서는 칸을 떠날 때 다시 계산
     box.addEventListener('input', function (e) {
       var t = e.target;
-      if (t.getAttribute && t.hasAttribute('data-f') && !S.result) store(t.getAttribute('data-f'), t.getAttribute('data-g'))[t.getAttribute('data-f')] = num(t.value);
+      if (t.getAttribute && t.hasAttribute('data-f') && !S.result) set(t.getAttribute('data-f'), t.getAttribute('data-g'), num(t.value));
     });
     box.addEventListener('change', function (e) {
       var t = e.target;
       if (!(t.getAttribute && t.hasAttribute('data-f')) || !S.result) return;
       var f = t.getAttribute('data-f'), g = t.getAttribute('data-g'), c = t.getAttribute('data-c');
-      store(f, g)[f] = num(t.value);
+      set(f, g, num(t.value));
+      if (pressing) { redraw = true; return; }
       render('input[data-f="' + f + '"][data-g="' + g + '"]' + (c ? '[data-c="' + c + '"]' : ':not([data-c])'));
     });
     render();
@@ -637,10 +733,13 @@
       box.innerHTML = '<p class="cy-calc-fail">지금은 계산기를 열 수 없어요. 아래 표에서 상품별 조건을 확인해 주세요.</p>';
     };
     if (!base) return fail();
-    fetch(base + 'rules.json', { cache: 'no-cache' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (rules) {
+    var json = function (f) { return fetch(base + f, { cache: 'no-cache' }).then(function (r) { return r.ok ? r.json() : null; }); };
+    // #n=공고번호일 때만 공고 파일을 받는다(15-3). 못 받거나 번호가 없으면 묻지 않고 빈 계산기로 연다(16-6)
+    var m = /[#&]n=(\d+)/.exec(location.hash);
+    var notice = m ? json('notices.json').then(function (d) { return d && d.schema === 1 && d.n && d.n.hasOwnProperty(m[1]) ? d.n[m[1]] : null; }).catch(function () { return null; }) : Promise.resolve(null);
+    json('rules.json').then(function (rules) {
       if (!rules || rules.schema !== 1 || !rules.loans) return fail();
-      if (typeof CY.mount === 'function') CY.mount(box, rules, location.hash);
-      else box.innerHTML = '<p class="cy-calc-loading">계산기를 준비하고 있어요. 아래 표에서 상품별 조건을 먼저 확인해 주세요.</p>';
+      return notice.then(function (n) { CY.mount(box, rules, location.hash, n); });
     }).catch(fail);
   }
 

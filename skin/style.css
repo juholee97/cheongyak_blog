@@ -480,7 +480,7 @@ a.hero-row:hover { background: var(--tint3); text-decoration: none; color: var(-
 .cy-calc button { font: inherit; cursor: pointer; }
 .cy-calc button:focus-visible, .cy-calc input:focus-visible, .cy-calc a:focus-visible, .cy-calc summary:focus-visible { outline: 3px solid var(--navy); outline-offset: 2px; }
 .cy-prog { font-size: 13px; font-weight: 700; color: var(--primary); }
-.cy-prog:focus { outline: none; }
+.cy-prog:focus, .cy-prog-t:focus { outline: none; }
 .cy-grp { margin-top: 12px !important; font-size: 13px; font-weight: 700; color: var(--sub); }
 .cy-q { margin-top: 16px; }
 .cy-qt { font-size: 15px; font-weight: 700; color: var(--ink); line-height: 1.5; }
@@ -528,6 +528,14 @@ a.hero-row:hover { background: var(--tint3); text-decoration: none; color: var(-
 .cy-links a:hover { text-decoration: none; background: var(--tag-bg); }
 .cy-later, .cy-off { margin-top: 12px !important; font-size: 13px; color: var(--sub); line-height: 1.55; }
 .cy-no summary { color: var(--sub); }
+.cy-nbar { margin-top: 10px; padding: 10px 12px; border: 1px solid var(--tag-line); border-radius: 3px; background: #fff; }
+.cy-nt { font-size: 14px; font-weight: 700; color: var(--ink); line-height: 1.5; }
+.cy-nt span { font-weight: 400; color: var(--muted); }
+.cy-nbar .cy-btn2 { padding: 8px 10px; font-size: 13px; line-height: 1.35; text-align: left; }
+.cy-tag { display: inline-block; padding: 0 5px; border-radius: 3px; background: var(--tag-bg); color: var(--primary); font-size: 11px; font-weight: 700; vertical-align: 1px; }
+.cy-nav-col { flex-direction: column; }
+.cy-types { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+.cy-types .cy-opt { width: 100%; }
 @media (max-width: 700px) {
   .cy-remote { right: 12px; bottom: calc(64px + 12px + env(safe-area-inset-bottom)); font-size: 12px; }
 }
