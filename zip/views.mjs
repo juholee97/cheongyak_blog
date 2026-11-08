@@ -99,11 +99,10 @@ export async function siteMap(no, out) {
     const d = dist(i.lon, i.lat); if (d <= 2000 && (!marts.has(brand) || d < marts.get(brand).d)) marts.set(brand, { kind: '마트', brand, name: i.title, lon: i.lon, lat: i.lat, d });
   }
   ps.push(...[...marts.values()].sort((a, b) => a.d - b.d).slice(0, 2));
-  // 줌: 단지·(3km 안) 가장 가까운 역·1km 안 학교·마트가 위 60% 상자에 들어오는 가장 큰 줌(14~16). 상자 밖 표시는 가장자리에 방향 화살표로(멀리 넓혀 글자가 뭉개지지 않게)
-  const pts = [[lon, lat], ...(ol ? ol.r : []), ...(near ? [[st.lon, st.lat]] : []), ...ps.filter((p) => p.d <= 1000).map((p) => [p.lon, p.lat])], box = { x0: 70, x1: 730, y0: 75, y1: 280 };
-  let z = 16, P;
-  for (; z >= 14; z--) { P = pts.map(([x, y]) => project(x, y, z)); const w = Math.max(...P.map((p) => p[0])) - Math.min(...P.map((p) => p[0])), h = Math.max(...P.map((p) => p[1])) - Math.min(...P.map((p) => p[1])); if ((w <= box.x1 - box.x0 && h <= box.y1 - box.y0) || z === 14) break; }
-  const ox = (Math.min(...P.map((p) => p[0])) + Math.max(...P.map((p) => p[0]))) / 2 - (box.x0 + box.x1) / 2, oy = (Math.min(...P.map((p) => p[1])) + Math.max(...P.map((p) => p[1]))) / 2 - (box.y0 + box.y1) / 2;
+  // 단지는 항상 지도 중앙(가로 가운데, 카드 훅 글자 위 영역의 가운데)에 둔다 — 2026-11-08 사용자. 줌은 단지가 작아지지 않게 15를 기본으로: 단지·(3km 안) 가장 가까운 역·1km 안 학교·마트가 중앙에서 좌우 330px, 위 95px, 아래 110px 안에 다 들면 16, 단지 자체가 넘치면 14. 밖의 표시는 가장자리에 방향 화살표로
+  const CX = 400, CY = 170, fits = (list, zz) => { const [a, b] = project(cx0, cy0, zz); return list.every(([x, y]) => { const [u, v] = project(x, y, zz); return Math.abs(u - a) <= 330 && v - b >= -95 && v - b <= 110; }); };
+  const site = [[lon, lat], ...(ol ? ol.r : [])], z = fits([...site, ...(near ? [[st.lon, st.lat]] : []), ...ps.filter((p) => p.d <= 1000).map((p) => [p.lon, p.lat])], 16) ? 16 : fits(site, 15) ? 15 : 14;
+  const [ca, cb] = project(cx0, cy0, z), ox = ca - CX, oy = cb - CY;
   const xy = (x, y) => { const [a, b] = project(x, y, z); return [a - ox, b - oy]; };
   const tiles = [];
   for (let ty = Math.floor(oy / T); ty <= Math.floor((oy + H) / T); ty++) for (let tx = Math.floor(ox / T); tx <= Math.floor((ox + W) / T); tx++) {
