@@ -261,6 +261,8 @@ a.hero-row:hover { background: var(--tint3); text-decoration: none; color: var(-
 .post-body table { border-collapse: collapse; width: 100%; border-top: 0; }
 .post-body th, .post-body td { border-bottom: 1px solid var(--line-soft); padding: 10px 12px; text-align: left; }
 .post-body th { background: var(--surface); font-weight: 700; }
+/* 칸 사이 옅은 칸막이(2026-11-08 사용자 요청: 모든 표). 위아래를 조금 비운 세로선 — 글 안 인라인 background보다 앞서도록 !important */
+.post-body th + th, .post-body td + td { background-image: linear-gradient(var(--line), var(--line)) !important; background-repeat: no-repeat !important; background-size: 1px 64% !important; background-position: left center !important; }
 .post-body ul { padding-left: 20px; }
 .post-body li { margin: 4px 0; }
 .post-body a { color: var(--brand); font-weight: 700; }
