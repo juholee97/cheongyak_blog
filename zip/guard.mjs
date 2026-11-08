@@ -17,7 +17,6 @@ export const DEFAULTS = {
   youtube: { day: 3000, month: 60000, paid: false, note: 'YouTube Data API 단위(검색 100·목록 1). 기본 무료 할당 하루 10,000 — 결제 계정은 연결하지 않았다' },
   vworld: { day: 20000, month: 400000, paid: false, note: '브이월드 지오코더(무료, 일일 한도 있음 — 2026-10-28 초과)' },
   sh: { day: 400, month: 6000, paid: false, note: 'SH 공고 게시판 읽기(공식 API 없음 — 목록·글·첨부 쪽 이미지 한 번에 1회). 사이트 부담을 줄이는 한도(2026-10-28 첨부 읽기 때문에 200→400)' },
-  overpass: { day: 200, month: 2000, paid: false, note: 'OpenStreetMap Overpass API(무료 공용 서버 — 부담을 줄이는 한도). 단지 경계(아파트 단지 면) 찾기, 2026-11-08' },
   datago: { day: 8000, month: 160000, paid: false, note: '공공데이터포털(개발계정 API당 일 10,000)' },
 };
 const FILE = () => process.env.ZIP_USAGE_FILE || join(ROOT, 'data/api_usage.json');
