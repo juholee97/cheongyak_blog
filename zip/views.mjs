@@ -153,7 +153,9 @@ export async function siteMap(no, out) {
   const color = { 초: '#16a34a', 중: '#0d9488', 고: '#7c3aed', 마트: '#e11d48' };
   const logos = {};
   for (const m of ps.filter((p) => p.kind === '마트')) logos[m.brand] ??= await readFile(join(ROOT, 'data/zip_logos', ({ 이마트: 'emart', 홈플러스: 'homeplus', 롯데마트: 'lottemart', 코스트코: 'costco' }[m.brand] || 'none') + '.png')).then((b) => 'data:image/png;base64,' + b.toString('base64')).catch(() => null);
-  // 역은 지하철역 기둥 표지처럼: 위에 노선 배지, 아래로 역 이름을 세로로, 기둥 밑에 거리(2026-11-08 사용자)
+  // 역은 지하철 출입구 기둥 표지처럼: 짙은 올리브색 두 면 기둥(위에서 내려다본 v 모양), 면마다 노란 열차 표지 → 세로 역 이름 → 노선 배지, 기둥 밑에 거리(2026-11-08 사용자)
+  const TRAIN = '<svg width="26" height="26" viewBox="0 0 26 26" style="display:block"><rect width="26" height="26" fill="#f5c400"/><rect x="6" y="3.5" width="14" height="14.5" rx="2.5" fill="none" stroke="#3a3f32" stroke-width="2"/><rect x="8.5" y="6" width="9" height="4.5" fill="#3a3f32"/><circle cx="10" cy="14.3" r="1.4" fill="#3a3f32"/><circle cx="16" cy="14.3" r="1.4" fill="#3a3f32"/><path d="M8.5 18.5 6 22.5M17.5 18.5 20 22.5M7 21h12" stroke="#3a3f32" stroke-width="1.7" fill="none"/></svg>';
+  const SK = 13, FW = 34, SKH = Math.round(FW * Math.tan((SK * Math.PI) / 180));
   const pillar = (x) => {
     if (!near) { // 3km 넘게 먼 역: 지도 왼쪽 위(숫자 상자 아래)에 방향과 거리만 — 기둥을 엉뚱한 자리에 세우지 않는다
       const t = `가장 가까운 ${x.name} ${ARROW(...xy(x.lon, x.lat))} ${km(x.d)}`, w = tw(t, 17) + x.lines.reduce((a, l) => a + lineW(l), 0) + 36, c = { x: 16 + w / 2, y: stat ? 118 : 30, w, h: 34 };
@@ -162,18 +164,17 @@ export async function siteMap(no, out) {
       return `<div style="position:absolute;left:16px;top:${c.y - 17}px;height:34px;box-sizing:border-box;background:#fff;border:2px solid #17212b;border-radius:8px;padding:0 10px;display:flex;align-items:center;gap:6px;font-size:17px;font-weight:700;color:#17212b;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.3)">${x.lines.map((l) => lineBadge(l, x.op)).join('')}${esc(t)}</div>`;
     }
     const p0 = xy(x.lon, x.lat), out = !inView(p0), [px, py] = out ? toEdge(p0) : p0, label = x.name.replace(/역$/, '');
-    const bh = x.lines.length * 30 + 8, nh = label.length * 21 + 14, tag = `${out ? ARROW(...p0) + ' ' : ''}${km(x.d)}`, w = Math.max(48, tw(tag, 15) + 22), h = bh + nh + 6 + 10 + 26;
+    const fs = label.length > 5 ? 14 : 18, fh = 4 + 26 + 6 + label.length * (fs + 2) + 6 + x.lines.length * 30 + 4, tag = `${out ? ARROW(...p0) + ' ' : ''}${km(x.d)}`, w = Math.max(FW * 2 + 4, tw(tag, 15) + 22), h = fh + SKH + 4 + 24;
     const c = findSpot(px, Math.min(290, Math.max(40 + h, py)) - h / 2, w, h);
     if (!c) return '';
     if (!out) lead(px, py, { ...c, y: c.y + h / 2 });
-    const top = c.y - h / 2, c1 = lineColor(x.lines[0], x.op);
-    return `${out ? '' : `<div style="position:absolute;left:${px - 6}px;top:${py - 6}px;width:12px;height:12px;border-radius:50%;background:#17212b;border:3px solid #fff"></div>`}
-<div style="position:absolute;left:${c.x}px;top:${top}px;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;filter:drop-shadow(0 3px 5px rgba(0,0,0,.35))">
-<div style="width:42px;background:#fff;border:3px solid #17212b;border-radius:7px;overflow:hidden;display:flex;flex-direction:column;align-items:center">
-<div style="width:100%;background:${c1};padding:4px 0;display:flex;flex-direction:column;align-items:center;gap:4px">${x.lines.map((l) => lineBadge(l, x.op, true)).join('')}</div>
-<div style="writing-mode:vertical-rl;text-orientation:upright;font-size:18px;font-weight:700;color:#17212b;letter-spacing:1px;padding:6px 0">${esc(label)}</div></div>
-<div style="width:7px;height:10px;background:#17212b"></div>
-<div style="background:#17212b;color:#fff;font-size:15px;font-weight:700;padding:1px 8px;border-radius:999px;white-space:nowrap">${tag}</div></div>`;
+    const top = c.y - h / 2;
+    // 면 하나: 왼쪽 면은 오른쪽(접힌 모서리)을 축으로, 오른쪽 면은 왼쪽을 축으로 기울여 가운데 모서리가 아래로 내려온 v 모양
+    const face = (bg, left) => `<div style="width:${FW}px;height:${fh}px;box-sizing:border-box;background:${bg};transform:skewY(${left ? SK : -SK}deg);transform-origin:${left ? 'right' : 'left'} top;display:flex;flex-direction:column;align-items:center;padding:4px 0">${TRAIN}<div style="writing-mode:vertical-rl;text-orientation:upright;font-size:${fs}px;font-weight:700;color:#fff;letter-spacing:2px;margin:6px 0;white-space:nowrap">${esc(label)}</div><div style="display:flex;flex-direction:column;align-items:center;gap:4px">${x.lines.map((l) => lineBadge(l, x.op, true)).join('')}</div></div>`;
+    return `${out ? '' : `<div style="position:absolute;left:${px - 6}px;top:${py - 6}px;width:12px;height:12px;border-radius:50%;background:#3a3f32;border:3px solid #fff"></div>`}
+<div style="position:absolute;left:${c.x}px;top:${top}px;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;filter:drop-shadow(0 3px 5px rgba(0,0,0,.4))">
+<div style="display:flex;padding-top:${SKH}px">${face('#5f6553', true)}${face('#484d3f', false)}</div>
+<div style="margin-top:4px;background:#3a3f32;color:#fff;font-size:15px;font-weight:700;padding:1px 8px;border-radius:999px;white-space:nowrap">${tag}</div></div>`;
   };
   const stChip = (x) => pillar(x);
   // 마트는 캡슐 없이 로고(없으면 브랜드 이름 글자) 아래에 거리 — 지도 위에서 읽히게 흰 테두리 그림자(2026-11-08 사용자)
@@ -210,7 +211,7 @@ function lineBadge(l, op = '', ring = false) {
   const n = (l.match(/^(\d)호선$/) || [])[1], c = lineColor(l, op), b = ring ? 'border:2px solid #fff;' : '';
   if (n) return `<span style="flex:none;width:26px;height:26px;box-sizing:border-box;${b}border-radius:50%;background:${c};color:#fff;font-size:15px;font-weight:700;display:inline-flex;align-items:center;justify-content:center">${n}</span>`;
   const t = (NAMED.find(([re]) => re.test(l)) || [0, 0, l.replace(/선$/, '')])[2];
-  return ring ? `<span style="flex:none;width:30px;box-sizing:border-box;${b}background:${c};color:#fff;font-size:11px;font-weight:700;line-height:1.05;padding:3px 0;border-radius:6px;text-align:center;word-break:keep-all">${t.length > 2 ? t.slice(0, 2) + '<br>' + t.slice(2, 4) : t}</span>`
+  return ring ? `<span style="flex:none;width:28px;box-sizing:border-box;${b}background:${c};color:#fff;font-size:11px;font-weight:700;line-height:1.05;padding:3px 0;border-radius:6px;text-align:center;word-break:keep-all">${t.length > 2 ? t.slice(0, 2) + '<br>' + t.slice(2, 4) : t}</span>`
     : `<span style="flex:none;background:${c};color:#fff;font-size:13px;font-weight:700;padding:2px 7px;border-radius:999px">${t}</span>`;
 }
 const lineW = (l) => (/^\d호선$/.test(l) ? 30 : (NAMED.find(([re]) => re.test(l)) || [0, 0, l])[2].length * 13 + 20);
