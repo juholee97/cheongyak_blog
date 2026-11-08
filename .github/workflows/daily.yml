@@ -4,6 +4,9 @@ on:
   schedule:
     - cron: '0 21 * * *' # 06:00 KST
   workflow_dispatch:
+  push: # 규칙만 고쳤을 때 바로 반영. 공공데이터 API는 부르지 않는다(설계 6-3)
+    branches: [main]
+    paths: ['rules/**']
 
 permissions:
   contents: read
@@ -22,10 +25,20 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: node crawler/check.mjs
-      - run: node crawler/fetch.mjs --out site/schedule.json
+      - if: github.event_name != 'push'
+        run: node crawler/check.mjs
+      - if: github.event_name != 'push'
+        run: node crawler/fetch.mjs --out site/schedule.json
         env:
           DATA_GO_KR_KEY: ${{ secrets.DATA_GO_KR_KEY }}
+      # push: 지금 배포본 일정·공고를 그대로 쓴다(둘 중 하나라도 못 받으면 배포하지 않아 지금 배포본이 남는다)
+      - if: github.event_name == 'push'
+        run: |
+          mkdir -p site
+          curl -fsS https://juholee97.github.io/cheongyak_blog/schedule.json -o site/schedule.json
+          curl -fsS https://juholee97.github.io/cheongyak_blog/notices.json -o site/notices.json
+      # 규칙 합치기: 실패해도 일정 배포를 막지 않고 지금 배포본을 쓴다
+      - run: node rules/build.mjs --out site/rules.json || curl -fsS https://juholee97.github.io/cheongyak_blog/rules.json -o site/rules.json || echo "rules.json 없음 — 계산기는 안내만 보인다"
       - uses: actions/upload-pages-artifact@v3
         with:
           path: site

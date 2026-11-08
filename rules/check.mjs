@@ -161,6 +161,14 @@ for (const p of loans.products.filter((x) => x.offer === 'active')) {
   }
 }
 
+// 공개 전 글 링크 숨기기(6-3)
+{
+  const { hideUnpublished } = await import('./build.mjs');
+  const P = [{ links: { guide: 'u1', official: 'o' } }, { links: { guide: 'u2', official: 'o' } }];
+  const r = hideUnpublished(P, { a: { url: 'u1', when: '2026-11-09 08:00' }, b: { url: 'u2', when: '2026-11-07 08:00' } }, '2026-11-08 12:00');
+  if (r[0].links.guide !== null || r[0].links.official !== 'o' || r[1].links.guide !== 'u2' || P[0].links.guide !== 'u1') err('공개 전 글 숨기기', JSON.stringify(r));
+}
+
 // 정렬 코드 금지(9-2): order 말고 다른 값으로 정렬하지 않는다
 for (const f of ['skin/images/calc.js', 'posts/calc_post.mjs']) {
   const src = await read(f).catch(() => '');
