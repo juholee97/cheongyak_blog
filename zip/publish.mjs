@@ -74,6 +74,9 @@ if (process.argv.includes('--check')) {
     const { items: sched } = await (await import('../posts/weekly.mjs')).loadData().catch(() => ({ items: [] }));
     // 조감도(data/zip_views.json, zip/views.mjs)를 미디어로 먼저 올린다 — 첫 화면 격자도 같은 그림을 쓰니 페이지보다 먼저(2026-11-05: 나중에 올려 새 그림이 첫 화면에 하루 늦게 붙던 것)
     const views = await loadViews();
+    // 공식 조감도가 없는 공개 심층 분석 글은 입지 지도를 만들어 쓴다(2026-11-08 사용자 — zip/views.mjs siteMap)
+    const { mapFor } = await import('./views.mjs');
+    for (const d of deeps) if (!views[d.key]?.file) { const r = await mapFor(d.key, views); if (r) console.log(r.skip ? `입지 지도 ✗ ${d.key} ${r.skip}` : `입지 지도 ✓ ${d.key}`); }
     for (const [no, v] of Object.entries(views)) if (v.file && !v.url) {
       const id = await uploadMedia(join(ROOT, v.file), `view-${no}.jpg`, `${reg[no]?.name || no} ${v.label || '조감도'}`).catch(() => null);
       if (id) Object.assign(v, { mid: id, url: (await wp(`media/${id}`)).source_url });
