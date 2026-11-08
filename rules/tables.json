@@ -15,7 +15,7 @@
     "head":          { "type": "select", "values": ["head", "member", "soonHead"], "label": "등본상 나" },
     "household":     { "type": "number", "min": 1, "max": 8, "label": "같은 등본 가구원 수(곧 분가하면 분가 뒤 등본 기준)" },
     "incSelf":       { "type": "number", "unit": "만원", "label": "본인 작년 총급여" },
-    "incSpouse":     { "type": "number", "unit": "만원", "label": "배우자 작년 총급여(혼인신고 전이어도 2년 안에 낳은 아이의 다른 부모 포함)", "askWhen": "marriage ∈ {le7y, soon} 또는 newborn = yes" },
+    "incSpouse":     { "type": "number", "unit": "만원", "label": "배우자 작년 총급여(혼인신고 전이어도 2년 안에 낳은 아이의 다른 부모 포함)", "askWhen": "marriage ≠ single 또는 newborn = yes. 혼인하지 않은 아이 부모의 소득은 parentsIncome 상품(신생아 특례)에만 더한다" },
     "price":         { "type": "number", "unit": "만원", "label": "집값(매매·분양가)" },
     "buyKind":       { "type": "select", "values": ["apt", "house", "officetel"], "label": "집 종류" },
     "area":          { "type": "select", "values": ["le60", "60to85", "85to100", "over100", "unknown"], "label": "전용면적" },
@@ -56,8 +56,8 @@
     "adultHead": { "f": "head", "is": ["head", "soonHead"], "why": "세대주(대출 접수일까지 세대주가 되는 사람 포함)여야 해요",
       "notice": { "when": { "f": "head", "is": "soonHead" }, "text": "대출 접수일에 세대주여야 해요(등본 정리 먼저)" } },
     "noHouse": { "f": "house", "is": "none", "why": "세대원 전원이 집·분양권·입주권이 없어야 해요" },
-    "asset511": { "f": "netAsset", "is": ["le345", "345to511"], "why": "순자산이 5.11억원을 넘어요(2026년도 기준)" },
-    "asset345": { "f": "netAsset", "is": "le345", "why": "순자산이 3.45억원을 넘어요(2026년도 기준)" },
+    "asset511": { "f": "netAsset", "is": ["le345", "345to511"], "why": "순자산이 5.11억원 이하여야 해요(2026년도 기준)" },
+    "asset345": { "f": "netAsset", "is": "le345", "why": "순자산이 3.45억원 이하여야 해요(2026년도 기준)" },
     "area85eup": { "any": [
       { "f": "area85", "is": true },
       { "all": [ { "f": "area", "is": "85to100" }, { "f": "capital", "is": false }, { "f": "eupmyeon", "is": true, "ask": "eupmyeon" } ] }

@@ -121,6 +121,49 @@ for (const f of ['skin/images/calc.js', 'posts/calc_post.mjs']) {
   for (const m of src.matchAll(/sort\(([^\n]*)/g)) if (!/order/.test(m[1])) err(f, `order가 아닌 정렬: sort(${m[1].slice(0, 60)}`);
 }
 
+// 사례(5-4): calc.js를 vm으로 읽어 CY.match로 cases.json을 돌린다. 합친 규칙은 build.mjs와 같은 모양
+{
+  const vm = await import('node:vm');
+  const ctx = {};
+  vm.runInNewContext(await read('skin/images/calc.js'), ctx);
+  const { schema, ...rest } = tables;
+  const rules = { ...rest, loans: loans.products };
+  const cases = JSON.parse(await read('rules/cases.json'));
+  for (const c of cases.cases) {
+    const ans = { ...cases.base, ...c.ans };
+    for (const k of Object.keys(ans)) if (ans[k] === null) delete ans[k];
+    const rs = ctx.CY.match(rules, ans, cases.today, c.group);
+    const orders = rs.map((r) => r.p.order);
+    if (orders.some((o, i) => i && o < orders[i - 1])) err(c.name, '결과가 order 순서가 아님');
+    for (const [code, e] of Object.entries(c.expect)) {
+      const r = rs.find((x) => x.p.code === code), ex = typeof e === 'string' ? { status: e } : e;
+      if (!r) { err(c.name, `${code} 결과 없음`); continue; }
+      const got = `${code} ${r.status}${r.why ? `(${r.why})` : ''}`;
+      if (r.status !== ex.status) { err(c.name, `${code}: ${ex.status} 기대, ${got}`); continue; }
+      const L = (r.lines || []).map((l) => l.limit).filter(Boolean);
+      if (ex.amt) {
+        const lo = Math.max(...L.map((l) => l.lo)), hi = Math.max(...L.map((l) => l.hi)); // 줄 가운데 가장 큰 금액
+        if (lo !== ex.amt[0] || hi !== ex.amt[1]) err(c.name, `${code}: 금액 ${ex.amt} 기대, ${lo},${hi}`);
+      }
+      if (ex.one && !(r.lines || []).some((l) => l.one && l.key === ex.one)) err(c.name, `${code}: ${ex.one} 1인 경로 줄 없음`);
+      if (ex.note && !(r.notes || []).some((n) => n.includes(ex.note))) err(c.name, `${code}: 안내에 「${ex.note}」 없음`);
+    }
+  }
+  // DTI 검산(4-5 12): money.mjs principalOf와 같은 값
+  for (const [inc, rate, want] of [[2000, 3.10, 23418], [5000, 3.80, 53652], [8400, 2.90, 100905]])
+    if (Math.floor((0.6 * inc) / 12 / ctx.CY.pmt1(rate, 30)) !== want) err('DTI 검산', `${inc}만원·${rate}% → ${want} 아님`);
+  console.log(`사례 ${cases.cases.length}건 실행`);
+}
+
+// 금지 표현(4-5 7, 9-2): 계산기 화면 글자와 규칙의 why·notice·이름
+{
+  const { BANNED } = await import('../posts/check.mjs');
+  const CALC_BANNED = ['대출 가능', '승인', '당첨 가능', '자격 있음', '대상입니다', '통과', '유리', '가장 낮은', '꼭 신청', '최저 금리', '더 많이', '신청하기'];
+  const words = [...BANNED, ...CALC_BANNED];
+  const texts = [await read('skin/images/calc.js'), JSON.stringify(loans), JSON.stringify(tables.defs)];
+  for (const t of texts) for (const w of words) if (t.split('기관추천').join('').includes(w)) err('금지 표현', `「${w}」`);
+}
+
 for (const x of warns) console.warn('경고', x);
 if (errors.length) { for (const x of errors) console.error('실패', x); process.exit(1); }
 console.log(`rules check OK — 상품 ${loans.products.length}개(판정 ${loans.products.filter((p) => p.offer === 'active').length})`);

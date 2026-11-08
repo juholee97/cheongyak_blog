@@ -41,7 +41,7 @@
         "ltv": { "pick": [
             { "when": { "f": "landLease", "is": "pre" }, "v": 80, "text": "토지임대부 사전청약 당첨자 80%" },
             { "when": { "f": "landLease", "is": "main" }, "v": 60, "text": "토지임대부 60%" },
-            { "when": { "all": [ { "f": "everOwned", "is": false }, { "f": "capital", "is": false }, { "f": "regulated", "is": false } ] }, "v": 80, "text": "생애최초 80%" },
+            { "when": { "all": [ { "f": "everOwned", "is": false }, { "f": "house", "is": "none" }, { "f": "capital", "is": false }, { "f": "regulated", "is": false } ] }, "v": 80, "text": "생애최초 80%" },
             { "v": 70, "text": "LTV 70%" } ],
           "doc": "loans.md#1#LTV" },
         "dti": { "v": 60, "text": "60%", "doc": "loans.md#1#DTI" },
@@ -63,12 +63,14 @@
     },
     {
       "id": "loan-newborn-buy", "code": "P2", "order": 2, "group": "buy", "offer": "active",
-      "name": "신생아 특례 디딤돌대출", "org": "주택도시기금",
+      "name": "신생아 특례 디딤돌대출", "org": "주택도시기금", "parentsIncome": true,
       "when": { "all": [
         { "use": "adultHead" },
+        { "unknownIf": { "when": { "all": [ { "f": "soloHead", "is": true }, { "f": "age", "op": "lt", "v": 30 }, { "f": "landLease", "is": "none" } ] },
+          "why": "만 30세 미만 단독세대주 제한이 신생아 특례에도 적용되는지 공식 문구가 없어요(디딤돌 기준을 따름)" } },
         { "f": "house", "is": "none", "why": "무주택 세대주여야 해요(1주택자는 대환 경로)",
           "unknownIf": { "when": { "f": "house", "is": "own1" }, "why": "1주택 세대주는 기존 주택담보대출 대환으로만 돼요(소득 1.3억원 이하)" } },
-        { "any": [ { "f": "newborn", "is": "yes" }, { "f": "newbornSpecialWin", "is": true, "ask": "newbornSpecialWin" } ],
+        { "any": [ { "f": "newborn", "is": "yes" }, { "all": [ { "f": "kidsLoan", "op": "ge", "v": 1 }, { "f": "newbornSpecialWin", "is": true, "ask": "newbornSpecialWin" } ] } ],
           "why": "대출 접수일 기준 2년 안에 출산(입양)한 가구여야 해요(’23.1.1 이후 출생)",
           "unknownIf": { "when": { "f": "newborn", "is": "pregnant" }, "why": "임신 중인 태아는 포함되지 않아요 — 출산 뒤 신청할 수 있어요" } },
         { "use": "noLoanBuy", "skipIf": { "f": "house", "is": "own1" } },
@@ -95,7 +97,7 @@
         "ltv": { "pick": [
             { "when": { "f": "landLease", "is": "pre" }, "v": 80, "text": "토지임대부 사전청약 당첨자 80%" },
             { "when": { "f": "landLease", "is": "main" }, "v": 60, "text": "토지임대부 60%" },
-            { "when": { "all": [ { "f": "everOwned", "is": false }, { "f": "capital", "is": false }, { "f": "regulated", "is": false } ] }, "v": 80, "text": "생애최초 80%" },
+            { "when": { "all": [ { "f": "everOwned", "is": false }, { "f": "house", "is": "none" }, { "f": "capital", "is": false }, { "f": "regulated", "is": false } ] }, "v": 80, "text": "생애최초 80%" },
             { "v": 70, "text": "LTV 70%" } ],
           "doc": "loans.md#2#LTV / DTI" },
         "dti": { "v": 60, "text": "DTI 60%", "doc": "loans.md#2#LTV / DTI" }
@@ -186,7 +188,7 @@
         "ltv": { "pick": [
             { "when": { "f": "landLease", "is": "pre" }, "v": 80, "text": "토지임대부 사전청약 당첨자 80%" },
             { "when": { "f": "landLease", "is": "main" }, "v": 60, "text": "토지임대부 60%" },
-            { "when": { "all": [ { "f": "everOwned", "is": false }, { "f": "capital", "is": false }, { "f": "regulated", "is": false } ] }, "v": 80, "text": "생애최초 80%" },
+            { "when": { "all": [ { "f": "everOwned", "is": false }, { "f": "house", "is": "none" }, { "f": "capital", "is": false }, { "f": "regulated", "is": false } ] }, "v": 80, "text": "생애최초 80%" },
             { "v": 70, "text": "LTV 70%" } ],
           "doc": "policy2.md#A-2#LTV / DTI" },
         "dti": { "v": 60, "text": "DTI 60%", "doc": "policy2.md#A-2#LTV / DTI" }
@@ -427,7 +429,7 @@
     },
     {
       "id": "loan-newborn-jeonse", "code": "J4", "order": 12, "group": "jeonse", "offer": "active",
-      "name": "신생아 특례 버팀목대출", "org": "주택도시기금",
+      "name": "신생아 특례 버팀목대출", "org": "주택도시기금", "parentsIncome": true,
       "when": { "all": [
         { "f": "newborn", "is": "yes", "why": "대출 접수일 기준 2년 안에 출산(입양)한 가구여야 해요(’23.1.1 이후 출생)",
           "unknownIf": { "when": { "f": "newborn", "is": "pregnant" }, "why": "임신 중인 태아는 포함되지 않아요 — 출산 뒤 신청할 수 있어요" } },
