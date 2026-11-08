@@ -74,6 +74,6 @@ async function main() {
   const p = join(ROOT, 'drafts', 'guide_loan-calculator.json');
   await writeFile(p, JSON.stringify(d, null, 2));
   console.log(`${p} 씀 — posts/guide.mjs로 그림·검수`);
-  execFileSync(process.execPath, [join(ROOT, 'posts', 'guide.mjs'), p], { stdio: 'inherit' });
+  execFileSync(process.execPath, [join(ROOT, 'posts', 'guide.mjs'), 'drafts/guide_loan-calculator.json'], { stdio: 'inherit', cwd: ROOT }); // 그림 경로는 저장소 기준 상대 경로(draft.mjs)
 }
 if (process.argv[1] && import.meta.url.endsWith(process.argv[1].replace(/\\/g, '/').split('/').pop())) main().catch((e) => { console.error(e.message); process.exit(1); });
