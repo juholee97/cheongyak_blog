@@ -5,8 +5,8 @@
  * node 점검: vm으로 읽어 CY만 꺼낸다(document가 없으면 화면 코드는 건너뜀). */
 (function (g) {
   'use strict';
-  // 계산기 페이지 주소(티스토리 일반 글 /NN). 글을 공개한 뒤 넣는다 — null이면 버튼을 그리지 않는다. 미리보기는 window.CY_CALC_PAGE로 덮는다
-  var CALC_PAGE = null;
+  // 계산기 페이지 주소(티스토리 일반 글 /75, 2026-11-09 공개). null이면 버튼을 그리지 않는다. 미리보기는 window.CY_CALC_PAGE로 덮는다
+  var CALC_PAGE = '/75';
   // 그 글에서 버튼을 누르면 미리 고를 유형(글은 다시 저장하지 않는다, 6-1). 대표 가이드 글 주소 → 유형
   var PRESETS = { '/5': 'buy', '/11': 'buy', '/12': 'buy', '/15': 'buy', '/21': 'buy', '/36': 'buy', '/22': 'jeonse', '/57': 'jeonse', '/58': 'jeonse', '/47': '' };
   var PRESET_CATEGORY = { '/category/대출·정책': '' };

@@ -2,8 +2,8 @@
   "schema": 1,
   "boundaryPct": 3,
   "boundaryNote": "설계값(사실 아님): 입력이 기준의 ±3% 안이면 「확인 필요(기준값 근처)」. docs/eligibility-calculator-design.md 5-2, 14절 Q3",
-  "calcPage": null,
-  "calcPageNote": "계산기 페이지(티스토리 일반 글) 주소. 글을 저장한 뒤 /NN을 넣는다(15-2)",
+  "calcPage": "/75",
+  "calcPageNote": "계산기 페이지(티스토리 일반 글) 주소. 실제로 쓰는 값은 skin/images/calc.js의 CALC_PAGE(15-2)",
 
   "fields": {
     "mode":          { "type": "multi", "values": ["buy", "jeonse", "rent"], "label": "알아볼 대출" },
