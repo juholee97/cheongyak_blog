@@ -31,3 +31,12 @@ export async function stampLive(entries, stages, today) {
   }
   await writeFile(FILE, JSON.stringify(stages, null, 1));
 }
+
+// 정정공고를 검토해 [종료] 글을 다시 고칠 때(글 일정은 자동으로 안 바뀐다 — zip/new_notices.mjs가 알린다):
+// node zip/stage.mjs --reopen apt-공고번호,deep-공고번호 → 추적을 되살린다. 그 뒤 zip/deals.mjs --only·post.mjs·publish.mjs --go로 일정을 고치면 제목도 다시 판정한다
+if (process.argv[1]?.endsWith('stage.mjs') && process.argv.includes('--reopen')) {
+  const stages = await loadStages();
+  for (const slug of process.argv[process.argv.indexOf('--reopen') + 1].split(',')) if (stages[slug]) stages[slug].stage = 'reopened';
+  await writeFile(FILE, JSON.stringify(stages, null, 1));
+  console.log('다시 추적', process.argv[process.argv.indexOf('--reopen') + 1]);
+}
