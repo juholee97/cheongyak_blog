@@ -66,7 +66,7 @@ async function main() {
   const items = data.items.filter((it) => (!process.argv.includes('--only') || only.includes(it.id.split('-')[0])) && MODEL[it.kind] && (process.argv.includes('--include-past') || (it.phases || []).some((p) => ['sp', 'p1'].includes(p.k) && p.date >= today)));
   const out = [];
   for (const it of items) {
-    const no = it.id.split('-')[0], row = { no, name: it.name, kind: it.kind, region: it.region, district: it.district, address: it.address, leasehold: /토지임대부/.test(it.name), applyhomeUrl: it.applyhomeUrl, phases: it.phases };
+    const no = it.id.split('-')[0], row = { no, name: it.name, kind: it.kind, region: it.region, district: it.district, address: it.address, leasehold: /토지임대부/.test(it.name), applyhomeUrl: it.applyhomeUrl, noticeDate: it.noticeDate, phases: it.phases };
     try {
       const m = mainType(await odcloud(MODEL[it.kind], no, key));
       if (!m) { out.push({ ...row, skip: '주택형 분양가 없음' }); continue; }

@@ -65,6 +65,8 @@ export async function upsert(post, at, now = false) {
   if (u.hit) return { id: u.hit.id, link: u.hit.link, status: u.hit.status, ok: true, skipped: true };
   const [old] = await wp(`posts?slug=${encodeURIComponent(post.slug)}&status=draft,future,publish&context=edit`);
   if (old?.status === 'publish' && !at && !now) throw new Error(`이미 공개된 글(${old.link}) — 고치려면 --at 없이 따로 결정`);
+  // 서치 콘솔 비율이 오르면 새 글만 멈춘다(zip/index_watch.mjs). 임시글(at·now 없음)과 기존 글 고치기는 막지 않는다
+  if (!old && (at || now)) { const hold = await (await import('./index_watch.mjs')).holdReason(); if (hold) { console.log(`새 글 보류 ${post.slug}: ${hold}`); return { id: null, link: '', status: 'held', ok: false }; } }
   const body = { slug: post.slug, title: post.title, content: post.html, excerpt: post.excerpt || '', tags: await termIds('tags', post.tags), categories: await termIds('categories', post.categories), ...(post.featured ? { featured_media: post.featured } : {}), status: at ? 'future' : now ? 'publish' : 'draft', ...(at ? { date: at.replace(' ', 'T') + ':00' } : now && old?.status === 'future' ? { date: new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 19) } : {}) }; // 예약 글을 바로 공개할 때는 날짜도 지금으로(미래 날짜가 남으면 워드프레스가 예약 상태로 둔다)
   const res = await wp(old ? `posts/${old.id}` : 'posts', { method: 'POST', body });
   // 확인: 다시 불러와 제목·본문 길이·상태 대조

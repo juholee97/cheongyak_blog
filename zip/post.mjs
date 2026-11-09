@@ -111,6 +111,7 @@ export function postOf(r, buzz, claims, ctx = {}) {
     ['실거래 기간', esc(r.months)],
     ['비교 단지', `${r.n}곳 · 생활권·급지·브랜드로 고름`],
     ['분양가 출처', notices],
+    ...(r.noticeDate ? [['공고 기준일', esc(r.noticeDate.replaceAll('-', '.'))]] : []),
     ...(rc ? [['접수', span(rc.start, rc.end)]] : []),
   ], `<a href="${METHOD_URL}">비교 기준 보기 →</a>`);
   const refs = [...r.refs].sort((a, b) => b.perPy - a.perPy);
@@ -156,7 +157,12 @@ export function postOf(r, buzz, claims, ctx = {}) {
 
 export function checkPost(p) {
   const text = [p.title, p.html, p.excerpt].join('\n');
-  return BANNED.filter((b) => text.includes(b)).map((b) => `금지 표현 "${b}"`);
+  const issues = BANNED.filter((b) => text.includes(b)).map((b) => `금지 표현 "${b}"`);
+  // 운영 원칙 1·2(2026-11-10): 공고문에 없는 실거래 비교가 있어야 글이 되고, 공식 원문 링크와 공고 기준일이 있어야 한다
+  if (!(p.snap?.n > 0 && p.snap?.med > 0)) issues.push('원문 대비 추가 정보 없음(실거래 비교 없음) — 발행 유보');
+  if (!/applyhome\.co\.kr|lh\.or\.kr|i-sh\.co\.kr|\.go\.kr/.test(p.html)) issues.push('공식 원문 링크 없음');
+  if (!p.html.includes('공고 기준일')) issues.push('공고 기준일 없음');
+  return issues;
 }
 
 // 미리보기: 사이트 CSS와 글꼴을 붙여 워드프레스 글 화면처럼(머리·본문 틀만) — 올리기 전에 눈으로 확인

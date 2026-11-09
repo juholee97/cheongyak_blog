@@ -14,6 +14,8 @@ import { join } from 'node:path';
 import { ROOT } from '../tistory/common.mjs';
 import { esc } from '../posts/weekly.mjs';
 import { BANNED } from '../posts/check.mjs';
+import { loadData } from '../posts/weekly.mjs';
+import { noOf } from './deep_targets.mjs';
 import { wrap, planOf, liveDeep } from './post.mjs';
 import { table, keyBox, note, src, chip, keepUnits } from './ui.mjs';
 import { won } from './timeline.mjs';
@@ -153,6 +155,15 @@ const planHtml = (rows) => {
 // 기본 정보 그리드: 칸마다 이름, 3단지·4단지처럼 나란히 놓을 값. 두 값이 같으면 한 칸으로 합친다(「3단지·4단지 공통」 표시 — 한 칸인지 두 칸인지 헷갈리지 않게, 2026-10-30 사용자 지적)
 const gridHtml = ({ cols, rows }) => `<div class="az-grid" style="--n:${cols.length}"><div class="az-grid-r az-grid-h"><span></span>${cols.map((c) => `<span>${esc(c)}</span>`).join('')}</div>${rows.map(([k, ...v]) => `<div class="az-grid-r"><span class="k">${esc(k)}</span>${v.every((x) => x === v[0]) ? `<span class="all"><em class="az-both">${esc(cols.join('·'))} 공통</em>${tx(v[0])}</span>` : v.map((x) => `<span>${tx(x)}</span>`).join('')}</div>`).join('')}</div>`;
 
+// 운영 원칙 2(2026-11-10): 글마다 공식 원문 링크와 공고 기준일. 공고일은 일정 수집본에서 지워질 수 있어 글 자료에 남긴다(--publish)
+const OFFICIAL = /applyhome\.co\.kr|lh\.or\.kr|i-sh\.co\.kr|\.go\.kr/;
+const officialOf = (d) => (d.sources || []).find(([, u]) => OFFICIAL.test(u))?.[1];
+async function noticeDateOf(key, d) {
+  if (d.noticeDate) return d.noticeDate;
+  const nos = Object.values(await folders()).find((n) => n.includes(key)) || [key], { items } = await loadData();
+  return nos.map((n) => items.find((it) => noOf(it) === n)?.noticeDate).find(Boolean);
+}
+
 export async function render(key, { local = false } = {}) {
   const d = await loadDeep(key), folder = await folderOf(key);
   if (!d) throw new Error(`data/zip_deep/${key}.json 없음`);
@@ -186,7 +197,7 @@ export async function render(key, { local = false } = {}) {
     throw new Error(`모르는 블록 ${JSON.stringify(b).slice(0, 60)}`);
   };
   const html = [
-    src(`공고문과 공식 자료를 기준으로 우리의 집이 다시 검토한 글입니다. <a href="#s${heads.length}">자료와 작성 기준 보기</a>`),
+    src(`공고문과 공식 자료를 기준으로 우리의 집이 다시 검토한 글입니다. 공고 기준일 ${((await noticeDateOf(key, d)) || '').replaceAll('-', '.')} · <a href="${esc(officialOf(d) || '')}" rel="nofollow noopener">공고 원문</a> · <a href="#s${heads.length}">자료와 작성 기준 보기</a>`),
     JSON.stringify(d.blocks).includes('[[') ? legend() : '',
     ...d.blocks.map(block),
     `<h2 id="s${heads.length}">이 글의 자료</h2>`,
@@ -218,6 +229,16 @@ export async function verifyLive(link) {
 // 점검: 글 숫자가 리포트·공고 자료에 있는지(지어낸 숫자 막기), 금지 표현, 가족 정보, 해요체(워드프레스는 합쇼체)
 export async function check(key) {
   const d = await loadDeep(key), folder = await folderOf(key), issues = [];
+  // 운영 원칙 1·2(2026-11-10): 「원문 공고 대비 이 글이 추가한 정보」가 없으면 발행 유보. 공식 원문 링크·공고 기준일 필수. 이미 공개된 글은 added 없이 비교 자료만 본다
+  if (!d.blocks.some((b) => (b.timeline && ['bars', 'trend'].includes(b.timeline.kind)) || b.signals) && !(d.market || []).length) issues.push('원문 대비 추가 정보 없음(실거래·시장 비교 없음) — 발행 유보');
+  if (!officialOf(d)) issues.push('공식 원문 링크 없음(sources에 청약홈·LH·SH·공공기관 주소)');
+  if (!(await noticeDateOf(key, d))) issues.push('공고 기준일 없음(noticeDate)');
+  if (!d.link) {
+    const plain = (t) => t.replace(/(\d),(?=\d{3})/g, '$1');
+    const notice = plain((await Promise.all(((await folders())[folder] || [key]).map((n) => readFile(join(ROOT, 'data/notice_text', `${n}.json`), 'utf8').catch(() => '')))).join('\n'));
+    if (!d.added?.length) issues.push('added 없음: 원문 공고에 없는데 이 글이 더한 정보를 적는다 — 답이 없으면 발행 유보');
+    else if (notice && !d.added.some((t) => (plain(t).match(/\d{2,}(?:\.\d+)?/g) || []).some((m) => !notice.includes(m)))) issues.push('added가 공고문 숫자를 옮긴 것뿐: 공고문에 없는 비교·계산 숫자를 근거로 적는다 — 답이 없으면 발행 유보');
+  }
   const { summary, videos } = await analyzerData(folder);
   const tl = (t) => (!t ? [] : [t.title, t.sub, t.caption, t.note, ...(t.items || []).flatMap((x) => [x.date, x.label, x.sub]), ...(t.cash || []).flatMap((c) => [c.date, c.label, won(c.amount)]), t.loan?.label, ...(t.loan?.dates || []), t.loan && won(t.loan.amount), t.interest?.label, t.total?.label, t.total?.value, ...(t.rows || []).flatMap((x) => [x.label, x.sub, String(x.value)])]);
   const texts = d.blocks.flatMap((b) => [b.h, b.h3, b.p, b.note, b.src, ...(b.ul || []), ...(b.key || []), ...(b.table ? [...b.table.head, ...b.table.rows.flat()] : []), ...(b.grid ? [...b.grid.cols, ...b.grid.rows.flat()] : []), ...(b.plan || []).flat(), ...tl(b.timeline), b.take, ...(b.two || []).flatMap((c) => [c.t, ...c.items]), ...(b.signals?.rows || []).flat(), b.signals?.src, ...(b.who || []).flat()]).filter(Boolean).concat([d.title, d.excerpt, ...(d.card || [])]);
@@ -322,7 +343,7 @@ if (process.argv[1]?.endsWith('deep.mjs')) {
     const pl = now && d.status !== 'publish' ? planOf(phases, today, { lead: 7, time: '06:00' }) : { mode: 'now', why: '이미 공개된 글' };
     if (now) console.log(`공개 계획: ${pl.mode === 'at' ? `${pl.at} 예약` : '바로'} · ${pl.why}`);
     const o = await upsert(post, now && pl.mode === 'at' ? pl.at : null, now && pl.mode === 'now');
-    if (o.ok) await writeFile(join(DIR, `${key}.json`), JSON.stringify({ ...d, link: o.status === 'future' ? `https://auleezip.com/${post.slug}/` : o.link, status: o.status, id: o.id, at: o.status === 'future' ? pl.at : undefined }, null, 1));
+    if (o.ok) await writeFile(join(DIR, `${key}.json`), JSON.stringify({ ...d, noticeDate: await noticeDateOf(key, d), link: o.status === 'future' ? `https://auleezip.com/${post.slug}/` : o.link, status: o.status, id: o.id, at: o.status === 'future' ? pl.at : undefined }, null, 1));
     console.log(`${o.ok ? '✓' : '✗'} ${o.status} ${o.link}${o.status === 'draft' || o.status === 'future' ? ` (미리보기 https://auleezip.com/?p=${o.id}&preview=true)` : ''}`);
     if (o.ok && o.status === 'publish') await verifyLive(o.link);
     if (o.ok && o.status === 'future') console.log(`게시 뒤 검수는 공개(${pl.at}) 뒤 매일 실행의 --verify all에서`);

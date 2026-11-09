@@ -56,21 +56,22 @@ if (process.argv.includes('--check')) {
   for (const r of pagesOnly ? [] : items.filter((x) => !x.skip)) {
     const post = JSON.parse(await readFile(join(ROOT, 'data/zip_posts', `${r.no}.json`), 'utf8').catch(() => 'null'));
     if (!post || seen.has(post.slug) || (only && !only.includes(r.no))) continue; // 합쳐진 공고는 글이 하나
-    if (isEnded(stages, post.slug)) continue; // [종료]는 더 고치지 않는다(zip/stage.mjs)
+    if (isEnded(stages, post.slug) && !process.argv.includes('--include-ended')) continue; // [종료]는 더 고치지 않는다(zip/stage.mjs). 글 틀을 바꿨을 때만 --include-ended
     seen.add(post.slug);
     const phases = items.filter((x) => x.name === r.name).flatMap((x) => x.phases || []);
     const pl = planOf(phases, today);
-    let res = '';
+    let res = '', held = false;
     if (go) {
       post.featured = await uploadMedia(join(ROOT, 'data/zip_posts/img', `${r.no}.png`), `apt-${r.no}.png`, post.title).catch(() => undefined); // 대표 이미지(없으면 글만)
       post.title = stamped(post.title, stageOf(phases, today));
       post.html = applyLog(store, post, { today, first: pl.mode === 'at' ? pl.at.slice(0, 10) : today });
       const o = await upsert(post, pl.mode === 'at' ? pl.at : null, pl.mode === 'now');
       if (o.ok) await saveLog(store);
+      held = o.status === 'held';
       res = ` → ${o.ok ? '✓' : '✗'} ${o.status} ${o.link}`;
     }
     if (pl.mode === 'now') live.push({ ...r, phases });
-    if (go && pl.mode === 'now') reg[r.no] = { no: r.no, name: r.name, region: r.region, district: r.district, kind: r.kind, address: r.address, phases };
+    if (go && pl.mode === 'now' && !held) reg[r.no] = { no: r.no, name: r.name, region: r.region, district: r.district, kind: r.kind, address: r.address, phases };
     console.log(`${pl.mode.padEnd(4)} ${pl.at || ''} ${post.title.slice(0, 44)} · ${pl.why}${res}`);
   }
   if (go) {
