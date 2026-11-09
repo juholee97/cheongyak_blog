@@ -90,6 +90,22 @@ try {
     // 실제 블로그의 티스토리 「구독하기」 도구 막대가 화면 아래 20~50px를 덮는다(미리보기에는 없다) — 그 위에 있어야 한다
     ok(rd.x + rd.width <= 1280 - 16 + 0.5 && rd.y + rd.height <= 800 - 50, `PC: 버튼이 도구 막대 자리와 겹침 ${rd.y + rd.height}`);
     await d.ctx.close();
+    // 넓은 PC: 본문 오른쪽 여백에 세로 카드, 스크롤해도 같은 자리, 본문·사이드바를 덮지 않음
+    for (const w of [1360, 1366, 1440, 1920, 2560]) {
+      const e = await open('/post-analysis', { width: w, height: 900 });
+      const rm = e.page.locator('a.cy-remote');
+      const r0 = await rm.boundingBox();
+      const edge = await e.page.evaluate(() => Math.max(...[...document.querySelectorAll('.blog-main, .sidebar')].map((x) => x.getBoundingClientRect().right)));
+      ok(r0.x >= edge + 4, `${w}px: 버튼이 본문·사이드바에 겹침 ${r0.x} < ${edge}`);
+      ok(r0.x + r0.width <= w - 4, `${w}px: 버튼이 화면 밖으로 나감`);
+      ok(Math.abs(r0.y + r0.height / 2 - 450) <= 1, `${w}px: 세로 가운데가 아님 ${r0.y}`);
+      ok(r0.height >= 44, `${w}px: 버튼 높이`);
+      ok((await rm.textContent()) === '자격 확인', `${w}px: 버튼 글자`);
+      await e.page.evaluate(() => scrollTo(0, 1000));
+      const r1 = await rm.boundingBox();
+      ok(r1.y === r0.y && r1.x === r0.x, `${w}px: 스크롤하면 자리가 바뀜`);
+      await e.ctx.close();
+    }
     const h = await open('/');
     ok((await h.page.locator('a.cy-remote').getAttribute('href')) === '/calc', '홈 버튼 주소');
     await h.ctx.close();

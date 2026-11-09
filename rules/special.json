@@ -71,7 +71,9 @@
         { "text": "3억 3,100만원", "doc": "special.md#3#추첨공급" },
         { "text": "600만원", "doc": "special.md#3#순위·저축" },
         { "text": "5년", "doc": "special.md#3#소득세 납부" },
-        { "text": "추첨공급만", "doc": "special.md#3#가구 요건" }
+        { "text": "추첨공급만", "doc": "special.md#3#가구 요건" },
+        { "text": "60㎡", "doc": "special.md#3#1인가구 면적(청약홈)" },
+        { "text": "1년", "doc": "special.md#3#소득세 납부" }
       ],
       "links": { "guide": "https://aulee.tistory.com/39", "official": "https://www.applyhome.co.kr/ar/ara/selectSubscrptIntroSpetialView.do" },
       "checked": "2026-11-09", "until": "2027-06-30", "untilNote": "소득표 다음 적용 시점 추정", "refresh": "yearly", "watch": ["생애최초 특별공급"]

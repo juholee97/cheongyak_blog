@@ -10,7 +10,7 @@ import { renderPngs, searchThumbHtml } from './card.mjs';
 import { ROOT } from '../tistory/common.mjs';
 
 const two = (top, sub) => `<span style="font-weight:700;white-space:nowrap">${top}</span>${sub ? `<br><span style="font-size:13px;font-weight:400;color:${C.muted};white-space:nowrap">${sub}</span>` : ''}`;
-const cell = (c) => (Array.isArray(c) ? two(esc(c[0]), c[1] ? esc(c[1]) : '') : esc(c));
+const cell = (c) => (Array.isArray(c) ? two(esc(c[0]), c[1] ? esc(c[1]) : '') : esc(c).replace(/\n/g, '<br>')); // 칸 안 줄바꿈: 문자열의 \n
 const table = (t) => `<div style="overflow-x:auto"><table style="border-collapse:collapse;width:100%;min-width:560px"><thead><tr>${t.head.map((h) => `<th ${TH}>${cell(h)}</th>`).join('')}</tr></thead><tbody>
 ${t.rows.map((r) => `<tr>${r.map((c, i) => `<td ${TD}>${i === 0 ? `<span style="font-weight:700">${cell(c)}</span>` : cell(c)}</td>`).join('')}</tr>`).join('\n')}
 </tbody></table></div>`;

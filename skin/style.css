@@ -473,6 +473,11 @@ a.hero-row:hover { background: var(--tint3); text-decoration: none; color: var(-
 .cy-remote { position: fixed; right: 16px; bottom: 60px; z-index: 45; display: inline-flex; white-space: nowrap; align-items: center; min-height: 44px; padding: 0 16px; border-radius: 3px; background: var(--primary); color: #fff; font-size: 13px; font-weight: 700; box-shadow: 0 2px 8px rgba(15, 37, 87, .25); }
 .cy-remote:hover { color: #fff; text-decoration: none; background: var(--navy); }
 .cy-remote:focus-visible { outline: 3px solid var(--navy); outline-offset: 2px; }
+/* 오른쪽 여백이 84px 버튼을 담을 만큼 넓은 PC: 그 여백 세로 가운데에 카드로, 스크롤을 따라온다(사용자 지시 2026-11-09). 그보다 좁으면 오른쪽 아래 그대로. ::after = 「정책대출 / 특공 자격」 */
+@media (min-width: 1360px) {
+  .cy-remote { left: min(calc(50% + 600px), calc(100% - 92px)); right: auto; top: 50%; bottom: auto; transform: translateY(-50%); flex-direction: column; justify-content: center; width: 84px; padding: 14px 6px; white-space: normal; text-align: center; line-height: 1.35; }
+  .cy-remote::after { content: "\C815\CC45\B300\CD9C\A\D2B9\ACF5  \C790\ACA9"; margin-top: 4px; font-size: 11px; font-weight: 400; white-space: pre; }
+}
 .cy-calc { margin: 16px 0 28px; padding: 16px; border: 1px solid var(--line); border-radius: 3px; background: var(--tint3); }
 .cy-calc-loading, .cy-calc-fail { margin: 0; font-size: 14px; color: var(--sub); }
 .cy-calc p { margin: 0; }
