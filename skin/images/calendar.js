@@ -592,30 +592,69 @@
   });
 
   // 홈 첫 화면 "이번 주 청약 일정"(디자인 A): 월~일 기준 접수·발표·계약 수와 시·도 타일 지도. 주간 글(posts/weekly.mjs build)과 같은 규칙.
+  // 이번 주(월~일) 접수가 있는 공고와, 그중 아직 끝나지 않은 접수(left). 홈 블록과 달력 페이지 기관별 목록이 같이 쓴다
+  // 공고 출처별로 나눠 보여 준다(2026-10-28): 청약홈 분양을 맨 위에 두고 LH·SH·서울시 순
+  // 함수 선언으로 둔다: 홈은 아래 달력 코드 앞에서 return하므로 var 대입은 실행되지 않는다
+  function srcList() { return [
+    { k: 'applyhome', name: '청약홈', full: '청약홈(한국부동산원)', note: '분양·무순위·임의공급' },
+    { k: 'lh', name: 'LH 청약플러스', full: 'LH 청약플러스', note: '공공임대·행복주택' },
+    { k: 'sh', name: 'SH 서울주택도시공사', full: 'SH 서울주택도시공사', note: '장기전세·사회주택' },
+    { k: 'youth', name: '서울시 청년안심주택', full: '서울시 청년안심주택', note: '청년·신혼 임대' }
+  ]; }
+  function srcOf(it) { return /^lh-/.test(it.id) ? 'lh' : /^sh-/.test(it.id) ? 'sh' : /^youth-/.test(it.id) ? 'youth' : 'applyhome'; }
+  function thisWeek(items) {
+    var mon = new Date(today.getFullYear(), today.getMonth(), today.getDate() - (today.getDay() + 6) % 7);
+    var sun = new Date(mon); sun.setDate(mon.getDate() + 6);
+    var a = key(mon), b = key(sun), t = key(today);
+    var inWeek = function (s) { return s >= a && s <= b; };
+    var hit = function (p) { return p.date <= b && (p.end || p.date) >= a; };
+    var w = { mon: mon, sun: sun, t: t, rec: [], left: [], win: 0, con: 0, reg: {} };
+    items.forEach(function (it) {
+      var ph = it.phases.filter(hit);
+      var r = ph.filter(function (p) { return p.k === 'sp' || p.k === 'p1' || p.k === 'p2'; });
+      if (r.length) { w.rec.push({ it: it, p: r[0] }); w.reg[it.region] = (w.reg[it.region] || 0) + 1; }
+      // 목록은 아직 끝나지 않은 접수만(오늘 이후로 남은 첫 접수 단계). 숫자·지도는 이번 주 전체
+      var up = r.filter(function (p) { return (p.end || p.date) >= t; });
+      if (up.length) w.left.push({ it: it, p: up[0] });
+      w.win += ph.filter(function (p) { return p.k === 'win'; }).length;
+      w.con += ph.filter(function (p) { return p.k === 'con' && (inWeek(p.date) || (p.end && inWeek(p.end))); }).length;
+    });
+    w.left.sort(function (x, y) { return x.p.date.localeCompare(y.p.date) || x.it.name.localeCompare(y.it.name, 'ko'); });
+    return w;
+  }
+  function md(s) { var d = parse(s); return (d.getMonth() + 1) + '.' + pad(d.getDate()) + '(' + W[d.getDay()] + ')'; }
+  function heroRow(x, t) {
+    var u = safeUrl(x.it.applyhomeUrl), tag = u ? 'a' : 'div';
+    return '<' + tag + ' class="hero-row"' + (u ? ' href="' + esc(u) + '" target="_blank" rel="noopener"' : '') + '>' +
+      '<span class="when">' + (x.p.date < t ? '~' + md(x.p.end || x.p.date) + '까지' : md(x.p.date)) + ' ' + phaseOf(x.it, x.p.k).label + '</span>' +
+      '<span class="name">' + esc(x.it.name) + '</span>' +
+      '<span class="where">' + esc(x.it.region + ' ' + (x.it.district || '')) + '</span>' +
+      '<span class="kind">' + esc(x.it.kind) + '</span>' +
+      '<span class="units">' + (x.it.units ? x.it.units.toLocaleString() + '세대' : '') + '</span></' + tag + '>';
+  }
+  // 달력 페이지: 기관별 이번 주 남은 접수 전체 목록(홈 블록의 「자세히 보기」가 #src-기관으로 온다)
+  function renderSrcList(items) {
+    var box = document.querySelector('[data-srclist]');
+    if (!box) return;
+    var w = thisWeek(items);
+    box.innerHTML = '<div class="hero-list-head"><h2>이번 주 남은 접수</h2></div><div class="hero-list">' + srcList().map(function (g) {
+      var xs = w.left.filter(function (x) { return srcOf(x.it) === g.k; });
+      return '<div class="hero-group" id="src-' + g.k + '"><div class="hero-group-head"><i class="src-logo src-' + g.k + '" aria-hidden="true"></i><b>' + esc(g.full) + '</b>' + (g.note ? '<span>' + esc(g.note) + '</span>' : '') + '<em>' + xs.length + '곳</em></div>' +
+        (xs.length ? xs.map(function (x) { return heroRow(x, w.t); }).join('') : '<p class="hero-empty">이번 주 남은 접수가 없습니다.</p>') + '</div>';
+    }).join('') + '</div>';
+    var m = /^#src-(\w+)$/.exec(location.hash), el = m && document.getElementById('src-' + m[1]);
+    if (el) { el.classList.add('is-target'); el.scrollIntoView({ block: 'start' }); }
+  }
+
   function renderHero(items, updatedAt, failed) {
     var MAP = ['인천', '서울', '경기', '강원', '충남', '세종', '충북', '경북', '전북', '대전', '대구', '울산', '광주', '전남', '경남', '부산', '제주'];
     var h = {};
     document.querySelectorAll('[data-hero]').forEach(function (el) { h[el.dataset.hero] = el; });
     if (!h.map) return;
-    var mon = new Date(today.getFullYear(), today.getMonth(), today.getDate() - (today.getDay() + 6) % 7);
-    var sun = new Date(mon); sun.setDate(mon.getDate() + 6);
-    var a = key(mon), b = key(sun);
-    var inWeek = function (s) { return s >= a && s <= b; };
-    var hit = function (p) { return p.date <= b && (p.end || p.date) >= a; };
+    var w = thisWeek(items), mon = w.mon, sun = w.sun;
     h.date.textContent = (mon.getMonth() + 1) + '월 ' + mon.getDate() + '일 ~ ' + (sun.getMonth() + 1) + '월 ' + sun.getDate() + '일';
     if (failed) { h.list.innerHTML = '<p class="hero-empty">일정을 불러오지 못했습니다. 잠시 후 다시 열어 주세요.</p>'; return; }
-    var t = key(today), rec = [], left = [], win = 0, con = 0, reg = {};
-    items.forEach(function (it) {
-      var ph = it.phases.filter(hit);
-      var r = ph.filter(function (p) { return p.k === 'sp' || p.k === 'p1' || p.k === 'p2'; });
-      if (r.length) { rec.push({ it: it, p: r[0] }); reg[it.region] = (reg[it.region] || 0) + 1; }
-      // 목록은 아직 끝나지 않은 접수만(오늘 이후로 남은 첫 접수 단계). 숫자·지도는 이번 주 전체
-      var up = r.filter(function (p) { return (p.end || p.date) >= t; });
-      if (up.length) left.push({ it: it, p: up[0] });
-      win += ph.filter(function (p) { return p.k === 'win'; }).length;
-      con += ph.filter(function (p) { return p.k === 'con' && (inWeek(p.date) || (p.end && inWeek(p.end))); }).length;
-    });
-    left.sort(function (x, y) { return x.p.date.localeCompare(y.p.date) || x.it.name.localeCompare(y.it.name, 'ko'); });
+    var rec = w.rec, left = w.left, win = w.win, con = w.con, reg = w.reg;
     var n = function (v) { return v + '<small>곳</small>'; };
     h.receipt.innerHTML = n(rec.length); h.win.innerHTML = n(win); h.con.innerHTML = n(con);
     h.updated.textContent = (updatedAt || '').replace('T', ' ').slice(0, 16).replace(/-/g, '.');
@@ -624,38 +663,23 @@
       var v = reg[r] || 0;
       return '<div class="tile l' + lv(v) + '"><span>' + r + '</span><b>' + (v || '') + '</b></div>';
     }).join('');
-    var md = function (s) { var d = parse(s); return (d.getMonth() + 1) + '.' + pad(d.getDate()) + '(' + W[d.getDay()] + ')'; };
-    // 공고 출처별로 나눠 보여 준다(2026-10-28): 임대 공고만 쭉 있으면 청약 사이트가 아니라고 느끼고 나가기 쉬워서, 청약홈 분양을 맨 위에 두고 LH·SH·서울시 순
-    var SRC = [
-      { k: 'applyhome', name: '청약홈(한국부동산원)', note: '분양·무순위·임의공급' },
-      { k: 'lh', name: 'LH 청약플러스', note: '공공임대·행복주택' },
-      { k: 'sh', name: 'SH 서울주택도시공사', note: '장기전세·사회주택' },
-      { k: 'youth', name: '서울시 청년안심주택', note: '' }
-    ];
-    var srcOf = function (it) { return /^lh-/.test(it.id) ? 'lh' : /^sh-/.test(it.id) ? 'sh' : /^youth-/.test(it.id) ? 'youth' : 'applyhome'; };
-    var LIMIT = 5, hidden = 0;
-    var row = function (x) {
-      var u = safeUrl(x.it.applyhomeUrl), tag = u ? 'a' : 'div';
-      return '<' + tag + ' class="hero-row"' + (u ? ' href="' + esc(u) + '" target="_blank" rel="noopener"' : '') + '>' +
-        '<span class="when">' + (x.p.date < t ? '~' + md(x.p.end || x.p.date) + '까지' : md(x.p.date)) + ' ' + phaseOf(x.it, x.p.k).label + '</span>' +
-        '<span class="name">' + esc(x.it.name) + '</span>' +
-        '<span class="where">' + esc(x.it.region + ' ' + (x.it.district || '')) + '</span>' +
-        '<span class="kind">' + esc(x.it.kind) + '</span>' +
-        '<span class="units">' + (x.it.units ? x.it.units.toLocaleString() + '세대' : '') + '</span></' + tag + '>';
-    };
-    h.list.innerHTML = !left.length ? '<p class="hero-empty">' + (rec.length ? '이번 주 접수는 모두 끝났습니다. 다음 주 일정은 달력에서 볼 수 있어요.' : '이번 주에는 접수가 있는 단지가 없습니다.') + '</p>' : SRC.map(function (g) {
-      var xs = left.filter(function (x) { return srcOf(x.it) === g.k; });
-      if (!xs.length && g.k !== 'applyhome') return ''; // 청약홈 칸은 비어도 보여 준다(없다는 것도 정보)
-      hidden += Math.max(0, xs.length - LIMIT);
-      return '<div class="hero-group"><div class="hero-group-head"><b>' + esc(g.name) + '</b>' + (g.note ? '<span>' + esc(g.note) + '</span>' : '') + '<em>' + xs.length + '곳</em></div>' +
-        (xs.length ? xs.slice(0, LIMIT).map(row).join('') : '<p class="hero-empty">이번 주 남은 접수가 없습니다.</p>') + '</div>';
+    // 기관별 블록 4개(2026-11-10 사용자): 목록은 달력 페이지에서. 남은 접수가 없는 기관도 0곳으로 보여 준다
+    var CAL = (document.querySelector('[data-hero=more]') || {}).getAttribute ? document.querySelector('[data-hero=more]').getAttribute('href') : '/category/청약일정';
+    h.list.innerHTML = srcList().map(function (g) {
+      var n = left.filter(function (x) { return srcOf(x.it) === g.k; }).length;
+      return '<a class="src-block' + (n ? '' : ' is-zero') + '" href="' + esc(CAL) + '#src-' + g.k + '">' +
+        '<span class="src-top"><i class="src-logo src-' + g.k + '" aria-hidden="true"></i><b>' + esc(g.name) + '</b></span>' +
+        '<span class="src-note">' + esc(g.note) + '</span>' +
+        '<span class="src-bottom"><span class="src-more">자세히 보기 →</span><strong>' + n + '<small>곳</small></strong></span></a>';
     }).join('');
-    h.more.textContent = hidden ? hidden + '곳 더 — 달력에서 보기' : '달력에서 전체 보기';
+    h.more.textContent = '달력에서 전체 보기';
+    if (!left.length) h.list.insertAdjacentHTML('beforeend', '<p class="hero-empty src-empty">' + (rec.length ? '이번 주 접수는 모두 끝났습니다. 다음 주 일정은 달력에서 볼 수 있어요.' : '이번 주에는 접수가 있는 단지가 없습니다.') + '</p>');
   }
 
   render();
   loadSchedule().then(function (j) {
     set({ data: j.items, updatedAt: j.updatedAt, status: 'ok' });
+    renderSrcList(j.items);
     openFromHash();
     window.addEventListener('hashchange', onHashChange);
     // 공고번호 → 우리의 집 글 주소(zip/publish.mjs가 만드는 crawler/auleezip_links.json). 못 받아도 달력·할 일은 그대로
