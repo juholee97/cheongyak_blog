@@ -2,6 +2,7 @@
 import { esc } from '../posts/weekly.mjs';
 import { areaOf } from '../posts/analysis_post.mjs';
 import { shortName, closedOf, receiptOf, span, OPEN_URL, CAL_URL, METHOD_URL } from './post.mjs';
+import { stageOf, stamped } from './stage.mjs';
 import { table, cmpBar, note, src } from './ui.mjs';
 import { GAP, RATE } from './deals.mjs';
 import { won } from './timeline.mjs';
@@ -100,7 +101,7 @@ export function openPage(list, today, res = {}, deeps = [], views = {}, rents = 
     const peek = (h) => `<a class="az-peek" href="${esc(postUrl(r))}" title="분양가와 주변 시세 비교 보기"><span class="az-peek-v">${h}</span><span class="az-peek-l" aria-hidden="true">비교 보기</span></a>`;
     const evs = Object.entries(ev[r.no]).filter(([d]) => dayList.includes(d)).map(([d, ks]) => `<span class="az-fev" data-day="${d}">${mdd(d)} ${ks.join('·')}</span>`).join('');
     const o1 = rank1.get(r.no), o2 = rank2.get(r.no), cls = [closed && 'cl', o1 !== undefined && 'o1', o2 !== undefined && 'o2'].filter(Boolean).join(' ');
-    return `<tr${cls ? ` class="${cls}"` : ''}${o1 !== undefined || o2 !== undefined ? ` style="${o1 !== undefined ? `--o1:${o1};` : ''}${o2 !== undefined ? `--o2:${o2}` : ''}"` : ''} data-g="${regionOf(r)}" data-k="${kindOf(r)}" data-ev="${Object.keys(ev[r.no]).join(' ')}"><td class="c1"><p class="az-fnm">${r.url ? `<a class="az-ext" href="${esc(r.url)}" rel="nofollow noopener" title="공고 원문">${esc(shortName(r.name))}</a>` : link(postUrl(r), shortName(r.name))}${badge(r)}</p>${evs}</td><td class="c2">${esc(areaOf(r))}</td><td class="c3">${esc(r.url && kindOf(r) === '임대' ? r.kind : kindOf(r))}</td><td class="c4 n">${rc ? span(rc.start, rc.end) : '-'}</td><td class="c5 n">${x.p ? `${won(x.p)}<small>${x.m}㎡</small>` : '<span class="az-na">-</span>'}</td><td class="c6">${r.url ? '<span class="az-na">-</span>' : x.leasehold || cmp === '-' ? cmp : peek(cmp)}</td><td class="c7">${dp ? `<a class="az-deepbtn" href="${esc(dp.link)}">심층 분석</a>` : ''}</td></tr>`;
+    return `<tr${cls ? ` class="${cls}"` : ''}${o1 !== undefined || o2 !== undefined ? ` style="${o1 !== undefined ? `--o1:${o1};` : ''}${o2 !== undefined ? `--o2:${o2}` : ''}"` : ''} data-g="${regionOf(r)}" data-k="${kindOf(r)}" data-ev="${Object.keys(ev[r.no]).join(' ')}"><td class="c1"><p class="az-fnm">${r.url ? `<a class="az-ext" href="${esc(r.url)}" rel="nofollow noopener" title="공고 원문">${esc(stamped(shortName(r.name), stageOf(r.phases, today)))}</a>` : link(postUrl(r), stamped(shortName(r.name), stageOf(r.phases, today)))}${badge(r)}</p>${evs}</td><td class="c2">${esc(areaOf(r))}</td><td class="c3">${esc(r.url && kindOf(r) === '임대' ? r.kind : kindOf(r))}</td><td class="c4 n">${rc ? span(rc.start, rc.end) : '-'}</td><td class="c5 n">${x.p ? `${won(x.p)}<small>${x.m}㎡</small>` : '<span class="az-na">-</span>'}</td><td class="c6">${r.url ? '<span class="az-na">-</span>' : x.leasehold || cmp === '-' ? cmp : peek(cmp)}</td><td class="c7">${dp ? `<a class="az-deepbtn" href="${esc(dp.link)}">심층 분석</a>` : ''}</td></tr>`;
   };
   const all = [...open, ...done], num = (v) => (typeof v === 'number' ? v : Infinity);
   const dOf = (r) => { const x = res[r.no]; return x && !x.text && !x.leasehold ? x.d : undefined; };
