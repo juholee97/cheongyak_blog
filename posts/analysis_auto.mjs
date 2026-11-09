@@ -95,6 +95,8 @@ async function main() {
 }
 
 if (process.argv[1]?.endsWith('analysis_auto.mjs')) {
+  // 2026-11-10 사용자 결정: 티스토리 분양분석 글 중단(심층 분석은 우리의 집). 일정 계산만 점검에서 쓴다
+  if (!process.argv.includes('--force')) { console.log('분양분석 글 자동 예약은 2026-11-10부터 중단했습니다.'); process.exit(0); }
   const r = await main().catch((e) => ({ done: [], failed: [e.message] }));
   for (const f of r.failed) await log('✗ ' + f);
   if (r.done.length) await log('✓ ' + r.done.join('\n✓ '));

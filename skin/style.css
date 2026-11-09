@@ -236,6 +236,10 @@ a.hero-row:hover { background: var(--tint3); text-decoration: none; color: var(-
 .todo-manual { display: block; width: 100%; box-sizing: border-box; height: 120px; margin-top: 6px; font: inherit; font-size: 12px; }
 .todo-status, .todo-foot { margin: 0; font-size: 12px; line-height: 1.5; color: var(--muted); }
 .todo-status { color: var(--ink); }
+.modal-wp { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 48px; padding: 10px 14px; border: 1px solid var(--primary); border-radius: 3px; color: var(--primary); font-size: 15px; font-weight: 700; }
+[data-ref=wpslot]:empty { display: none; }
+.modal-wp:hover { text-decoration: none; }
+.modal-wp span { font-size: 12px; font-weight: 500; white-space: nowrap; }
 .modal-btns { display: flex; gap: 6px; }
 .modal-btns a { flex: 1; text-align: center; padding: 12px; border-radius: 3px; border: 1px solid var(--line-strong); font-size: 14px; font-weight: 600; }
 .modal-btns a:hover { text-decoration: none; }
@@ -478,6 +482,7 @@ a.hero-row:hover { background: var(--tint3); text-decoration: none; color: var(-
   .mtable { border: 1px solid var(--line-soft); border-radius: 12px; overflow: hidden; }
   .mtable > div:nth-last-child(-n+2) { border-bottom: none; }
   .modal-btns a { height: 48px; padding: 0; border-radius: 12px; display: flex; align-items: center; justify-content: center; }
+  .modal-wp { border-radius: 12px; }
   .todo { border-radius: 12px; }
   .todo-btns button { min-height: 48px; border-radius: 12px; }
 

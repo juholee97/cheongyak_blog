@@ -356,9 +356,19 @@
   var todoItem = function () { return S.data.filter(function (x) { return x.id === S.modal; })[0]; };
   var todoHm = function () { var d = new Date(); return pad(d.getHours()) + ':' + pad(d.getMinutes()); };
   var todoTasks = function (it) { return TODO.build(it, S.todoPicks, key(new Date()), todoHm()); };
+  // 우리의 집 글 주소 찾기. 열쇠는 zip/deep_targets.mjs noOf와 같다: 청약홈은 앞 공고번호, lh-·youth- 등은 id 전체
+  var postLink = function (it) {
+    var id = String(it.id), k = /^\d+-\d+$/.test(id) ? id.split('-')[0] : id;
+    return Object.prototype.hasOwnProperty.call(S.postLinks, k) ? S.postLinks[k] : null;
+  };
   var todoGroups = function (it) { // 끝난 접수 유형은 글 고르는 데 쓰지 않는다(S.todoPicks 자체는 링크용으로 둔다)
     var live = TODO.options(it, key(new Date()), todoHm()).map(function (o) { return o.k; }).filter(function (k) { return S.todoPicks.indexOf(k) >= 0; });
-    return TODO.links(it, live, S.postLinks[String(it.id).split('-')[0]]);
+    return TODO.links(it, live, postLink(it));
+  };
+  // 달력 → 우리의 집 전환 칸. 글이 없는 공고엔 아무것도 그리지 않는다
+  var wpButton = function (it) {
+    var w = TODO && TODO.wpLink(postLink(it));
+    return w ? '<a class="modal-wp" href="' + esc(w.url) + '?utm_source=calendar&amp;utm_medium=modal" target="_blank" rel="noopener">' + esc(w.label) + ' 보기 <span>우리의 집</span></a>' : '';
   };
   function todoList(it) {
     var tasks = todoTasks(it);
@@ -487,7 +497,7 @@
       '<div class="modal-head"><div><div class="modal-where">' + esc(it.region + ' ' + (it.district || '')) + ' · ' + esc(it.kind) + '</div>' +
       '<div class="modal-name">' + esc(it.name) + '</div></div>' +
       '<button type="button" class="modal-close" data-act="close" aria-label="닫기">✕</button></div>' +
-      '<div class="modal-body"><div class="mtable">' + rows + '</div>' + todoPanel(it) +
+      '<div class="modal-body"><div class="mtable">' + rows + '</div><div data-ref="wpslot">' + wpButton(it) + '</div>' + todoPanel(it) +
       '<div class="modal-btns">' + (go ? '<a class="go" href="' + esc(go) + '" target="_blank" rel="noopener">' + (youth ? '청년안심주택 공고' : it.source === 'lh' ? 'LH청약플러스 공고' : it.source === 'sh' ? 'SH 공고 원문' : '청약홈 바로가기') + '</a>' : '') +
       (home ? '<a href="' + esc(home) + '" target="_blank" rel="noopener">' + (youth ? '청약신청 페이지' : it.source === 'sh' ? 'SH 홈페이지' : '분양 홈페이지') + '</a>' : '') + '</div></div></div></div>';
   }
@@ -648,13 +658,14 @@
     set({ data: j.items, updatedAt: j.updatedAt, status: 'ok' });
     openFromHash();
     window.addEventListener('hashchange', onHashChange);
-    // 공고번호 → 분석 글 주소(crawler/post_links.mjs). 못 받아도 할 일은 그대로
-    if (TODO) fetch(SCHEDULE_URL().replace(/[^\/]*$/, '') + 'post_links.json', { cache: 'no-cache' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
-      if (!d || !d.n) return;
-      S.postLinks = d.n;
-      var box = refs.modal.querySelector('[data-todo=list]'), it = box && todoItem();
-      if (it) box.innerHTML = todoList(it);
-    }).catch(function () { /* 분석 글 링크만 빠진다 */ });
+    // 공고번호 → 우리의 집 글 주소(zip/publish.mjs가 만드는 crawler/auleezip_links.json). 못 받아도 달력·할 일은 그대로
+    if (TODO) fetch(SCHEDULE_URL().replace(/[^\/]*$/, '') + 'auleezip_links.json', { cache: 'no-cache' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+      if (!d) return;
+      S.postLinks = d;
+      var it = todoItem(), box = it && refs.modal.querySelector('[data-todo=list]'), slot = it && refs.modal.querySelector('[data-ref=wpslot]');
+      if (box) box.innerHTML = todoList(it);
+      if (slot) slot.innerHTML = wpButton(it);
+    }).catch(function () { /* 우리의 집 링크만 빠진다 */ });
   }, function (err) {
     console.warn('청약 일정 불러오기 실패:', err);
     set({ status: 'error' });

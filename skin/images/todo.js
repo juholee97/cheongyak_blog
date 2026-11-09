@@ -106,10 +106,21 @@
   var SALE = ['APT', '무순위', '임의공급', '분양'], OFFICE = ['오피스텔', '도시형'];
   // 임대인가: 이름의 「토지임대부」는 분양이다
   var isRentName = function (it) { return /임대/.test(String(it.name || '').replace(/토지임대부?/g, '')); };
+  // 우리의 집(auleezip.com) 글 주소 → 버튼 이름. 심층 분석(deep-)과 시세 비교(apt-)만 받는다
+  function wpLink(url) {
+    var m = /^https:\/\/auleezip\.com\/(deep|apt)-[\w-]+\/$/.exec(String(url || ''));
+    return m ? { url: url, label: m[1] === 'deep' ? '이 단지 심층 분석' : '이 단지 주변 시세 비교' } : null;
+  }
+  // 우리의 집(auleezip.com) 글 주소 → 버튼 이름. 심층 분석(deep-)과 시세 비교(apt-)만 받는다
+  function wpLink(url) {
+    var m = /^https:\/\/auleezip\.com\/(deep|apt)-[\w-]+\/$/.exec(String(url || ''));
+    return m ? { url: url, label: m[1] === 'deep' ? '이 단지 심층 분석' : '이 단지 주변 시세 비교' } : null;
+  }
   function links(it, picks, analysis) {
     var no = /^(\d+)-/.exec(String(it.id)), calc = no ? '/75#n=' + no[1] : '/75', groups = [], name = it.name || '';
     var add = function (group, items) { items = items.slice(0, 3); if (items.length) groups.push({ name: group, items: items.map(function (x) { return { path: x[0], label: x[1] }; }) }); };
-    if (analysis && /^\/\d+$/.test(analysis)) add('이 단지', [[analysis, '이 단지 분양가·청약 분석']]);
+    var wp = wpLink(analysis);
+    if (wp) add('이 단지', [[wp.url, wp.label + '(우리의 집)']]);
     if (SALE.indexOf(it.kind) >= 0 && !isRentName(it)) {
       // 특공 판정은 민영 APT만 계산 범위다(calc.js isOff)
       add('대출', [[calc, !no ? '정책대출 자격 확인' : it.kind === 'APT' && viaApplyhome(it) ? '이 공고로 정책대출·특공 자격 확인' : '이 공고로 정책대출 자격 확인'], ['/5', '청약 당첨 후 대출 총정리'], ['/9', '중도금대출 HUG 보증 조건']]);
@@ -134,7 +145,7 @@
   // medium: 어디서 들어왔는지(ics·share·copy). 화면 안 링크는 없음
   function linkUrl(path, medium) {
     var m = /^([^#]*)(#.*)?$/.exec(path);
-    return BLOG + m[1] + (medium ? '?utm_source=todo&utm_medium=' + medium : '') + (m[2] || '');
+    return (/^https:/.test(path) ? '' : BLOG) + m[1] + (medium ? '?utm_source=todo&utm_medium=' + medium : '') + (m[2] || '');
   }
 
   function whenText(t) {
@@ -220,5 +231,5 @@
     return '청약 할 일 - ' + (base || '공고') + '.ics';
   }
 
-  g.CY_TODO = { options: options, defaultPicks: defaultPicks, build: build, whenText: whenText, text: text, ics: ics, fileName: fileName, linkHash: linkHash, parseHash: parseHash, shareText: shareText, links: links, linkUrl: linkUrl, spMissing: spMissing, FOOT: FOOT, TIP_NOTE: TIP_NOTE };
+  g.CY_TODO = { options: options, defaultPicks: defaultPicks, build: build, whenText: whenText, text: text, ics: ics, fileName: fileName, wpLink: wpLink, wpLink: wpLink, linkHash: linkHash, parseHash: parseHash, shareText: shareText, links: links, linkUrl: linkUrl, spMissing: spMissing, FOOT: FOOT, TIP_NOTE: TIP_NOTE };
 })(this);

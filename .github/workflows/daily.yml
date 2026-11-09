@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
   push: # 규칙만 고쳤을 때 바로 반영. 공공데이터 API는 부르지 않는다(설계 6-3)
     branches: [main]
-    paths: ['rules/**']
+    paths: ['rules/**', 'crawler/auleezip_links.json', '.github/workflows/daily.yml']
 
 permissions:
   contents: read
@@ -39,8 +39,8 @@ jobs:
           curl -fsS https://juholee97.github.io/cheongyak_blog/notices.json -o site/notices.json
       # 규칙 합치기: 실패해도 일정 배포를 막지 않고 지금 배포본을 쓴다
       - run: node rules/build.mjs --out site/rules.json || curl -fsS https://juholee97.github.io/cheongyak_blog/rules.json -o site/rules.json || echo "rules.json 없음 — 계산기는 안내만 보인다"
-      # 공고번호 → 분석 글 주소(내 청약 할 일). 실패해도 일정 배포를 막지 않는다
-      - run: node crawler/post_links.mjs --out site/post_links.json || curl -fsS https://juholee97.github.io/cheongyak_blog/post_links.json -o site/post_links.json || echo "post_links.json 없음 — 분석 글 링크만 빠짐"
+      # 공고번호 → 우리의 집 글 주소(달력 상세 창·내 청약 할 일). 실패해도 일정 배포를 막지 않는다
+      - run: cp crawler/auleezip_links.json site/auleezip_links.json || echo "auleezip_links.json 없음 — 우리의 집 링크만 빠짐"
       - uses: actions/upload-pages-artifact@v3
         with:
           path: site

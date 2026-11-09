@@ -1,7 +1,7 @@
 @echo off
-rem Daily auto run (Task Scheduler, 07:00): analysis posts for notices whose first receipt is 7 days away, scheduled to publish at 10:00 that day.
-rem User decision 2026-10-23: no chat approval; only posts that pass the check are scheduled. Never publishes immediately.
-rem analysis_auto.bat check = same steps, Tistory step as --dry-run (no save)
+rem Daily auto run (Task Scheduler, 07:00). Tistory analysis posts and retrofits stopped 2026-11-10 (user): deep analysis moved to auleezip.      
+rem Never publishes immediately.                                                                                          
+rem analysis_auto.bat check = publish guard self-check only (no save)        
 rem Log: data\logs\analysis_auto.log
 setlocal
 title cheongyak
@@ -22,15 +22,16 @@ node zip\buzz.mjs --max-age 6.5 >> data\logs\zip_buzz.log 2>&1
 node zip\post.mjs >> data\logs\zip_daily.log 2>&1
 rem SH rent posts removed from the site 2026-11-03 (user: apartments, officetels, villas only) - zip\sh_write.mjs no longer runs here
 node zip\publish.mjs --go >> data\logs\zip_daily.log 2>&1
-rem auleezip deep-analysis posts: re-check published pages for leftover markup (scheduled posts go live 06:00, 7 days before first receipt) (2026-10-30)
+call zip\push_links.bat
+rem auleezip deep-analysis posts: re-check published pages for leftover markup (2026-10-30)                                     
 node zip\deep.mjs --verify all >> data\logs\zip_daily.log 2>&1
 rem auleezip deep-analysis targets: sale notices (APT, unranked, random) in the capital area or key regional districts, plus capital-area youth housing and LH happy housing (2026-11-05), receipt 3+ days away -> analyzer folder + data\deep_folders.json
 node zip\deep_targets.mjs --make >> data\logs\zip_daily.log 2>&1
 rem SH notices whose schedule is only in attachments: read the viewer page images with OCR (tools\ocr_venv) -> crawler\sh_attach.json (commit it to reach the calendar) (2026-10-28)
 node crawler\sh_attach.mjs >> data\logs\sh_attach.log 2>&1
 call crawler\push_attach.bat
-node posts\analysis_auto.mjs %*
-set RC=%ERRORLEVEL%
+rem analysis posts off 2026-11-10
+set RC=0         
 if not exist data\logs mkdir data\logs
 rem Tistory daily post limit is now 5 (2026-10-27), so one run in priority order: analysis posts, then up to 3 queued guides, then retrofits.
 rem Since 2026-10-30 tistory\draft.mjs allows 3 saves a day in total, 30 minutes apart, and no edits of posts until 2026-11-03 (data\tistory_usage.json).
@@ -43,10 +44,10 @@ echo ===== %DATE% %TIME% >> data\logs\guide_refresh.log
 node posts\refresh_run.mjs --max 2 >> data\logs\guide_refresh.log 2>&1
 echo ===== %DATE% %TIME% >> data\logs\guide_queue.log
 node tistory\schedule_guides.mjs --queue data\guide_queue.txt --max 3 >> data\logs\guide_queue.log 2>&1
-rem Then fix up to 3 already-published analysis posts (new card, region tag in title). Queue: data\analysis_retrofit.txt (2026-10-26)
-echo ===== %DATE% %TIME% >> data\logs\analysis_retrofit.log
-node posts\retrofit_analysis.mjs --max 3 >> data\logs\analysis_retrofit.log 2>&1
+rem Retrofit of published analysis posts stopped 2026-11-10.                                                                         
+rem off                                                    
+rem off                                                                         
 exit /b %RC%
 :check
-node posts\analysis_auto.mjs --dry-run %2 %3
+node tistory\guard.check.mjs                
 exit /b %ERRORLEVEL%

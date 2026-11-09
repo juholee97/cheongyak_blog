@@ -154,13 +154,17 @@ const published = Object.values(JSON.parse(readFileSync(new URL('../posts/publis
 const allLinks = (it, picks, an) => plain(T.links(it, picks, an));
 const names = (gs) => gs.map((g) => g.name);
 const sale = { ...apt, id: '2026000557-2026000557' };
-const sg = allLinks(sale, ['sp', 'p1'], '/74');
+const sg = allLinks(sale, ['sp', 'p1'], 'https://auleezip.com/deep-2026000557/');
 assert.deepEqual(names(sg), ['이 단지', '대출', '지원 혜택', '유의점']);
-assert.equal(sg[0].items[0].path, '/74');
+assert.equal(sg[0].items[0].path, 'https://auleezip.com/deep-2026000557/');
+assert.equal(sg[0].items[0].label, '이 단지 심층 분석(우리의 집)');
+assert.equal(T.wpLink('https://auleezip.com/apt-2026000557/').label, '이 단지 주변 시세 비교');
+assert.equal(T.wpLink('/74'), null, '티스토리 분석 글은 더 안 받음');
+assert.equal(T.wpLink('https://auleezip.com/method/'), null, '글 주소만');
 assert.equal(sg[1].items[0].path, '/75#n=2026000557', '이 공고로 계산기');
 assert.ok(sg[2].items.some((x) => x.path === '/27'), '특공을 고르면 특공 글');
 assert.ok(!allLinks(sale, ['p1']).find((g) => g.name === '지원 혜택').items.some((x) => x.path === '/27'));
-assert.deepEqual(names(allLinks(sale, ['p1'])), ['대출', '지원 혜택', '유의점'], '분석 글 없으면 칸 없음');
+assert.deepEqual(names(allLinks(sale, ['p1'])), ['대출', '지원 혜택', '유의점'], '우리의 집 글 없으면 칸 없음');
 assert.deepEqual(names(allLinks(sale, ['p1'], 'javascript:alert(1)')), ['대출', '지원 혜택', '유의점'], '이상한 주소는 버림');
 assert.equal(allLinks({ ...sale, name: '표본 신혼희망타운(공공분양)' }, ['p1']).find((g) => g.name === '지원 혜택').items[0].path, '/50');
 assert.deepEqual(names(allLinks(ofc, ['p1'])), ['대출', '유의점'], '오피스텔: 맞는 지원 글이 없어 비움');
@@ -193,21 +197,17 @@ assert.ok(hp.find((g) => g.name === '유의점').items[0].label.includes('분양
 const count = (raw, s) => raw.replace(/\r\n /g, '').split(s).length - 1;
 const lhIcs = T.ics(lh, T.build(lh, ['p1'], '2026-11-09'), NOW, T.links(lh, ['p1']));
 for (const g of ['대출', '지원 혜택', '유의점']) assert.equal(count(lhIcs, `함께 볼 글(${g})`), 1, `임대 파일에 ${g}`);
-const lateIcs = T.ics(sale, T.build(sale, [], '2026-11-20'), NOW, T.links(sale, [], '/74'));
+const lateIcs = T.ics(sale, T.build(sale, [], '2026-11-20'), NOW, T.links(sale, [], 'https://auleezip.com/deep-2026000557/'));
 for (const g of ['이 단지', '대출', '지원 혜택', '유의점']) assert.equal(count(lateIcs, `함께 볼 글(${g})`), 1, `발표 전 파일에 ${g}`);
 assert.equal(T.linkUrl('/75#n=1', 'ics'), 'https://aulee.tistory.com/75?utm_source=todo&utm_medium=ics#n=1');
 assert.equal(T.linkUrl('/5'), 'https://aulee.tistory.com/5');
-const gIcs = T.ics(sale, T.build(sale, ['sp', 'p1'], '2026-11-09'), NOW, T.links(sale, ['sp', 'p1'], '/74')).replace(/\r\n /g, '');
-assert.ok(gIcs.includes('https://aulee.tistory.com/74?utm_source=todo&utm_medium=ics') && gIcs.includes('함께 볼 글(유의점)') && gIcs.includes('함께 볼 글(대출)') && gIcs.includes('함께 볼 글(지원 혜택)'), '달력 파일에 글 링크');
-assert.ok(T.text(sale, T.build(sale, ['sp'], '2026-11-09'), '', T.links(sale, ['sp'], '/74')).includes('[함께 볼 글: 유의점]'));
-const gShare = T.shareText(sale, T.build(sale, ['sp'], '2026-11-09'), 'https://x/#todo=1', T.links(sale, ['sp'], '/74'));
+const gIcs = T.ics(sale, T.build(sale, ['sp', 'p1'], '2026-11-09'), NOW, T.links(sale, ['sp', 'p1'], 'https://auleezip.com/deep-2026000557/')).replace(/\r\n /g, '');
+assert.ok(gIcs.includes('https://auleezip.com/deep-2026000557/?utm_source=todo&utm_medium=ics') && gIcs.includes('함께 볼 글(유의점)') && gIcs.includes('함께 볼 글(대출)') && gIcs.includes('함께 볼 글(지원 혜택)'), '달력 파일에 글 링크');
+assert.ok(T.text(sale, T.build(sale, ['sp'], '2026-11-09'), '', T.links(sale, ['sp'], 'https://auleezip.com/deep-2026000557/')).includes('[함께 볼 글: 유의점]'));
+const gShare = T.shareText(sale, T.build(sale, ['sp'], '2026-11-09'), 'https://x/#todo=1', T.links(sale, ['sp'], 'https://auleezip.com/deep-2026000557/'));
 assert.ok(gShare.includes('대출: 이 공고로 정책대출·특공 자격 확인 https://aulee.tistory.com/75?utm_source=todo&utm_medium=share#n=2026000557'));
 
-// RSS → 공고번호·글 주소
-const { parseRss } = await import('../crawler/post_links.mjs');
-for (const path of Object.values(JSON.parse(readFileSync(new URL('../crawler/post_links_seed.json', import.meta.url), 'utf8')))) assert.ok(published.includes(path), `시드 주소 ${path}`);
-const item = (cat, link, body) => `<item><title>x</title><link>${link}</link><description>${body}</description><category>${cat}</category></item>`;
-assert.deepEqual(parseRss('<rss>' + item('분양분석', 'https://aulee.tistory.com/74', 'a?houseManageNo=2026000496&amp;x') + item('분양분석', 'https://aulee.tistory.com/30', 'houseManageNo=2026000496') + item('청약가이드', 'https://aulee.tistory.com/8', 'houseManageNo=1') + item('분양분석', 'https://aulee.tistory.com/9', '번호 없음') + '</rss>'), { 2026000496: '/74' }, '같은 공고면 위(새 글) 주소, 분석 글만');
+assert.ok(gShare.includes('이 단지: 이 단지 심층 분석(우리의 집) https://auleezip.com/deep-2026000557/?utm_source=todo&utm_medium=share'));
 
 // ② 화면
 const BASE = 'http://localhost:5178';
@@ -220,6 +220,7 @@ if (!(await alive())) {
 const SCHEDULE = { updatedAt: '2026-11-09T09:10:47+09:00', items: [
   { ...apt, id: 'apt', name: '표본 자이', region: '서울', district: '강남구', units: 100, pricePerPyeong: 3000, address: '서울', noticeDate: '2026-11-06' },
   { ...lh, id: 'lh', region: '서울', district: '강남구', units: 10, address: '서울', noticeDate: '2026-11-01' },
+  { ...lh, id: 'youth-6718', name: '표본 청년안심', region: '서울', district: '강남구', units: 10, address: '서울', noticeDate: '2026-11-01' },
   { ...apt, id: 'old', name: '표본 끝난 단지', region: '서울', district: '강남구', phases: [{ k: 'p1', date: '2026-11-02' }, { k: 'win', date: '2026-11-03' }] },
 ] };
 const browser = await chromium.launch();
@@ -232,7 +233,7 @@ try {
     await page.clock.setFixedTime(new Date('2026-11-09T10:00:00+09:00'));
     await page.route(/^https?:\/\/(?!localhost)/, (x) => x.abort());
     await page.route('**/schedule.json', (x) => x.fulfill({ json: SCHEDULE }));
-    await page.route('**/post_links.json', (x) => x.fulfill({ json: { schema: 1, n: { apt: '/74' } } }));
+    await page.route('**/auleezip_links.json', (x) => x.fulfill({ json: { apt: 'https://auleezip.com/deep-2026000557/', 'youth-6718': 'https://auleezip.com/deep-youth-6718/' } }));
     await page.goto(`${BASE}/category/%EC%B2%AD%EC%95%BD%EC%9D%BC%EC%A0%95`);
     await page.waitForFunction(() => window.CY_TODO && document.querySelector('[data-ref=modal]'));
     const openModal = async (id) => {
@@ -246,7 +247,12 @@ try {
     assert.equal(await page.locator('.todo-picks input').count(), 3, `${where}: 유형 3개`);
     assert.equal(await page.locator('.todo-list li').count(), 8, `${where}: 할 일 8개`);
     const hrefs = await page.$$eval('.todo-links a', (es) => es.map((e) => e.getAttribute('href')));
-    assert.ok(hrefs.includes('https://aulee.tistory.com/74') && hrefs.includes('https://aulee.tistory.com/5') && hrefs.includes('https://aulee.tistory.com/27'), `${where}: 함께 볼 글 ${hrefs}`);
+    assert.ok(hrefs.includes('https://auleezip.com/deep-2026000557/') && hrefs.includes('https://aulee.tistory.com/5') && hrefs.includes('https://aulee.tistory.com/27'), `${where}: 함께 볼 글 ${hrefs}`);
+    const wpBtn = page.locator('.modal-wp');
+    assert.equal(await wpBtn.getAttribute('href'), 'https://auleezip.com/deep-2026000557/?utm_source=calendar&utm_medium=modal', `${where}: 우리의 집 버튼`);
+    assert.equal(await wpBtn.getAttribute('target'), '_blank');
+    assert.ok((await wpBtn.innerText()).includes('이 단지 심층 분석 보기'));
+    assert.ok((await wpBtn.boundingBox()).height >= 44, `${where}: 버튼 높이`);
     // 유형을 끄면 목록만 바뀌고 창은 그대로
     await page.locator('.todo-picks label', { hasText: '특별공급' }).click();
     assert.equal(await page.locator('.todo[open]').count(), 1, `${where}: 유형을 바꿔도 펼친 채`);
@@ -262,7 +268,7 @@ try {
     assert.equal(dl.suggestedFilename(), '청약 할 일 - 표본 자이.ics', where);
     const file = readFileSync(await dl.path(), 'utf8');
     assert.ok(file.startsWith('BEGIN:VCALENDAR\r\n') && file.includes('1순위 접수'), `${where}: 파일 내용`);
-    assert.ok(file.replace(/\r\n /g, '').includes('https://aulee.tistory.com/74?utm_source=todo&utm_medium=ics'), `${where}: 파일에 글 링크`);
+    assert.ok(file.replace(/\r\n /g, '').includes('https://auleezip.com/deep-2026000557/?utm_source=todo&utm_medium=ics'), `${where}: 파일에 글 링크`);
     assert.ok(!file.includes('특별공급 접수'), `${where}: 끈 유형은 파일에도 없음`);
     assert.ok((await page.locator('.todo-status').innerText()).includes('받기를 시작'));
     // 카톡으로 나에게 보내기: 공유창이 없으면 복사, 있으면 공유창에 개인 링크
@@ -309,7 +315,11 @@ try {
     assert.deepEqual(small, [], `${where}: 44px 미만 ${small}`);
     // 창을 닫았다 다시 열면 처음 상태
     await page.click('.modal-close');
+    await openModal('youth-6718');
+    assert.equal(await page.locator('.modal-wp').getAttribute('href'), 'https://auleezip.com/deep-youth-6718/?utm_source=calendar&utm_medium=modal', `${where}: lh·youth 공고도 id 전체로 찾음`);
+    await page.click('.modal-close');
     await openModal('lh');
+    assert.equal(await page.locator('.modal-wp').count(), 0, `${where}: 글 없는 공고엔 버튼 없음`);
     await page.click('.todo summary');
     assert.equal(await page.locator('.todo-picks input').count(), 1, `${where}: 유형 하나도 끌 수 있음`);
     assert.ok((await page.locator('.todo-list').innerText()).includes('접수 마감'));
