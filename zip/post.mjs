@@ -192,7 +192,6 @@ if (process.argv[1]?.endsWith('post.mjs')) {
     seen.set(k, Object.assign(r, { links: [r.applyhomeUrl] }));
   }
   const today = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
-  const pub = JSON.parse(await readFile(join(ROOT, 'posts/published.json'), 'utf8').catch(() => '{}'));
   const list = [...seen.values()];
   const oi = process.argv.indexOf('--only'), only = oi > 0 ? process.argv[oi + 1].split(',') : null; // --only 공고번호: 그 글만 새로 쓴다(나머지 글 파일은 그대로)
   // 공개된 심층 분석 글(공고번호 → 주소). deep.mjs가 이 파일을 불러 쓰므로(순환) 자료 파일을 직접 읽는다
@@ -205,9 +204,7 @@ if (process.argv[1]?.endsWith('post.mjs')) {
     if (only && !only.includes(r.no)) continue;
     const closed = closedOf(r.phases, today);
     const more = [];
-    // 티스토리에 같은 단지 분양분석 글이 있으면 서로 연결
-    const ad = JSON.parse(await readFile(join(ROOT, 'drafts', `analysis_${r.no}.json`), 'utf8').catch(() => 'null'));
-    if (ad?.title && pub[ad.title]) more.push({ url: pub[ad.title], label: `${shortName(r.name)} 분양 분석 — 교통·학군·대출까지 (우리의 청약달력)` });
+    // 티스토리 분석 글은 2026-11-10 사용자 결정으로 중단·비공개 예정 — 연결하지 않는다
     // 같은 지역의 다른 시세 비교 글 최대 2편(열린 공고 먼저)
     for (const o of list.filter((x) => x.no !== r.no && x.region === r.region).sort((a, b) => closedOf(a.phases, today) - closedOf(b.phases, today)).slice(0, 2)) more.push({ url: `https://auleezip.com/apt-${o.no}/`, label: `${shortName(o.name)} 시세 비교` });
     more.push({ url: OPEN_URL, label: '현재 열린 공고 보기' }, { url: CAL_URL, label: '청약 일정 달력 (우리의 청약달력)' });

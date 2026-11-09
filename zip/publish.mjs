@@ -93,6 +93,11 @@ if (process.argv.includes('--check')) {
     await stampLive([...Object.values(posts).filter((p) => p.slug?.startsWith('apt-')).map(({ slug, title, phases }) => ({ slug, title, phases: phases || [] })), ...deeps.map((d) => ({ slug: `deep-${d.key}`, title: d.title, phases: deepPhases(d) }))], stages, today);
     for (const p of Object.values(posts)) p.title = stamped(p.title, stages[p.slug]?.stage);
     for (const d of deeps) d.title = stamped(d.title, stages[`deep-${d.key}`]?.stage);
+    // 달력이 공고에서 우리의 집 글로 잇는 목록(2026-11-10 티스토리 개편): 공고번호 → 심층 분석, 없으면 시세 비교. 크롤러는 data/를 못 보니 crawler/에 둔다
+    const idx = JSON.parse(await readFile(join(ROOT, 'data/zip_posts/index.json'), 'utf8').catch(() => '{}')), liveSlugs = new Set(Object.values(posts).map((p) => p.slug)), zipLinks = {};
+    for (const [no, slug] of Object.entries(idx)) if (liveSlugs.has(slug)) zipLinks[no] = `https://auleezip.com/${slug}/`;
+    for (const d of deeps) for (const n of d.nos) zipLinks[n] = d.link;
+    await (await import('node:fs/promises')).writeFile(join(ROOT, 'crawler/auleezip_links.json'), JSON.stringify(Object.fromEntries(Object.entries(zipLinks).sort()), null, 1) + '\n');
     // 조감도(data/zip_views.json, zip/views.mjs)를 미디어로 먼저 올린다 — 첫 화면 격자도 같은 그림을 쓰니 페이지보다 먼저(2026-11-05: 나중에 올려 새 그림이 첫 화면에 하루 늦게 붙던 것)
     const views = await loadViews();
     for (const [no, v] of Object.entries(views)) if (v.file && !v.url) {
