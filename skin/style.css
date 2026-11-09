@@ -623,3 +623,22 @@ a.hero-row:hover { background: var(--tint3); text-decoration: none; color: var(-
 .src-list .hero-group.is-target { border-color: var(--brand); box-shadow: 0 0 0 2px var(--brand) inset; }
 @media (max-width: 700px) { .src-list .hero-list { grid-template-columns: minmax(0, 1fr); } .src-block { min-height: 150px; padding: 14px 12px 12px; } .src-bottom { flex-direction: column-reverse; align-items: flex-start; gap: 6px; } .src-bottom strong { font-size: 34px; } .src-top b { font-size: 15px; } .src-logo { width: 84px !important; height: 22px; } .src-logo.src-sh { width: 27px !important; } }
 .side-category li:has(> a[href$="/category/%EB%B6%84%EC%96%91%EB%B6%84%EC%84%9D"]), .side-category li:has(> a[href$="/category/분양분석"]), .side-tags a[href$="/tag/%EB%B6%84%EC%96%91%EB%B6%84%EC%84%9D"] { display: none; } /* 분양분석 카테고리·태그 숨김(2026-11-10, 글은 비공개) */
+
+/* unslop 다듬기(2026-11-10 사용자 승인): 홈 첫 화면 세로 가운데 정렬·간격, 작은 글자 자간 0, 모서리(판 12·버튼 8~10·태그 6)·옅은 그림자. 글씨 굵기는 그대로. 원본 preview/unslop/steps.mjs */
+@media (min-width: 900px) { .hero > .hero-inner:first-child { align-items: center; } }
+.hero-main { gap: 16px; }
+.hero-stats { gap: 24px; margin-top: 8px; }
+.hero-cta { margin-top: 8px; padding: 12px 20px; }
+.hero-list-wrap { gap: 16px; }
+[data-hero=list] { gap: 16px; }
+.util .inner { padding-top: 8px; padding-bottom: 8px; }
+body { letter-spacing: 0; }
+.hero-cta { border-radius: 10px; }
+.tile { border-radius: 12px; }
+.cal-card, .day-card { border-radius: 12px; overflow: hidden; }
+.filter { border-radius: 12px; }
+.side-box { border-radius: 12px; overflow: hidden; }
+.tags a, .post-tags a, .todo-tip { border-radius: 6px; }
+.paging a, .paging .selected, .gu-toggle, .modal-close { border-radius: 8px; }
+@media (min-width: 701px) { .modal { border-radius: 14px; box-shadow: 0 8px 24px rgba(0, 0, 0, .12); } }
+.cy-remote { box-shadow: 0 1px 2px rgba(0, 0, 0, .08); }
