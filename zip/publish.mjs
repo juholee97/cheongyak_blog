@@ -16,6 +16,8 @@ import { allDeep, folders as deepFolders } from './deep.mjs';
 import { loadViews } from './views.mjs';
 import { loadLog, saveLog, applyLog } from './revlog.mjs';
 import { purge } from './site.mjs';
+import { loadStages, stageOf, stamped, stampLive, isEnded } from './stage.mjs';
+import { noOf } from './deep_targets.mjs';
 
 const kst = () => new Date(Date.now() + 9 * 3600e3);
 const ymd = (d) => d.toISOString().slice(0, 10);
@@ -34,6 +36,11 @@ if (process.argv.includes('--check')) {
   const { eventsOf } = await import('./pages.mjs'); // 첫 화면 일정: 기간 접수는 주말을 빼고 날마다, 무순위 접수는 「접수」
   assert.deepEqual(Object.keys(eventsOf({ kind: 'APT', phases: [{ k: 'p1', date: '2026-11-06', end: '2026-11-09' }] })), ['2026-11-06', '2026-11-09']);
   assert.deepEqual(eventsOf({ kind: '무순위', phases: [{ k: 'p1', date: '2026-11-02' }, { k: 'win', date: '2026-11-02' }] })['2026-11-02'], ['접수', '발표']);
+  const S = [{ k: 'p1', date: '2026-11-02', end: '2026-11-04' }, { k: 'win', date: '2026-11-10' }, { k: 'con', date: '2026-11-20', end: '2026-11-22' }];
+  assert.deepEqual(['2026-11-04', '2026-11-05', '2026-11-22', '2026-11-23'].map((t) => stageOf(S, t)), ['', 'closed', 'closed', 'ended']); // 접수·계약 마지막 날은 아직 그 단계
+  assert.equal(stageOf([{ k: 'win', date: '2026-01-01' }], '2026-11-09'), ''); // 접수일 없는 자료는 표시하지 않는다
+  assert.equal(stamped(stamped('[서울] 제목', 'closed'), 'ended'), '[종료] [서울] 제목'); // 앞 표시만 갈아 끼우고 지역 표시는 둔다
+  assert.equal(stamped('[종료] 제목', ''), '제목');
   console.log('publish 점검 통과');
 } else if (process.argv[1]?.endsWith('publish.mjs')) {
   const go = process.argv.includes('--go');
@@ -41,16 +48,18 @@ if (process.argv.includes('--check')) {
   // 공개한 공고 장부: 자료가 일시적으로 비어도(예: 지도 사용량 한도) 「현재 열린 공고」 페이지에서 글이 빠지지 않게 쌓아 둔다
   const regFile = join(ROOT, 'data/zip_registry.json'), reg = JSON.parse(await readFile(regFile, 'utf8').catch(() => '{}'));
   const oi = process.argv.indexOf('--only'), only = oi > 0 ? process.argv[oi + 1].split(',') : null; // --only 공고번호: 그 글만 올린다(고정 페이지는 장부로 늘 갱신)
-  const seen = new Set(), live = [], pagesOnly = process.argv.includes('--pages'), store = await loadLog();
+  const seen = new Set(), live = [], pagesOnly = process.argv.includes('--pages'), store = await loadLog(), stages = await loadStages();
   for (const r of pagesOnly ? [] : items.filter((x) => !x.skip)) {
     const post = JSON.parse(await readFile(join(ROOT, 'data/zip_posts', `${r.no}.json`), 'utf8').catch(() => 'null'));
     if (!post || seen.has(post.slug) || (only && !only.includes(r.no))) continue; // 합쳐진 공고는 글이 하나
+    if (isEnded(stages, post.slug)) continue; // [종료]는 더 고치지 않는다(zip/stage.mjs)
     seen.add(post.slug);
     const phases = items.filter((x) => x.name === r.name).flatMap((x) => x.phases || []);
     const pl = planOf(phases, today);
     let res = '';
     if (go) {
       post.featured = await uploadMedia(join(ROOT, 'data/zip_posts/img', `${r.no}.png`), `apt-${r.no}.png`, post.title).catch(() => undefined); // 대표 이미지(없으면 글만)
+      post.title = stamped(post.title, stageOf(phases, today));
       post.html = applyLog(store, post, { today, first: pl.mode === 'at' ? pl.at.slice(0, 10) : today });
       const o = await upsert(post, pl.mode === 'at' ? pl.at : null, pl.mode === 'now');
       if (o.ok) await saveLog(store);
@@ -72,6 +81,13 @@ if (process.argv.includes('--check')) {
     const fo = Object.values(await deepFolders()), deeps = (await allDeep()).filter((d) => liveDeep(d)).map((d) => ({ ...d, nos: fo.find((n) => n[0] === d.key) || [d.key] }));
     // 첫 화면 공고 표·일정은 티스토리 청약달력과 같은 수집본(schedule.json)에서 열린 공고를 거의 다 받는다(2026-10-31 사용자) — 글이 없는 공고는 청약홈·LH·SH 공고로 잇는다
     const { items: sched } = await (await import('../posts/weekly.mjs')).loadData().catch(() => ({ items: [] }));
+    // 제목 앞 [신청마감]·[종료]: 공개된 글 제목을 고치고, 아래 목록·첫 화면에도 같은 제목을 쓴다
+    const posts = {};
+    for (const r of Object.values(reg)) { const j = JSON.parse(await readFile(join(ROOT, 'data/zip_posts', `${r.slug || r.no}.json`), 'utf8').catch(() => 'null')); if (j) posts[r.no] = { title: j.title, excerpt: j.excerpt, link: `https://auleezip.com/${j.slug}/`, slug: j.slug, phases: r.phases }; }
+    const deepPhases = (d) => d.nos.flatMap((n) => reg[n]?.phases || sched.filter((it) => noOf(it) === n).flatMap((it) => it.phases || []));
+    await stampLive([...Object.values(posts).filter((p) => p.slug?.startsWith('apt-')).map(({ slug, title, phases }) => ({ slug, title, phases: phases || [] })), ...deeps.map((d) => ({ slug: `deep-${d.key}`, title: d.title, phases: deepPhases(d) }))], stages, today);
+    for (const p of Object.values(posts)) p.title = stamped(p.title, stages[p.slug]?.stage);
+    for (const d of deeps) d.title = stamped(d.title, stages[`deep-${d.key}`]?.stage);
     // 조감도(data/zip_views.json, zip/views.mjs)를 미디어로 먼저 올린다 — 첫 화면 격자도 같은 그림을 쓰니 페이지보다 먼저(2026-11-05: 나중에 올려 새 그림이 첫 화면에 하루 늦게 붙던 것)
     const views = await loadViews();
     for (const [no, v] of Object.entries(views)) if (v.file && !v.url) {
@@ -86,8 +102,6 @@ const o = await upsertPage({ slug, title, html }); if (slug === 'open-notices') 
     // 첫 화면을 「현재 열린 공고」로: 방문자가 사이트 안을 돌게 한다
     await wp('settings', { method: 'POST', body: { show_on_front: 'page', page_on_front: openId } }).then((s) => console.log('첫 화면:', s.show_on_front, s.page_on_front)).catch((e) => console.log('첫 화면 설정 못 바꿈:', e.message));
     // 「분양 시세비교」 목록 = 카테고리 템플릿 category-<id>(글 왼쪽, 조감도 오른쪽). 조감도는 위에서 미디어로 올린 views를 쓴다
-    const posts = {};
-    for (const r of Object.values(reg)) { const j = JSON.parse(await readFile(join(ROOT, 'data/zip_posts', `${r.slug || r.no}.json`), 'utf8').catch(() => 'null')); if (j) posts[r.no] = { title: j.title, excerpt: j.excerpt, link: `https://auleezip.com/${j.slug}/` }; }
     // 「심층 분석」·「임대 시세비교」 목록도 같은 방식(오른쪽 카드 — pages.mjs deepList·rentList). 임대는 사이트에서 뺐다(2026-11-03 사용자) — 메뉴에 없고 목록은 비워 둔다
     const lists = [['분양-시세비교', saleList(Object.values(reg), today, res, posts, views)], ['심층-분석', deepList(deeps, Object.values(reg), today, views)], ['임대-시세비교', rentList(Object.values(reg), today, {}, sh)]];
     for (const [catSlug, html] of lists) {

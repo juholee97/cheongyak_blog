@@ -294,7 +294,8 @@ if (process.argv[1]?.endsWith('deep.mjs')) {
     process.exitCode = issues.length ? 1 : 0;
   } else if (arg('--verify')) {
     // 공개된 심층 분석 글 검수: --verify <키> | --verify all
-    const k = arg('--verify'), all = (await allDeep()).filter((d) => liveDeep(d) && (k === 'all' || d.key === k));
+    const { loadStages, isEnded } = await import('./stage.mjs'), stages = await loadStages(); // [종료] 글은 매일 검수에서 뺀다(키를 직접 주면 본다)
+    const k = arg('--verify'), all = (await allDeep()).filter((d) => liveDeep(d) && (k === 'all' ? !isEnded(stages, `deep-${d.key}`) : d.key === k));
     for (const d of all) await verifyLive(d.link);
   } else if (arg('--preview')) {
     // 올리기 전 화면 확인용: 사이트 CSS를 입힌 글 한 편 → data/deep/<키>.html
@@ -307,7 +308,8 @@ if (process.argv[1]?.endsWith('deep.mjs')) {
     const issues = await check(key);
     if (issues.length) { console.log(issues.join('\n')); process.exit(1); }
     const { upsert, uploadMedia } = await import('./wp.mjs');
-    const post = await render(key), bad = leftovers(post.html);
+    const post = await render(key), bad = leftovers(post.html), { loadStages, stamped } = await import('./stage.mjs');
+    post.title = stamped(post.title, (await loadStages())[post.slug]?.stage); // 고쳐 올려도 [신청마감]·[종료] 표시를 지우지 않는다
     if (bad.length) { console.log(`올리기 전 검수 실패\n${bad.join('\n')}`); process.exit(1); }
     const img = join(ROOT, 'data/zip_views', `${key}.jpg`);
     post.featured = await uploadMedia(img, `deep-${key}.jpg`, `${post.title}`).catch(() => undefined);
