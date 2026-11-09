@@ -43,7 +43,7 @@ rem Monthly refresh of published guides (new check date and month stamp, queue d
 echo ===== %DATE% %TIME% >> data\logs\guide_refresh.log
 node posts\refresh_run.mjs --max 2 >> data\logs\guide_refresh.log 2>&1
 echo ===== %DATE% %TIME% >> data\logs\guide_queue.log
-rem guide queue off 2026-11-10 (user)                                                                  
+call tistory\guide_week.bat                                                                            
 rem Retrofit of published analysis posts stopped 2026-11-10.                                                                         
 rem off                                                    
 rem off                                                                         
