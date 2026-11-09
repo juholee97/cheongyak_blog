@@ -165,7 +165,7 @@
     folded: (function () { try { return localStorage.getItem(STORE_FOLD) === '1'; } catch (e) { return false; } })(), // PC: 지역 칸 접기(요약 줄만, 2026-10-27)
     phases: PH.map(function (p) { return p.k; }),
     y: today.getFullYear(), m: today.getMonth(), sel: key(today),
-    modal: null, saved: false, data: [], status: 'loading', updatedAt: '',
+    modal: null, postLinks: {}, saved: false, data: [], status: 'loading', updatedAt: '',
   };
 
   var refs = {};
@@ -351,9 +351,127 @@
     renderModal();
   }
 
+  // 내 청약 할 일(todo.js): 상세 창 안 접힘 칸. 유형을 바꿔도 창을 다시 그리지 않고(접힘·스크롤 유지) 목록만 바꾼다
+  var TODO = window.CY_TODO;
+  var todoItem = function () { return S.data.filter(function (x) { return x.id === S.modal; })[0]; };
+  var todoHm = function () { var d = new Date(); return pad(d.getHours()) + ':' + pad(d.getMinutes()); };
+  var todoTasks = function (it) { return TODO.build(it, S.todoPicks, key(new Date()), todoHm()); };
+  var todoGroups = function (it) { // 끝난 접수 유형은 글 고르는 데 쓰지 않는다(S.todoPicks 자체는 링크용으로 둔다)
+    var live = TODO.options(it, key(new Date()), todoHm()).map(function (o) { return o.k; }).filter(function (k) { return S.todoPicks.indexOf(k) >= 0; });
+    return TODO.links(it, live, S.postLinks[String(it.id).split('-')[0]]);
+  };
+  function todoList(it) {
+    var tasks = todoTasks(it);
+    if (!tasks.length) return '<p class="todo-empty">신청할 유형을 하나 이상 골라 주세요.</p>';
+    return '<ol class="todo-list">' + tasks.map(function (t) {
+      return '<li><div class="todo-when">' + esc(TODO.whenText(t)) + '</div><div class="todo-what">' + esc(t.title) + (t.tip ? ' <span class="todo-tip">권장 시점</span>' : '') + '</div><div class="todo-note">' + esc(t.note) + '</div></li>';
+    }).join('') + '</ol>' + (tasks.some(function (t) { return t.tip; }) ? '<p class="todo-foot todo-tipnote">권장 시점은 공고 일정이 아니라 준비를 권하는 날짜예요.</p>' : '') + '<div class="todo-links"><div class="todo-links-head">이 공고와 함께 볼 글</div>' + todoGroups(it).map(function (g) {
+      return '<div class="todo-group"><b>' + esc(g.name) + '</b>' + g.items.map(function (x) { return '<a href="' + esc(TODO.linkUrl(x.path)) + '" target="_blank" rel="noopener">' + esc(x.label) + '</a>'; }).join('') + '</div>';
+    }).join('') + '<p class="todo-foot">조건에 맞는지는 글에서 확인해 주세요.</p></div>';
+  }
+  function todoPanel(it) {
+    if (!TODO) return '';
+    var opts = TODO.options(it, key(new Date()), todoHm());
+    if (!S.todoPicks) S.todoPicks = TODO.defaultPicks(opts);
+    if (!todoTasks(it).length && !opts.length) return ''; // 남은 일정이 없는 공고
+    var after = TODO.build(it, [], key(new Date()), todoHm()).length; // 유형을 모두 꺼도 남는 일정
+    var picks = opts.length ? '<fieldset class="todo-picks"><legend>어디로 신청하세요?' + (after ? ' <span>이미 신청했으면 꺼 두세요. 발표·계약 일정은 남아요.</span>' : '') + '</legend>' + opts.map(function (o) {
+      return '<label><input type="checkbox" data-act="todopick" data-k="' + esc(o.k) + '"' + (S.todoPicks.indexOf(o.k) >= 0 ? ' checked' : '') + '>' + esc(o.label) + '</label>';
+    }).join('') + '</fieldset>' : '';
+    return '<details class="todo"' + (S.todoOpen ? ' open' : '') + '><summary data-act="todotoggle">내 청약 할 일 만들기</summary><div class="todo-in">' + picks +
+      (opts.length && TODO.spMissing(it) ? '<p class="todo-foot">특별공급 일정은 자료에 없어요. 특별공급이면 공고문에서 접수일을 확인해 주세요.</p>' : '') +
+      '<div class="todo-btns"><button type="button" class="go" data-act="todoshare">카톡으로 나에게 보내기</button><button type="button" data-act="todoics">달력 파일 받기</button><button type="button" data-act="todocopy">목록 복사</button></div>' +
+      '<div class="todo-status" data-todo="status" role="status"></div>' +
+      '<div data-todo="list">' + todoList(it) + '</div>' +
+      '<p class="todo-foot">일정이 정정돼도 받은 파일은 바뀌지 않아요. 보낸 링크는 열 때 최신 자료를 보여 주지만, 공고가 새 번호로 다시 올라오면 열리지 않을 수 있어요. 링크에는 공고와 고른 유형이 담겨요. ' + esc(TODO.FOOT) + '</p>' +
+      '</div></details>';
+  }
+  function todoSay(msg) { var el = refs.modal.querySelector('[data-todo=status]'); if (el) el.textContent = msg; }
+  // 고른 공고·유형을 주소에도 담아, 앱 안 브라우저에서 Chrome·Safari로 옮겨 열어도 이어지게 한다
+  function todoHash() { var it = todoItem(); if (it) history.replaceState(null, '', location.pathname + location.search + TODO.linkHash(it, S.todoPicks)); }
+  function focusDialog() { var b = refs.modal.querySelector('.modal-close'); if (b) b.focus({ preventScroll: true }); }
+  function todoDone(method) { if (window.gtag) window.gtag('event', 'todo_download', { method: method }); } // 내려받은 횟수만. 공고·입력값은 보내지 않는다
+  function todoIcs() {
+    var it = todoItem(), tasks = it && todoTasks(it);
+    if (!tasks || !tasks.length) return todoSay('신청할 유형을 하나 이상 골라 주세요.');
+    var url = URL.createObjectURL(new Blob([TODO.ics(it, tasks, new Date(), todoGroups(it))], { type: 'text/calendar;charset=utf-8' }));
+    var a = document.createElement('a');
+    a.href = url; a.download = TODO.fileName(it);
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
+    todoDone('ics');
+    todoSay('달력 파일 받기를 시작했어요. 받은 파일을 열어 달력에 넣어 주세요. 받아지지 않으면 앱 안 브라우저일 수 있어요. 카톡으로 나에게 보내기나 목록 복사를 쓰거나 Chrome·Safari로 이 주소를 열어 주세요.');
+  }
+  function todoCopy() {
+    var it = todoItem(), tasks = it && todoTasks(it);
+    if (!tasks || !tasks.length) return todoSay('신청할 유형을 하나 이상 골라 주세요.');
+    copyText(TODO.text(it, tasks, S.updatedAt, todoGroups(it)), 'copy', '목록을 복사했어요. 메모 앱에 붙여 넣어 주세요.');
+  }
+  // 휴대폰 공유창 → 사용자가 카카오톡 「나와의 채팅」을 고른다. 공유창이 없거나 막히면 복사로
+  function todoShare() {
+    var it = todoItem(), tasks = it && todoTasks(it);
+    if (!tasks || !tasks.length) return todoSay('신청할 유형을 하나 이상 골라 주세요.');
+    var body = TODO.shareText(it, tasks, location.origin + location.pathname + location.search + TODO.linkHash(it, S.todoPicks), todoGroups(it));
+    var paste = function () { copyText(body, 'share-copy', '내용과 링크를 복사했어요. 카카오톡 나와의 채팅에 붙여 넣어 주세요.'); };
+    if (!navigator.share || !mobile.matches) return paste(); // PC 공유창에는 보통 카카오톡이 없다
+    if (S.todoSharing) return; // 공유창이 뜨는 사이 두 번 누름
+    S.todoSharing = true;
+    todoSay('공유창에서 카카오톡을 누른 뒤 나와의 채팅을 골라 주세요.');
+    navigator.share({ title: it.name + ' 청약 할 일', text: body }).then(function () { S.todoSharing = false; todoDone('share'); todoSay(''); }, function (err) {
+      S.todoSharing = false;
+      if (err && err.name === 'AbortError') return todoSay(''); // 사용자가 닫음
+      paste();
+    });
+  }
+  function copyText(body, method, doneMsg) {
+    var done = function () { todoDone(method); todoSay(doneMsg); };
+    var old = function () { // 앱 안 브라우저 등 clipboard API가 막힌 곳
+      var ta = document.createElement('textarea'), was = document.activeElement;
+      ta.value = body; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.opacity = '0';
+      refs.modal.appendChild(ta); ta.select();
+      var ok = false; try { ok = document.execCommand('copy'); } catch (err) { /* 아래 안내 */ }
+      ta.remove();
+      if (was && was.focus) was.focus({ preventScroll: true });
+      if (ok) return done();
+      todoSay('복사하지 못했어요. 아래 칸을 길게 눌러 복사해 주세요.');
+      var show = document.createElement('textarea');
+      show.className = 'todo-manual'; show.value = body; show.readOnly = true; show.setAttribute('aria-label', '복사할 내용');
+      refs.modal.querySelector('[data-todo=status]').appendChild(show);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(body).then(done, old);
+    else old();
+  }
+
+  // 개인 링크(#todo=공고&p=유형)로 열기. 공고가 자료에서 빠졌으면 안내
+  function openFromHash() {
+    var link = TODO && TODO.parseHash(location.hash);
+    if (!link) return;
+    var it = S.data.filter(function (x) { return x.id === link.id; })[0];
+    S.todoFromLink = true;
+    if (!it) { set({ modal: null, todoMissing: true }); return focusDialog(); }
+    // 링크에 유형이 있으면 그 선택을 지킨다. 끝난 접수만 남았으면 빈 선택 → 발표·계약만(고른 적 없는 유형을 켜지 않는다)
+    set({ modal: it.id, todoMissing: false, todoOpen: true, todoPicks: link.picks });
+    focusDialog();
+  }
+  function onHashChange() {
+    if (TODO && TODO.parseHash(location.hash)) return openFromHash();
+    if (S.todoFromLink) { S.todoFromLink = false; set({ modal: null, todoMissing: false }); } // 뒤로 가기
+  }
+  function closeModal() {
+    if (/^#todo=/.test(location.hash)) history.replaceState(null, '', location.pathname + location.search + (document.body.classList.contains('m-tab-week') ? '#week' : ''));
+    S.todoFromLink = false;
+    set({ modal: null, todoMissing: false });
+  }
+
   function renderModal() {
     var it = S.modal && S.data.filter(function (x) { return x.id === S.modal; })[0];
-    document.body.style.overflow = it || (S.filterOpen && mobile.matches) ? 'hidden' : '';
+    document.body.style.overflow = it || S.todoMissing || (S.filterOpen && mobile.matches) ? 'hidden' : '';
+    if (!it && S.todoMissing) {
+      refs.modal.innerHTML = '<div class="overlay" data-act="close"><div class="modal" role="dialog" aria-modal="true" aria-label="공고를 찾을 수 없어요" data-act="noop">' +
+        '<div class="modal-head"><div class="modal-name">공고를 찾을 수 없어요</div><button type="button" class="modal-close" data-act="close" aria-label="닫기">✕</button></div>' +
+        '<div class="modal-body"><p class="todo-empty">이 링크의 공고가 일정 자료에서 빠졌어요. 접수가 끝난 지 오래됐거나 공고가 바뀌었을 수 있어요. 달력에서 다시 찾아 주세요.</p></div></div></div>';
+      return;
+    }
     if (!it) { refs.modal.innerHTML = ''; return; }
     var fmt = function (s) { var d = parse(s); return d.getFullYear() + '.' + pad(d.getMonth() + 1) + '.' + pad(d.getDate()) + ' (' + W[d.getDay()] + ')'; };
     var rows = '<div class="th">공급 세대</div><div>' + (it.units ? it.units.toLocaleString() + '세대' : '-') + '</div>' +
@@ -369,7 +487,7 @@
       '<div class="modal-head"><div><div class="modal-where">' + esc(it.region + ' ' + (it.district || '')) + ' · ' + esc(it.kind) + '</div>' +
       '<div class="modal-name">' + esc(it.name) + '</div></div>' +
       '<button type="button" class="modal-close" data-act="close" aria-label="닫기">✕</button></div>' +
-      '<div class="modal-body"><div class="mtable">' + rows + '</div>' +
+      '<div class="modal-body"><div class="mtable">' + rows + '</div>' + todoPanel(it) +
       '<div class="modal-btns">' + (go ? '<a class="go" href="' + esc(go) + '" target="_blank" rel="noopener">' + (youth ? '청년안심주택 공고' : it.source === 'lh' ? 'LH청약플러스 공고' : it.source === 'sh' ? 'SH 공고 원문' : '청약홈 바로가기') + '</a>' : '') +
       (home ? '<a href="' + esc(home) + '" target="_blank" rel="noopener">' + (youth ? '청약신청 페이지' : it.source === 'sh' ? 'SH 홈페이지' : '분양 홈페이지') + '</a>' : '') + '</div></div></div></div>';
   }
@@ -438,13 +556,28 @@
         }
         return;
       }
-      case 'open': return set({ modal: d.id });
-      case 'close': return set({ modal: null });
+      case 'open':
+        S.todoFromLink = false;
+        set({ modal: d.id, todoPicks: null, todoOpen: false });
+        return focusDialog();
+      case 'todotoggle': return todoHash();
+      case 'todoshare': return todoShare();
+      case 'todopick': {
+        var tk = S.todoPicks.filter(function (x) { return x !== d.k; });
+        if (t.checked) tk.push(d.k);
+        S.todoPicks = tk;
+        refs.modal.querySelector('[data-todo=list]').innerHTML = todoList(todoItem());
+        todoHash();
+        return todoSay('');
+      }
+      case 'todoics': return todoIcs();
+      case 'todocopy': return todoCopy();
+      case 'close': return closeModal();
     }
   });
   document.addEventListener('keydown', function (e) {
     if (e.key !== 'Escape') return;
-    if (S.modal) set({ modal: null });
+    if (S.modal || S.todoMissing) closeModal();
     else if (S.filterOpen) set({ filterOpen: false });
   });
 
@@ -513,15 +646,24 @@
   render();
   loadSchedule().then(function (j) {
     set({ data: j.items, updatedAt: j.updatedAt, status: 'ok' });
+    openFromHash();
+    window.addEventListener('hashchange', onHashChange);
+    // 공고번호 → 분석 글 주소(crawler/post_links.mjs). 못 받아도 할 일은 그대로
+    if (TODO) fetch(SCHEDULE_URL().replace(/[^\/]*$/, '') + 'post_links.json', { cache: 'no-cache' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (d) {
+      if (!d || !d.n) return;
+      S.postLinks = d.n;
+      var box = refs.modal.querySelector('[data-todo=list]'), it = box && todoItem();
+      if (it) box.innerHTML = todoList(it);
+    }).catch(function () { /* 분석 글 링크만 빠진다 */ });
   }, function (err) {
     console.warn('청약 일정 불러오기 실패:', err);
     set({ status: 'error' });
   });
 
   // 스킨을 다시 올리면 스킨 옵션이 비워질 수 있어서, 비어 있으면 이 프로젝트의 배포 주소를 쓴다
+  function SCHEDULE_URL() { return window.CHEONGYAK_SCHEDULE_URL || 'https://juholee97.github.io/cheongyak_blog/schedule.json'; }
   function loadSchedule() {
-    var url = window.CHEONGYAK_SCHEDULE_URL || 'https://juholee97.github.io/cheongyak_blog/schedule.json';
-    return fetch(url, { cache: 'no-cache' }).then(function (r) {
+    return fetch(SCHEDULE_URL(), { cache: 'no-cache' }).then(function (r) {
       if (!r.ok) throw new Error(r.status);
       return r.json();
     }).then(function (j) {

@@ -109,9 +109,10 @@ async function check() {
     if (page === 'post' && !r.html.includes('class="post"')) fail('post: 본문 없음');
     console.log(`  ${page} 렌더 확인`);
   }
-  for (const js of ['calendar.js', 'calc.js']) try { execFileSync(process.execPath, ['--check', join(SKIN, 'images', js)]); console.log(`  ${js} 문법 확인`); } catch (e) { fail(`${js} 문법 오류\n` + e.stderr); }
+  for (const js of ['calendar.js', 'calc.js', 'todo.js']) try { execFileSync(process.execPath, ['--check', join(SKIN, 'images', js)]); console.log(`  ${js} 문법 확인`); } catch (e) { fail(`${js} 문법 오류\n` + e.stderr); }
   try { execFileSync(process.execPath, [join(ROOT, 'rules', 'check.mjs')], { stdio: 'inherit' }); } catch { fail('rules/check.mjs 실패'); }
   try { execFileSync(process.execPath, [join(ROOT, 'preview', 'calc_ui.check.mjs')], { stdio: 'inherit' }); } catch { fail('preview/calc_ui.check.mjs 실패'); }
+  try { execFileSync(process.execPath, [join(ROOT, 'preview', 'todo.check.mjs')], { stdio: 'inherit' }); } catch { fail('preview/todo.check.mjs 실패'); }
   try { execFileSync(process.execPath, [join(ROOT, 'crawler', 'check.mjs')], { stdio: 'inherit' }); } catch { fail('crawler/check.mjs 실패'); }
   try { execFileSync(process.execPath, [join(ROOT, 'posts', 'map.check.mjs')], { stdio: 'inherit' }); } catch { fail('posts/map.check.mjs 실패'); }
   try { execFileSync(process.execPath, [join(ROOT, 'posts', 'nearby.check.mjs')], { stdio: 'inherit' }); } catch { fail('posts/nearby.check.mjs 실패'); }

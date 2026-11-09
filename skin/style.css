@@ -205,6 +205,37 @@ a.hero-row:hover { background: var(--tint3); text-decoration: none; color: var(-
 .mtable > div { padding: 10px 12px; border-bottom: 1px solid var(--line-soft); }
 .mtable .th { background: var(--surface); font-weight: 600; display: flex; align-items: center; gap: 7px; white-space: nowrap; }
 .tl-dot { width: 8px; height: 8px; border-radius: 1px; background: var(--pc); flex: none; }
+/* 내 청약 할 일(todo.js) */
+.todo { border: 1px solid var(--line-strong); border-radius: 3px; }
+.todo summary { min-height: 44px; display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; font-size: 14px; font-weight: 700; color: var(--primary); cursor: pointer; list-style: none; }
+.todo summary::-webkit-details-marker { display: none; }
+.todo summary::after { content: '\25BE'; color: var(--muted); }
+.todo[open] summary::after { content: '\25B4'; }
+.todo-in { padding: 0 12px 12px; display: flex; flex-direction: column; gap: 12px; }
+.todo-picks { border: 0; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 14px; }
+.todo-picks legend { padding: 0; margin-bottom: 2px; font-size: 13px; font-weight: 600; color: var(--sub); }
+.todo-picks legend span { display: block; font-size: 12px; font-weight: 400; color: var(--muted); }
+.todo-picks label { min-height: 44px; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+.todo-picks input { width: 18px; height: 18px; margin: 0; accent-color: var(--primary); }
+.todo-list { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line-soft); }
+.todo-list li { padding: 10px 0; border-bottom: 1px solid var(--line-soft); }
+.todo-when { font-size: 13px; font-weight: 600; color: var(--primary); }
+.todo-what { margin-top: 2px; font-size: 14px; font-weight: 700; }
+.todo-tip { margin-left: 4px; padding: 1px 5px; border-radius: 2px; background: var(--surface); color: var(--sub); font-size: 11px; font-weight: 500; white-space: nowrap; }
+.todo-note { margin-top: 3px; font-size: 13px; line-height: 1.5; color: var(--sub); }
+.todo-links { margin-top: 12px; padding: 10px 12px; background: var(--surface); border-radius: 3px; display: flex; flex-direction: column; gap: 8px; font-size: 13px; }
+.todo-links-head { font-size: 14px; font-weight: 700; }
+.todo-group b { display: block; font-size: 12px; font-weight: 600; color: var(--sub); }
+.todo-group a { display: flex; align-items: center; min-height: 44px; color: var(--primary); }
+.todo-empty { margin: 0; padding: 10px 0; font-size: 13px; color: var(--sub); }
+.todo-btns { display: flex; flex-wrap: wrap; gap: 6px; }
+.todo-btns .go { flex-basis: 100%; }
+.todo-btns button { flex: 1; min-height: 44px; padding: 8px; border-radius: 3px; border: 1px solid var(--line-strong); background: #fff; color: var(--ink); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+.todo-btns .go { background: var(--primary); border-color: var(--primary); color: #fff; font-weight: 700; }
+.todo-status:empty { margin-top: -12px; } /* 비어도 화면 낭독기가 알 수 있게 숨기지 않는다 */
+.todo-manual { display: block; width: 100%; box-sizing: border-box; height: 120px; margin-top: 6px; font: inherit; font-size: 12px; }
+.todo-status, .todo-foot { margin: 0; font-size: 12px; line-height: 1.5; color: var(--muted); }
+.todo-status { color: var(--ink); }
 .modal-btns { display: flex; gap: 6px; }
 .modal-btns a { flex: 1; text-align: center; padding: 12px; border-radius: 3px; border: 1px solid var(--line-strong); font-size: 14px; font-weight: 600; }
 .modal-btns a:hover { text-decoration: none; }
@@ -447,6 +478,8 @@ a.hero-row:hover { background: var(--tint3); text-decoration: none; color: var(-
   .mtable { border: 1px solid var(--line-soft); border-radius: 12px; overflow: hidden; }
   .mtable > div:nth-last-child(-n+2) { border-bottom: none; }
   .modal-btns a { height: 48px; padding: 0; border-radius: 12px; display: flex; align-items: center; justify-content: center; }
+  .todo { border-radius: 12px; }
+  .todo-btns button { min-height: 48px; border-radius: 12px; }
 
   /* 블로그: 썸네일 왼쪽 목록형 카드 (홈 첫 글은 큰 대표 카드 유지) */
   .blog { padding-top: 20px; gap: 32px; }
