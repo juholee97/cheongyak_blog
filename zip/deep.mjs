@@ -186,6 +186,7 @@ export async function render(key, { local = false } = {}) {
     throw new Error(`모르는 블록 ${JSON.stringify(b).slice(0, 60)}`);
   };
   const html = [
+    src(`공고문과 공식 자료를 기준으로 우리의 집이 다시 검토한 글입니다. <a href="#s${heads.length}">자료와 작성 기준 보기</a>`),
     JSON.stringify(d.blocks).includes('[[') ? legend() : '',
     ...d.blocks.map(block),
     `<h2 id="s${heads.length}">이 글의 자료</h2>`,
