@@ -159,7 +159,8 @@ export function saleList(list, today, res = {}, posts = {}, views = {}) {
 // 「심층 분석」·「임대 시세비교」 목록(2026-10-31 사용자 요청): 분양 시세비교처럼 오른쪽에 카드. 글자는 그림에 굽지 않고 HTML로 얹는다(선명하고 휴대폰에서도 같은 글).
 // 심층 분석 카드 = 공식 조감도 위에 한 줄 훅(data/zip_deep/<key>.json의 hook: [작은 줄, 큰 줄, 노란 줄] — 글에 있는 사실만), 임대 카드 = 가장 낮은 월세와 주변 월세 대비 비율
 // 「D-2」만으로는 시작인지 마감인지 모른다(2026-10-31 사용자) — 시작 전은 「2일 뒤 접수 시작」, 접수 중은 마감일까지 적는다
-const recLabel = (rc, today) => { const n = days(today, rc.start), end = rc.end || rc.start; return n > 0 ? (n === 1 ? '내일 접수 시작' : `${n}일 뒤 접수 시작`) : end === today ? '오늘 접수 마감' : `접수 중 · ${mdd(end)} 마감`; };
+// 마감까지 남은 날(D-3)은 제목이 아니라 여기(2026-11-09 사용자)
+export const recLabel = (rc, today) => { const n = days(today, rc.start), end = rc.end || rc.start, left = days(today, end); return `${n > 0 ? (n === 1 ? '내일 접수 시작' : `${n}일 뒤 접수 시작`) : end === today ? '오늘 접수 마감' : `접수 중 · ${mdd(end)} 마감`} · ${left ? `D-${left}` : 'D-Day'}`; };
 const statusOf = (phases, today) => { const rc = receiptOf(phases); return !rc ? '' : closedOf(phases, today) ? '접수 마감' : recLabel(rc, today); };
 // 접수 중·곧 열리는 것 먼저(첫 접수일 순), 마감된 것은 뒤로
 const order = (r, today) => (!r ? 9e12 : (closedOf(r.phases, today) ? 5e12 : 0) + Date.parse(receiptOf(r.phases)?.start || '2999-01-01'));

@@ -37,8 +37,10 @@ if (process.argv.includes('--check')) {
   assert.deepEqual(Object.keys(eventsOf({ kind: 'APT', phases: [{ k: 'p1', date: '2026-11-06', end: '2026-11-09' }] })), ['2026-11-06', '2026-11-09']);
   assert.deepEqual(eventsOf({ kind: '무순위', phases: [{ k: 'p1', date: '2026-11-02' }, { k: 'win', date: '2026-11-02' }] })['2026-11-02'], ['접수', '발표']);
   const S = [{ k: 'p1', date: '2026-11-02', end: '2026-11-04' }, { k: 'win', date: '2026-11-10' }, { k: 'con', date: '2026-11-20', end: '2026-11-22' }];
-  assert.deepEqual(['2026-10-30', '2026-11-03', '2026-11-04', '2026-11-05', '2026-11-22', '2026-11-23'].map((t) => stageOf(S, t)), ['D-5', 'D-1', 'D-Day', 'closed', 'closed', 'ended']); // 마감까지 남은 날, 접수·계약 마지막 날은 아직 그 단계
-  assert.equal(stamped(stamped('제목', 'D-3'), 'D-Day'), '[D-Day] 제목');
+  assert.deepEqual(['2026-11-04', '2026-11-05', '2026-11-22', '2026-11-23'].map((t) => stageOf(S, t)), ['', 'closed', 'closed', 'ended']); // 접수·계약 마지막 날은 아직 그 단계
+  const { recLabel } = await import('./pages.mjs'), RC = { start: '2026-11-02', end: '2026-11-04' };
+  assert.deepEqual(['2026-10-30', '2026-11-03', '2026-11-04'].map((t) => recLabel(RC, t)), ['3일 뒤 접수 시작 · D-5', '접수 중 · 11.4 마감 · D-1', '오늘 접수 마감 · D-Day']); // 상태 줄에 마감까지 남은 날
+  assert.equal(stamped('[D-12] 제목', ''), '제목'); // 예전 제목의 D-표시를 지운다
   assert.equal(stamped('[D-12] 제목', 'closed'), '[신청마감] 제목');
   assert.equal(stageOf([{ k: 'win', date: '2026-01-01' }], '2026-11-09'), ''); // 접수일 없는 자료는 표시하지 않는다
   assert.equal(stamped(stamped('[서울] 제목', 'closed'), 'ended'), '[종료] [서울] 제목'); // 앞 표시만 갈아 끼우고 지역 표시는 둔다
