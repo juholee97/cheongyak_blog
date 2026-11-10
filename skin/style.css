@@ -674,3 +674,7 @@ body { letter-spacing: 0; }
 .mc-tags i.is-empty { visibility: hidden; }
 .mc-r { background: var(--st-receipt); } .mc-w { background: var(--st-announce); } .mc-c { background: var(--st-contract); }
 @media (prefers-reduced-motion: reduce) { .tile, .mc-grid > *, .mc-head, .mc-foot, .map-legend { transition: none; } .hero-cta.is-go::after { animation: none; } }
+/* 달력 페이지 기관별 목록: 3줄 반만 보이고 나머지는 칸 안에서 스크롤(반 줄이 잘려 보여 더 있다는 걸 알린다, 2026-11-10) */
+.src-rows.is-long { max-height: 268px; overflow-y: auto; }
+.src-rows > .hero-row:first-child { border-top: 0; }
+@media (min-width: 701px) { .src-rows.is-long { overscroll-behavior: contain; } }

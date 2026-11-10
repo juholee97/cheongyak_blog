@@ -643,7 +643,7 @@
     box.innerHTML = '<div class="hero-list-head"><h2>이번 주 남은 접수</h2></div><div class="hero-list">' + srcList().map(function (g) {
       var xs = w.left.filter(function (x) { return srcOf(x.it) === g.k; });
       return '<div class="hero-group" id="src-' + g.k + '"><div class="hero-group-head"><i class="src-logo src-' + g.k + '" aria-hidden="true"></i><b>' + esc(g.full) + '</b>' + (g.note ? '<span>' + esc(g.note) + '</span>' : '') + '<em>' + xs.length + '곳</em></div>' +
-        (xs.length ? xs.map(function (x) { return heroRow(x, w.t); }).join('') : '<p class="hero-empty">이번 주 남은 접수가 없습니다.</p>') + '</div>';
+        (xs.length ? '<div class="src-rows' + (xs.length > 3 ? ' is-long' : '') + '">' + xs.map(function (x) { return heroRow(x, w.t); }).join('') + '</div>' : '<p class="hero-empty">이번 주 남은 접수가 없습니다.</p>') + '</div>';
     }).join('') + '</div>';
     var m = /^#src-(\w+)$/.exec(location.hash), el = m && document.getElementById('src-' + m[1]);
     if (el) { el.classList.add('is-target'); el.scrollIntoView({ block: 'start' }); }
