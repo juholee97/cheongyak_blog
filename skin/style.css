@@ -689,3 +689,16 @@ body { letter-spacing: 0; }
 .src-toggle[aria-checked=true] .sw { background: var(--brand); }
 .src-toggle[aria-checked=true] .sw::after { transform: translateX(16px); }
 @media (prefers-reduced-motion: reduce) { .src-toggle .sw, .src-toggle .sw::after { transition: none; } }
+/* 카테고리 「청약가이드」·「대출·정책」 위 핵심 글 3편(2026-11-10 사용자) */
+.core-block { margin-bottom: 40px; }
+.core-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; margin-bottom: 14px; }
+.core-head h2 { margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -0.02em; }
+.core-head span { font-size: 13px; color: var(--sub); }
+.core-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.core-card { display: flex; gap: 12px; align-items: flex-start; padding: 16px; border: 1px solid var(--line); border-radius: 12px; background: #fff; color: var(--ink); }
+.core-card:hover { border-color: var(--brand); text-decoration: none; color: var(--ink); }
+.core-no { flex: none; width: 28px; height: 28px; border-radius: 8px; background: var(--brand); color: #fff; font-weight: 800; font-size: 15px; display: flex; align-items: center; justify-content: center; }
+.core-text { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.core-text b { font-size: 16px; font-weight: 700; line-height: 1.4; letter-spacing: -0.02em; }
+.core-text span { font-size: 13px; color: var(--sub); line-height: 1.5; }
+@media (max-width: 900px) { .core-grid { grid-template-columns: minmax(0, 1fr); gap: 8px; } .core-card { padding: 14px; } }

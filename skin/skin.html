@@ -136,6 +136,13 @@
     <div class="blog-main">
       [##_revenue_list_upper_##]
 
+      <script type="text/template" id="tpl-core-guide"><section class="core-block" aria-labelledby="tpl-core-guide-h"><div class="core-head"><h2 id="tpl-core-guide-h">먼저 볼 핵심 글</h2><span>처음이라면 이 3편부터</span></div><div class="core-grid"><a class="core-card" href="/8"><span class="core-no">1</span><span class="core-text"><b>청약 신청부터 입주까지 순서</b><span>공고·당첨·계약·잔금 단계 정리</span></span></a><a class="core-card" href="/24"><span class="core-no">2</span><span class="core-text"><b>청약 가점 계산법 총정리</b><span>84점 만점, 무주택·부양가족·통장 기간 점수표</span></span></a><a class="core-card" href="/27"><span class="core-no">3</span><span class="core-text"><b>특별공급 종류 한눈에</b><span>신혼·생애최초·신생아·다자녀 기준표</span></span></a></div></section></script>
+      <script type="text/template" id="tpl-core-loan"><section class="core-block" aria-labelledby="tpl-core-loan-h"><div class="core-head"><h2 id="tpl-core-loan-h">먼저 볼 핵심 글</h2><span>처음이라면 이 3편부터</span></div><div class="core-grid"><a class="core-card" href="/75"><span class="core-no">1</span><span class="core-text"><b>정책대출 조건 한눈에 보기</b><span>디딤돌·보금자리론·버팀목 12종, 내 조건으로 예비 확인</span></span></a><a class="core-card" href="/5"><span class="core-no">2</span><span class="core-text"><b>청약 당첨 후 대출 총정리</b><span>디딤돌·보금자리론·중도금·규제지역 LTV</span></span></a><a class="core-card" href="/22"><span class="core-no">3</span><span class="core-text"><b>버팀목 전세자금대출 조건 비교</b><span>일반·신혼·청년·신생아 특례</span></span></a></div></section></script>
+      <script>(function () { // 카테고리 「청약가이드」·「대출·정책」 첫 쪽에만 핵심 글 3편을 목록 위에 고정(2026-11-10 사용자, 글 번호는 위 틀에서 바꾼다)
+        var p = ''; try { p = decodeURIComponent(location.pathname).replace(/\/+$/, ''); } catch (e) {}
+        var first = !/[?&]page=(?!1(&|$))/.test(location.search), id = document.body.id === 'tt-body-category' && first && ({ '/category/청약가이드': 'tpl-core-guide', '/category/대출·정책': 'tpl-core-loan' })[p];
+        var t = id && document.getElementById(id); if (t) t.insertAdjacentHTML('afterend', t.textContent);
+      })();</script>
       <div class="section-head latest-head"><h2>최신 게시물</h2></div>
       <s_list><div class="list-block">
         <div class="section-head list-head"><h2>[##_list_conform_##]</h2><span class="section-count">전체 <b>[##_list_count_##]</b>건</span></div>
