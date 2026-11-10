@@ -165,9 +165,12 @@
     folded: (function () { try { return localStorage.getItem(STORE_FOLD) === '1'; } catch (e) { return false; } })(), // PC: 지역 칸 접기(요약 줄만, 2026-10-27)
     phases: PH.map(function (p) { return p.k; }),
     y: today.getFullYear(), m: today.getMonth(), sel: key(today),
+    // 홈 달력의 날짜 칸(#d=YYYY-MM-DD)으로 오면 그 날을 고른 채로 연다
+    _d: (function () { var x = /^#d=(\d{4})-(\d{2})-(\d{2})$/.exec(location.hash); return x && x[0].slice(3); })(),
     modal: null, postLinks: {}, saved: false, data: [], status: 'loading', updatedAt: '',
   };
 
+  if (S._d) { S.y = +S._d.slice(0, 4); S.m = +S._d.slice(5, 7) - 1; S.sel = S._d; }
   var refs = {};
   root.querySelectorAll('[data-ref]').forEach(function (el) { refs[el.dataset.ref] = el; });
 
@@ -646,6 +649,44 @@
     if (el) { el.classList.add('is-target'); el.scrollIntoView({ block: 'start' }); }
   }
 
+  // 홈 「전체 청약 달력 보기」에 마우스를 올리면 지역 지도 칸이 차례로 뒤집히며 이번 달 달력으로 바뀐다(2026-11-10 사용자).
+  // 날짜마다 그날 시작하는 접수·당첨자 발표·계약 수를 단계 색 칸으로. 마우스가 있는 화면에서만(휴대폰은 그대로 이동)
+  function monthFace(items) {
+    var y = today.getFullYear(), m = today.getMonth(), first = new Date(y, m, 1), days = new Date(y, m + 1, 0).getDate();
+    var pre = key(first).slice(0, 8), by = {}, cal = (document.querySelector('.hero-cta') || { getAttribute: function () { return CAL_PATH; } }).getAttribute('href');
+    items.forEach(function (it) {
+      it.phases.forEach(function (p) {
+        var g = p.k === 'sp' || p.k === 'p1' || p.k === 'p2' ? 'r' : p.k === 'win' ? 'w' : p.k === 'con' ? 'c' : '';
+        if (!g || p.date.slice(0, 8) !== pre) return;
+        var d = +p.date.slice(8), o = by[d] = by[d] || { r: {}, w: {}, c: {} };
+        o[g][it.id] = 1; // 같은 공고의 특공·1순위·2순위는 한 곳으로 센다
+      });
+    });
+    var cnt = function (o) { return Object.keys(o).length; };
+    var cells = W.split('').map(function (c, i) { return '<span class="mc-dow' + (i === 0 ? ' sun' : i === 6 ? ' sat' : '') + '" style="--i:' + i + '">' + c + '</span>'; });
+    for (var b = 0; b < first.getDay(); b++) cells.push('<span class="mc-day is-pad" style="--i:' + cells.length + '"></span>');
+    for (var d = 1; d <= days; d++) {
+      var o = by[d], tags = o ? ['r', 'w', 'c'].map(function (g) { var n = cnt(o[g]); return '<i class="mc-' + g + (n ? '' : ' is-empty') + '">' + (n || '') + '</i>'; }).join('') : ''; // 접수·발표·계약 자리 고정
+      var dow = (first.getDay() + d - 1) % 7;
+      cells.push('<a class="mc-day' + (d === today.getDate() ? ' is-today' : '') + (dow === 0 ? ' sun' : dow === 6 ? ' sat' : '') + '" style="--i:' + cells.length + '" href="' + esc(cal) + '#d=' + pre + (d < 10 ? '0' : '') + d + '" tabindex="-1"><b>' + d + '</b><span class="mc-tags">' + tags + '</span></a>');
+    }
+    return '<div class="map-cal" aria-hidden="true"><div class="mc-head">' + (m + 1) + '월 청약달력 <span><i class="mc-r"></i>접수 <i class="mc-w"></i>발표 <i class="mc-c"></i>계약</span></div><div class="mc-grid" style="grid-template-rows: 20px repeat(' + Math.ceil((first.getDay() + days) / 7) + ', 60px)">' + cells.join('') + '</div><div class="mc-foot">날짜를 누르면 그날 일정을 크게 볼 수 있어요 →</div></div>';
+  }
+  function flipOnHover() {
+    var cta = document.querySelector('.hero-cta'), box = document.querySelector('.hero-map');
+    if (!cta || !box || cta.dataset.flip || !window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+    cta.dataset.flip = '1';
+    // 버튼에서 달력으로 마우스를 옮기는 동안은 달력을 유지한다(달력 날짜 칸을 누를 수 있게)
+    var label = cta.textContent, timer = 0;
+    var on = function () { clearTimeout(timer); box.classList.add('is-cal'); cta.classList.add('is-go'); cta.textContent = '달력 페이지로 이동'; };
+    var off = function () { box.classList.remove('is-cal'); cta.classList.remove('is-go'); cta.textContent = label; };
+    var later = function () { clearTimeout(timer); timer = setTimeout(off, 700); };
+    cta.addEventListener('mouseenter', on); cta.addEventListener('mouseleave', later);
+    box.addEventListener('mouseenter', function () { if (box.classList.contains('is-cal')) on(); });
+    box.addEventListener('mouseleave', later);
+    cta.addEventListener('focus', on); cta.addEventListener('blur', off);
+  }
+
   function renderHero(items, updatedAt, failed) {
     var MAP = ['인천', '서울', '경기', '강원', '충남', '세종', '충북', '경북', '전북', '대전', '대구', '울산', '광주', '전남', '경남', '부산', '제주'];
     var h = {};
@@ -659,10 +700,11 @@
     h.receipt.innerHTML = n(rec.length); h.win.innerHTML = n(win); h.con.innerHTML = n(con);
     h.updated.textContent = (updatedAt || '').replace('T', ' ').slice(0, 16).replace(/-/g, '.');
     var lv = function (v) { return v >= 5 ? 4 : v >= 3 ? 3 : v; };
-    h.map.innerHTML = MAP.map(function (r) {
+    h.map.innerHTML = MAP.map(function (r, i) {
       var v = reg[r] || 0;
-      return '<div class="tile l' + lv(v) + '"><span>' + r + '</span><b>' + (v || '') + '</b></div>';
-    }).join('');
+      return '<div class="tile l' + lv(v) + '" style="--i:' + i + '"><span>' + r + '</span><b>' + (v || '') + '</b></div>';
+    }).join('') + monthFace(items);
+    flipOnHover();
     // 기관별 블록 4개(2026-11-10 사용자): 목록은 달력 페이지에서. 남은 접수가 없는 기관도 0곳으로 보여 준다
     var CAL = (document.querySelector('[data-hero=more]') || {}).getAttribute ? document.querySelector('[data-hero=more]').getAttribute('href') : '/category/청약일정';
     h.list.innerHTML = srcList().map(function (g) {

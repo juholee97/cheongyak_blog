@@ -642,3 +642,35 @@ body { letter-spacing: 0; }
 .paging a, .paging .selected, .gu-toggle, .modal-close { border-radius: 8px; }
 @media (min-width: 701px) { .modal { border-radius: 14px; box-shadow: 0 8px 24px rgba(0, 0, 0, .12); } }
 .cy-remote { box-shadow: 0 1px 2px rgba(0, 0, 0, .08); }
+/* 홈: 「전체 청약 달력 보기」에 마우스를 올리면 지역 지도가 이번 달 달력으로 뒤집힌다(2026-11-10). 칸마다 --i만큼 늦게 시작 */
+.hero-map { position: relative; }
+.tile { transition: transform 360ms cubic-bezier(0.22, 1, 0.36, 1) calc(var(--i, 0) * 24ms), opacity 220ms linear calc(var(--i, 0) * 24ms); transform-origin: center; backface-visibility: hidden; }
+.hero-map.is-cal .tile { transform: perspective(900px) rotateY(90deg) scale(0.92); opacity: 0; }
+.map-legend { transition: opacity 200ms linear; }
+.hero-map.is-cal .map-legend { opacity: 0; }
+.map-cal { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; gap: 8px; pointer-events: none; }
+.hero-map.is-cal .map-cal { pointer-events: auto; }
+.mc-foot { font-size: 13px; font-weight: 600; color: var(--brand); text-align: right; opacity: 0; transition: opacity 200ms linear 300ms; }
+.hero-map.is-cal .mc-foot { opacity: 1; }
+.mc-day, .mc-day:hover { color: inherit; text-decoration: none; }
+.mc-day:not(.is-pad):hover { box-shadow: inset 0 0 0 2px var(--brand); background: #fff; }
+.hero-cta.is-go::after { content: '→'; display: inline-block; margin-left: 6px; animation: cta-go 600ms ease-in-out infinite alternate; }
+@keyframes cta-go { to { transform: translateX(4px); } }
+.mc-head { display: flex; align-items: center; gap: 12px; min-height: 18px; font-size: 13px; font-weight: 700; color: var(--sub); opacity: 0; transition: opacity 200ms linear 120ms; }
+.mc-head span { display: flex; align-items: center; gap: 4px; font-weight: 600; }
+.mc-head i { width: 10px; height: 10px; border-radius: 3px; margin-left: 6px; }
+.hero-map.is-cal .mc-head { opacity: 1; }
+.mc-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
+.mc-grid > * { opacity: 0; transform: perspective(900px) rotateY(-90deg) scale(0.92); transition: transform 360ms cubic-bezier(0.22, 1, 0.36, 1) calc(140ms + var(--i, 0) * 9ms), opacity 220ms linear calc(140ms + var(--i, 0) * 9ms); backface-visibility: hidden; }
+.hero-map.is-cal .mc-grid > * { opacity: 1; transform: none; }
+.mc-dow { display: flex; align-items: flex-end; justify-content: center; font-size: 12px; font-weight: 700; color: var(--sub); }
+.mc-day { display: flex; flex-direction: column; justify-content: space-between; padding: 4px; border-radius: 8px; background: #f2f5fa; min-width: 0; }
+.mc-day.is-pad { background: none; }
+.mc-day b { font-size: 13px; font-weight: 700; color: var(--ink); }
+.mc-day.sun b { color: var(--sun); } .mc-day.sat b { color: var(--sat); }
+.mc-day.is-today { box-shadow: inset 0 0 0 2px var(--brand); background: #fff; }
+.mc-tags { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2px; }
+.mc-tags i { font-style: normal; font-size: 10px; font-weight: 700; line-height: 14px; text-align: center; font-variant-numeric: tabular-nums; border-radius: 4px; color: #fff; }
+.mc-tags i.is-empty { visibility: hidden; }
+.mc-r { background: var(--st-receipt); } .mc-w { background: var(--st-announce); } .mc-c { background: var(--st-contract); }
+@media (prefers-reduced-motion: reduce) { .tile, .mc-grid > *, .mc-head, .mc-foot, .map-legend { transition: none; } .hero-cta.is-go::after { animation: none; } }
