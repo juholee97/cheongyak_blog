@@ -169,6 +169,8 @@ export async function render(key, { local = false } = {}) {
   if (!d) throw new Error(`data/zip_deep/${key}.json 없음`);
   const { summary, videos } = await analyzerData(folder), figs = await figures(key, d.blocks, local), views = JSON.parse(await readFile(join(ROOT, 'data/zip_views.json'), 'utf8').catch(() => '{}'));
   // PC 오른쪽 안내 칸(2026-10-30 사용자: PC에서는 PC답게 널널하게): 목차·핵심 숫자·함께 볼 글. 휴대폰에서는 숨긴다(site.css .az-deep-post)
+  // 2026-11-10 사용자 요청: 썸네일과 같은 조망도를 첫 소제목(「어떤 단지인가」) 바로 밑에. 본문에 이미 있던 같은 그림은 그 자리로 옮긴다
+  if (views[key]?.file) { const own = d.blocks.find((x) => x.view === key) || { view: key, alt: `${String(folder || '').replace(/\s*\(.*\)$/, '')} ${views[key].label || '조감도'}`.trim() }, at = d.blocks.findIndex((x) => x.h) + 1; d.blocks = d.blocks.filter((x) => x !== own); d.blocks.splice(at, 0, own); }
   const heads = [...d.blocks.filter((b) => b.h).map((b) => b.h), '이 글의 자료'];
   let hn = 0;
   const more = d.blocks.find((b) => b.links && b.links.some(([, u]) => u.includes('/apt-')))?.links || [];
