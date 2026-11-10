@@ -87,7 +87,7 @@
   var PHK = {};
   PH.forEach(function (p, i) { PHK[p.k] = Object.assign({ i: i }, p); });
   var W = '일월화수목금토';
-  var STORE = 'cheongyak-regions', STORE_GU = 'cheongyak-seoul-gu', STORE_FOLD = 'cheongyak-filter-folded';
+  var STORE = 'cheongyak-regions', STORE_GU = 'cheongyak-seoul-gu', STORE_FOLD = 'cheongyak-filter-folded', STORE_SRCF = 'cheongyak-srclist-filter';
   // 종류 필터 두 줄(2026-10-29 사용자 지시: 「아파트」만 켜면 아파트 무순위·임대가 다 빠짐 → 집 종류와 공고 종류를 나눈다).
   // 두 줄 다 켜진 항목만 보인다. 꺼 둔 값만 저장해서 새 값은 켜진 채로 나온다(2026-10-27 한 줄 필터의 저장값 cheongyak-kinds-off는 쓰지 않는다)
   // 집 종류는 자료에 따로 없어서 공고 종류로 정한다: 청약홈 무순위·임의공급은 APT 공고, LH·SH 건설임대·장기전세는 아파트 단지,
@@ -162,7 +162,8 @@
   var S = {
     regions: load(STORE, ALL), sub: (function () { var o = {}; SUBS.forEach(function (r) { o[r] = load(SUB[r].store, SUB[r].list); }); return o; })(), subOpen: '', filterOpen: false, // filterOpen은 휴대폰에서만 의미 있음
     off: (function () { var o = {}; DIMS.forEach(function (dm) { try { var v = JSON.parse(localStorage.getItem(dm.store) || '[]'); o[dm.k] = Array.isArray(v) ? v : []; } catch (e) { o[dm.k] = []; } }); return o; })(),
-    folded: (function () { try { return localStorage.getItem(STORE_FOLD) === '1'; } catch (e) { return false; } })(), // PC: 지역 칸 접기(요약 줄만, 2026-10-27)
+    folded: (function () { try { return localStorage.getItem(STORE_FOLD) === '1'; } catch (e) { return false; } })(),
+    srcFilter: (function () { try { return localStorage.getItem(STORE_SRCF) !== '0'; } catch (e) { return true; } })(), // 기관별 목록에 위 필터 적용(기본 켬) // PC: 지역 칸 접기(요약 줄만, 2026-10-27)
     phases: PH.map(function (p) { return p.k; }),
     y: today.getFullYear(), m: today.getMonth(), sel: key(today),
     // 홈 달력의 날짜 칸(#d=YYYY-MM-DD)으로 오면 그 날을 고른 채로 연다
@@ -258,9 +259,9 @@
     // 아래 기관별 목록도 같은 필터로(지역·구·주택·공고 종류는 visible, 단계 체크는 접수 단계만 남긴다)
     if (S.status === 'ok') {
       var allPh = S.phases.length === PH.length, allDim = DIMS.every(function (dm) { return !S.off[dm.k].length; });
-      renderSrcList(S.data.filter(function (it) { return visible(it, rs); }).map(function (it) {
+      renderSrcList(!S.srcFilter ? S.data : S.data.filter(function (it) { return visible(it, rs); }).map(function (it) {
         return allPh ? it : Object.assign({}, it, { phases: it.phases.filter(function (p) { return ps.has(p.k); }) });
-      }), !(rs.size === ALL.length && !anyPart && allDim && allPh));
+      }), S.srcFilter, S.srcFilter && !(rs.size === ALL.length && !anyPart && allDim && allPh));
     }
 
     function subRow(r) {
@@ -525,6 +526,9 @@
         S.off[d.dim] = ko;
         return set({ saved: false });
       }
+      case 'srcfilter':
+        try { localStorage.setItem(STORE_SRCF, S.srcFilter ? '0' : '1'); } catch (err) { /* 저장 불가 */ }
+        return set({ srcFilter: !S.srcFilter });
       case 'none': return setRegions([]); // 구 선택은 그대로 둔다
       case 'save':
         try {
@@ -643,16 +647,16 @@
       '<span class="units">' + (x.it.units ? x.it.units.toLocaleString() + '세대' : '') + '</span></' + tag + '>';
   }
   // 달력 페이지: 기관별 이번 주 남은 접수 전체 목록(홈 블록의 「자세히 보기」가 #src-기관으로 온다)
-  // filtered: 위 필터(지역·주택·공고 종류·단계)가 전체가 아닐 때 — 제목 옆에 알리고 빈 칸 문구를 바꾼다(2026-11-10 사용자)
-  function renderSrcList(items, filtered) {
+  // on: 제목 옆 토글(위 필터 적용 켜기·끄기, 2026-11-10 사용자). filtered: 켜져 있고 위 필터가 전체가 아닐 때 — 빈 칸 문구를 바꾼다
+  function renderSrcList(items, on, filtered) {
     var box = document.querySelector('[data-srclist]');
     if (!box) return;
     var w = thisWeek(items);
-    var sig = (filtered ? 'f' : '') + w.left.map(function (x) { return x.it.id + x.p.k; }).join();
+    var sig = (on ? 'o' : '') + (filtered ? 'f' : '') + w.left.map(function (x) { return x.it.id + x.p.k; }).join();
     if (box.dataset.sig === sig) return; // 목록이 그대로면 다시 그리지 않는다(칸 안 스크롤 위치 유지)
     var first = !box.dataset.sig;
     box.dataset.sig = sig;
-    box.innerHTML = '<div class="hero-list-head"><h2>이번 주 남은 접수</h2>' + (filtered ? '<span class="src-filtered">위 필터 적용 중</span>' : '') + '</div><div class="hero-list">' + srcList().map(function (g) {
+    box.innerHTML = '<div class="hero-list-head"><h2>이번 주 남은 접수</h2><button type="button" class="src-toggle" data-act="srcfilter" role="switch" aria-checked="' + !!on + '"><span class="sw" aria-hidden="true"></span>위 필터 적용</button></div><div class="hero-list">' + srcList().map(function (g) {
       var xs = w.left.filter(function (x) { return srcOf(x.it) === g.k; });
       return '<div class="hero-group" id="src-' + g.k + '"><div class="hero-group-head"><i class="src-logo src-' + g.k + '" aria-hidden="true"></i><b>' + esc(g.full) + '</b>' + (g.note ? '<span>' + esc(g.note) + '</span>' : '') + '<em>' + xs.length + '곳</em></div>' +
         (xs.length ? '<div class="src-rows' + (xs.length > 3 ? ' is-long' : '') + '">' + xs.map(function (x) { return heroRow(x, w.t); }).join('') + '</div>' : '<p class="hero-empty">' + (filtered ? '선택한 조건에 맞는 ' : '') + '이번 주 남은 접수가 없습니다.</p>') + '</div>';

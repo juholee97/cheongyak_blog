@@ -5,7 +5,7 @@ const OUT = process.argv[2];
 const sched = await (await fetch('https://juholee97.github.io/cheongyak_blog/schedule.json')).json();
 const b = await chromium.launch();
 let bad = 0;
-const counts = (p) => p.evaluate(() => ({ n: [...document.querySelectorAll('.src-list .hero-group-head em')].map((e) => e.textContent).join(' '), flag: !!document.querySelector('.src-filtered'), regions: [...new Set([...document.querySelectorAll('.src-list .hero-row .where')].map((e) => e.textContent.split(' ')[0]))].join(','), errs: window.__errs || [] }));
+const counts = (p) => p.evaluate(() => ({ n: [...document.querySelectorAll('.src-list .hero-group-head em')].map((e) => e.textContent).join(' '), toggle: document.querySelector('.src-toggle').getAttribute('aria-checked'), regions: [...new Set([...document.querySelectorAll('.src-list .hero-row .where')].map((e) => e.textContent.split(' ')[0]))].join(','), errs: window.__errs || [] }));
 try {
   const p = await b.newPage({ viewport: { width: 1440, height: 900 } });
   const errs = []; p.on('pageerror', (e) => errs.push(e.message));
@@ -21,13 +21,23 @@ try {
   }
   await p.waitForTimeout(400);
   const seoul = await counts(p); console.log('서울만', JSON.stringify(seoul));
-  if (!seoul.flag || seoul.regions !== '서울' || seoul.n === all.n) bad++;
+  if (seoul.toggle !== 'true' || seoul.regions !== '서울' || seoul.n === all.n) bad++;
   await p.locator('.src-list').screenshot({ path: join(OUT, 'srcfilter_seoul.png') });
+  // 토글 끄기: 서울만 고른 채로 전체 목록
+  await p.click('.src-toggle'); await p.waitForTimeout(300);
+  const off = await counts(p); console.log('토글 끔', JSON.stringify(off));
+  if (off.toggle !== 'false' || off.n !== all.n) bad++;
+  await p.locator('.src-list').screenshot({ path: join(OUT, 'srcfilter_off.png') });
+  // 새로 열어도 끈 상태 기억
+  await p.reload(); await p.waitForSelector('.src-rows .hero-row');
+  const kept = await counts(p); console.log('다시 열기', JSON.stringify(kept));
+  if (kept.toggle !== 'false') bad++;
+  await p.click('.src-toggle'); await p.waitForTimeout(300);
   // 전체 선택으로 돌아오면 원래대로
   await p.click('.filter .btn[data-act=all]');
   await p.waitForTimeout(400);
   const back = await counts(p); console.log('전체 선택', JSON.stringify(back));
-  if (back.flag || back.n !== all.n) bad++;
+  if (back.toggle !== 'true' || back.n !== all.n) bad++;
   if (errs.length) { console.log(errs); bad++; }
 } finally { await b.close(); }
 console.log(bad ? 'FAIL' : 'ALL OK');
