@@ -408,6 +408,15 @@ a.az-bd.deep{background:var(--az-ink);color:#fff}
 .az-front:has(#az-g1:checked) .az-ft tbody tr:not([data-g="서울"]),.az-front:has(#az-g2:checked) .az-ft tbody tr:not([data-g="경기"]),.az-front:has(#az-g3:checked) .az-ft tbody tr:not([data-g="인천"]),.az-front:has(#az-g4:checked) .az-ft tbody tr:not([data-g="지방"]){display:none!important}
 .az-front:has(#az-k1:checked) .az-ft tbody tr:not([data-k="분양"]),.az-front:has(#az-k2:checked) .az-ft tbody tr:not([data-k="무순위"]),.az-front:has(#az-k3:checked) .az-ft tbody tr:not([data-k="임대"]){display:none!important}
 .az-front:has(#az-d0:checked):not(:has(#az-c:checked)) .az-ft tr.cl{display:none!important}
+/* 첫 화면 심층 분석 고르기(2026-11-10 사용자: 지역·구분·접수 끝난 공고만 두고 나머지 목록은 뺌). 숨긴 칸은 세지 않는다 */
+.az-front:has(#az-g1:checked) .az-dgrid li:not([data-g="서울"]),.az-front:has(#az-g2:checked) .az-dgrid li:not([data-g="경기"]),.az-front:has(#az-g3:checked) .az-dgrid li:not([data-g="인천"]),.az-front:has(#az-g4:checked) .az-dgrid li:not([data-g="지방"]),.az-front:has(#az-k1:checked) .az-dgrid li:not([data-k="분양"]),.az-front:has(#az-k2:checked) .az-dgrid li:not([data-k="무순위"]),.az-front:not(:has(#az-c:checked)) .az-dgrid li[data-cl]{display:none}
+.az-front>.az-fbar{margin-top:18px}
+.az-dgrid{counter-reset:azd;display:flex;flex-direction:column}
+.az-dgrid li{counter-increment:azd}
+.az-dgrid .az-days-head{order:0}
+.az-dgrid .az-dcount{order:1;margin:6px 0 0!important;font-size:13px;color:var(--az-sub)}
+.az-dgrid ul{order:2}
+.az-dcount::before{content:"조건에 맞는 심층 분석 " counter(azd) "편"}
 .az-ft{counter-reset:azn}
 .az-ft tbody tr{counter-increment:azn}
 .az-ft tfoot td{border-bottom:0;padding-top:10px;font-size:13px;color:var(--az-sub)}
