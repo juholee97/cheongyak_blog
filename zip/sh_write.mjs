@@ -65,7 +65,7 @@ export function shPost(notice, units) {
     '<h2>확인할 조건</h2>',
     `<p>소득·자산 기준, 거주 요건, 계약기간, 임대보증금과 월세의 전환 조건은 <a href="${esc(notice.applyhomeUrl)}">SH 입주자 모집공고 원문</a>에서 확인하시기 바랍니다. 이 글의 월세는 공고문에 적힌 기준(소득 구간별로 다를 수 있음)을 그대로 옮긴 거입니다.</p>`,
     '<h2>함께 보면 좋은 글</h2>',
-    links([{ url: OPEN_URL, label: '현재 열린 공고 보기' }, { url: CAL_URL, label: '청약 일정 달력 (우리의 청약달력)' }]),
+    links([{ url: OPEN_URL, label: '심층 분석 보기' }, { url: CAL_URL, label: '청약 일정 달력 (우리의 청약달력)' }]),
     LOG_MARK,
     note(`이 글은 공고와 공개 실거래 자료를 비교한 것이며 청약·임대 신청 권유가 아닙니다. ${esc(formalDisclaimer.replace('청약홈', '공고 게시처(SH 홈페이지)'))}`),
   ].filter(Boolean).join('\n');

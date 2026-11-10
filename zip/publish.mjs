@@ -106,11 +106,11 @@ if (process.argv.includes('--check')) {
       if (id) Object.assign(v, { mid: id, url: (await wp(`media/${id}`)).source_url });
     }
     await (await import('node:fs/promises')).writeFile(join(ROOT, 'data/zip_views.json'), JSON.stringify(views, null, 1));
-    const pages = [['open-notices', '현재 열린 공고', openPage(withSchedule(Object.values(reg), sched, today), today, res, deeps, views)], ['method', '비교 기준', methodPage()], ['about', '소개', aboutPage()], ['privacy', '개인정보처리방침', privacyPage()]];
+    const pages = [['open-notices', '심층 분석', openPage(withSchedule(Object.values(reg), sched, today), today, res, deeps, views)], ['method', '비교 기준', methodPage()], ['about', '소개', aboutPage()], ['privacy', '개인정보처리방침', privacyPage()]];
     let openId;
     for (const [slug, title, html] of pages) { if (slug === 'open-notices') { const kb = (s) => Math.round(Buffer.byteLength(s || '') / 1024); console.log(`첫 화면 ${kb(html)}KB`, [...html.matchAll(/<tbody class="(s\d)">[\s\S]*?<\/tbody>/g)].map((m) => `${m[1]} ${kb(m[0])}KB`).join(' '), `격자 ${kb(html.match(/<section class="az-dgrid"[\s\S]*?<\/section>/)?.[0])}KB`); } // 워드프레스가 큰 글을 502로 거절한다(2026-10-31 122KB) — 크기를 늘 찍어 둔다
 const o = await upsertPage({ slug, title, html }); if (slug === 'open-notices') openId = o.id; console.log(`${o.ok ? '✓' : '✗'} 페이지 ${slug} ${o.link}`); }
-    // 첫 화면을 「현재 열린 공고」로: 방문자가 사이트 안을 돌게 한다
+    // 첫 화면을 「심층 분석」(고정 페이지 open-notices, 2026-11-10 이름 바꿈)으로: 방문자가 사이트 안을 돌게 한다
     await wp('settings', { method: 'POST', body: { show_on_front: 'page', page_on_front: openId } }).then((s) => console.log('첫 화면:', s.show_on_front, s.page_on_front)).catch((e) => console.log('첫 화면 설정 못 바꿈:', e.message));
     // 「분양 시세비교」 목록 = 카테고리 템플릿 category-<id>(글 왼쪽, 조감도 오른쪽). 조감도는 위에서 미디어로 올린 views를 쓴다
     // 「심층 분석」·「임대 시세비교」 목록도 같은 방식(오른쪽 카드 — pages.mjs deepList·rentList). 임대는 사이트에서 뺐다(2026-11-03 사용자) — 메뉴에 없고 목록은 비워 둔다

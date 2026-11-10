@@ -207,7 +207,7 @@ if (process.argv[1]?.endsWith('post.mjs')) {
     // 티스토리 분석 글은 2026-11-10 사용자 결정으로 중단·비공개 예정 — 연결하지 않는다
     // 같은 지역의 다른 시세 비교 글 최대 2편(열린 공고 먼저)
     for (const o of list.filter((x) => x.no !== r.no && x.region === r.region).sort((a, b) => closedOf(a.phases, today) - closedOf(b.phases, today)).slice(0, 2)) more.push({ url: `https://auleezip.com/apt-${o.no}/`, label: `${shortName(o.name)} 시세 비교` });
-    more.push({ url: OPEN_URL, label: '현재 열린 공고 보기' }, { url: CAL_URL, label: '청약 일정 달력 (우리의 청약달력)' });
+    more.push({ url: OPEN_URL, label: '심층 분석 보기' }, { url: CAL_URL, label: '청약 일정 달력 (우리의 청약달력)' });
     const p = postOf(r, buzz[r.no], claims[r.no], { closed, more, analysis: analysis[r.no], deep: [r.no, ...items.filter((x) => r.links.includes(x.applyhomeUrl)).map((x) => x.no)].map((no) => deepOf[no]).find(Boolean) }), issues = checkPost(p);
     if (issues.length) { console.log(`✗ ${r.name}: ${issues.join(', ')}`); continue; }
     await writeFile(join(dir, `${r.no}.json`), JSON.stringify(p, null, 2));
