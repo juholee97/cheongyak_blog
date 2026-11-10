@@ -683,8 +683,8 @@ body { letter-spacing: 0; }
 @media (max-width: 700px) { .src-list { background: #fff; box-shadow: 0 0 0 100vmax #fff; clip-path: inset(0 -100vmax); padding-top: 32px; } } /* 휴대폰: 일정 카드는 회색 바탕 위에 두고 기관별 목록만 흰색 */
 .src-list .hero-list-head { display: flex; align-items: baseline; gap: 10px; }
 .src-toggle { display: inline-flex; align-items: center; gap: 8px; padding: 4px 0; border: 0; background: none; font: inherit; font-size: 14px; font-weight: 700; color: var(--sub); cursor: pointer; }
-.src-toggle .sw { position: relative; width: 36px; height: 20px; border-radius: 999px; background: #c9d1dc; transition: background 160ms ease; flex: none; }
-.src-toggle .sw::after { content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0, 0, 0, .2); transition: transform 160ms ease; }
+.src-toggle .sw { position: relative; width: 36px; height: 20px; border-radius: 6px; background: #c9d1dc; transition: background 160ms ease; flex: none; }
+.src-toggle .sw::after { content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 4px; background: #fff; box-shadow: 0 1px 2px rgba(0, 0, 0, .2); transition: transform 160ms ease; }
 .src-toggle[aria-checked=true] { color: var(--brand); }
 .src-toggle[aria-checked=true] .sw { background: var(--brand); }
 .src-toggle[aria-checked=true] .sw::after { transform: translateX(16px); }
