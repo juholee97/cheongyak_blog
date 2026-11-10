@@ -416,7 +416,7 @@ a.az-bd.deep{background:var(--az-ink);color:#fff}
 .az-dgrid .az-days-head{order:0}
 .az-dgrid .az-dcount{order:1;margin:6px 0 0!important;font-size:13px;color:var(--az-sub)}
 .az-dgrid ul{order:2}
-.az-dcount::before{content:"조건에 맞는 심층 분석 " counter(azd) "편"}
+.az-dcount::before{content:"조건에 맞는 심층 분석 " counter(azd) "편 · "}
 .az-ft{counter-reset:azn}
 .az-ft tbody tr{counter-increment:azn}
 .az-ft tfoot td{border-bottom:0;padding-top:10px;font-size:13px;color:var(--az-sub)}

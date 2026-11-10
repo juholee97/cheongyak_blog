@@ -125,7 +125,7 @@ const sortDeeps = (deeps, reg, today) => deeps.map((d) => [d, d.nos.map((n) => r
 export const deepGrid = (deeps, list, today, views = {}) => {
   const reg = Object.fromEntries(list.map((r) => [r.no, r]));
   const tags = (r) => (r ? ` data-g="${regionOf(r)}" data-k="${kindOf(r)}"${closedOf(r.phases, today) ? ' data-cl="1"' : ''}` : ' data-cl="1"');
-  return deeps.length ? `<section class="az-dgrid" aria-label="심층 분석 글"><div class="az-days-head"><p>공고문과 공개된 분석 의견으로 단지를 하나씩 따져 봤습니다 · <a href="${esc(DEEP_URL)}">전체 보기</a></p></div><ul>${sortDeeps(deeps, reg, today).map(([d, r]) => `<li${tags(r)}>${deepCard(d, r, views[d.key])}<p class="az-vmeta">${metaOf([r ? esc(areaOf(r)) : ''], r ? statusOf(r.phases, today) : '')}</p><h3><a href="${esc(d.link)}">${esc(d.title)}</a></h3></li>`).join('')}</ul><p class="az-dcount" aria-live="polite"></p></section>` : '';
+  return deeps.length ? `<section class="az-dgrid" aria-label="심층 분석 글"><ul>${sortDeeps(deeps, reg, today).map(([d, r]) => `<li${tags(r)}>${deepCard(d, r, views[d.key])}<p class="az-vmeta">${metaOf([r ? esc(areaOf(r)) : ''], r ? statusOf(r.phases, today) : '')}</p><h3><a href="${esc(d.link)}">${esc(d.title)}</a></h3></li>`).join('')}</ul><p class="az-dcount" aria-live="polite"><a href="${esc(DEEP_URL)}">전체 보기</a></p></section>` : '';
 };
 
 export function deepList(deeps, list, today, views = {}) {
