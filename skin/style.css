@@ -681,3 +681,5 @@ body { letter-spacing: 0; }
 /* 달력 페이지 바탕 흰색(2026-11-10 사용자: 블럭 바깥까지 회색이 칠해져 보임) */
 @media (min-width: 701px) { .cal { background: #fff; } } /* PC: 달력 페이지 바탕 전체 흰색(판은 테두리로 구분) */
 @media (max-width: 700px) { .src-list { background: #fff; box-shadow: 0 0 0 100vmax #fff; clip-path: inset(0 -100vmax); padding-top: 32px; } } /* 휴대폰: 일정 카드는 회색 바탕 위에 두고 기관별 목록만 흰색 */
+.src-list .hero-list-head { display: flex; align-items: baseline; gap: 10px; }
+.src-filtered { font-size: 13px; font-weight: 700; color: var(--brand); }

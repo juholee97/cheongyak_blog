@@ -255,6 +255,13 @@
     refs.fold.setAttribute('aria-expanded', String(!S.folded));
     root.querySelector('.filter').classList.toggle('open', S.filterOpen);
     root.classList.toggle('sheet-open', S.filterOpen);
+    // 아래 기관별 목록도 같은 필터로(지역·구·주택·공고 종류는 visible, 단계 체크는 접수 단계만 남긴다)
+    if (S.status === 'ok') {
+      var allPh = S.phases.length === PH.length, allDim = DIMS.every(function (dm) { return !S.off[dm.k].length; });
+      renderSrcList(S.data.filter(function (it) { return visible(it, rs); }).map(function (it) {
+        return allPh ? it : Object.assign({}, it, { phases: it.phases.filter(function (p) { return ps.has(p.k); }) });
+      }), !(rs.size === ALL.length && !anyPart && allDim && allPh));
+    }
 
     function subRow(r) {
       var sb = SUB[r], on = rs.has(r) ? S.sub[r].length : 0, gs = new Set(S.sub[r]), cn = subCounts[r] || {};
@@ -636,15 +643,21 @@
       '<span class="units">' + (x.it.units ? x.it.units.toLocaleString() + '세대' : '') + '</span></' + tag + '>';
   }
   // 달력 페이지: 기관별 이번 주 남은 접수 전체 목록(홈 블록의 「자세히 보기」가 #src-기관으로 온다)
-  function renderSrcList(items) {
+  // filtered: 위 필터(지역·주택·공고 종류·단계)가 전체가 아닐 때 — 제목 옆에 알리고 빈 칸 문구를 바꾼다(2026-11-10 사용자)
+  function renderSrcList(items, filtered) {
     var box = document.querySelector('[data-srclist]');
     if (!box) return;
     var w = thisWeek(items);
-    box.innerHTML = '<div class="hero-list-head"><h2>이번 주 남은 접수</h2></div><div class="hero-list">' + srcList().map(function (g) {
+    var sig = (filtered ? 'f' : '') + w.left.map(function (x) { return x.it.id + x.p.k; }).join();
+    if (box.dataset.sig === sig) return; // 목록이 그대로면 다시 그리지 않는다(칸 안 스크롤 위치 유지)
+    var first = !box.dataset.sig;
+    box.dataset.sig = sig;
+    box.innerHTML = '<div class="hero-list-head"><h2>이번 주 남은 접수</h2>' + (filtered ? '<span class="src-filtered">위 필터 적용 중</span>' : '') + '</div><div class="hero-list">' + srcList().map(function (g) {
       var xs = w.left.filter(function (x) { return srcOf(x.it) === g.k; });
       return '<div class="hero-group" id="src-' + g.k + '"><div class="hero-group-head"><i class="src-logo src-' + g.k + '" aria-hidden="true"></i><b>' + esc(g.full) + '</b>' + (g.note ? '<span>' + esc(g.note) + '</span>' : '') + '<em>' + xs.length + '곳</em></div>' +
-        (xs.length ? '<div class="src-rows' + (xs.length > 3 ? ' is-long' : '') + '">' + xs.map(function (x) { return heroRow(x, w.t); }).join('') + '</div>' : '<p class="hero-empty">이번 주 남은 접수가 없습니다.</p>') + '</div>';
+        (xs.length ? '<div class="src-rows' + (xs.length > 3 ? ' is-long' : '') + '">' + xs.map(function (x) { return heroRow(x, w.t); }).join('') + '</div>' : '<p class="hero-empty">' + (filtered ? '선택한 조건에 맞는 ' : '') + '이번 주 남은 접수가 없습니다.</p>') + '</div>';
     }).join('') + '</div>';
+    if (!first) return;
     var m = /^#src-(\w+)$/.exec(location.hash), el = m && document.getElementById('src-' + m[1]);
     if (el) { el.classList.add('is-target'); el.scrollIntoView({ block: 'start' }); }
   }
@@ -720,8 +733,7 @@
 
   render();
   loadSchedule().then(function (j) {
-    set({ data: j.items, updatedAt: j.updatedAt, status: 'ok' });
-    renderSrcList(j.items);
+    set({ data: j.items, updatedAt: j.updatedAt, status: 'ok' }); // render()가 기관별 목록도 그린다
     openFromHash();
     window.addEventListener('hashchange', onHashChange);
     // 공고번호 → 우리의 집 글 주소(zip/publish.mjs가 만드는 crawler/auleezip_links.json). 못 받아도 달력·할 일은 그대로
