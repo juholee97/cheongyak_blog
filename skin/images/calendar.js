@@ -376,10 +376,15 @@
     var live = TODO.options(it, key(new Date()), todoHm()).map(function (o) { return o.k; }).filter(function (k) { return S.todoPicks.indexOf(k) >= 0; });
     return TODO.links(it, live, postLink(it));
   };
-  // 달력 → 우리의 집 전환 칸. 글이 없는 공고엔 아무것도 그리지 않는다
+  // 달력 → 우리의 집 전환 버튼(아래 버튼 줄 셋째 칸, 2026-11-10 사용자). 글이 없는 공고엔 아무것도 그리지 않는다
   var wpButton = function (it) {
     var w = TODO && TODO.wpLink(postLink(it));
-    return w ? '<a class="modal-wp" href="' + esc(w.url) + '?utm_source=calendar&amp;utm_medium=modal" target="_blank" rel="noopener">' + esc(w.label) + ' 보기 <span>우리의 집</span></a>' : '';
+    return w ? '<a class="wp" href="' + esc(w.url) + '?utm_source=calendar&amp;utm_medium=modal" target="_blank" rel="noopener">' + esc(w.label) + '</a>' : '';
+  };
+  // 상세 창 옆 「자격 확인」 리모콘: 계산기 글을 새 탭으로. 청약홈 공고는 번호(#n=)로 그 단지 값을 미리 채운다(계산기가 notices.json에서 찾고, 없으면 빈 계산기)
+  var calcLink = function (it) {
+    var id = String(it.id), no = /^\d+-\d+$/.test(id) && !it.source ? id.split('-')[0] : '';
+    return (window.CY_CALC_PAGE || '/75') + (no ? '#n=' + no : '');
   };
   function todoList(it) {
     var tasks = todoTasks(it);
@@ -508,9 +513,11 @@
       '<div class="modal-head"><div><div class="modal-where">' + esc(it.region + ' ' + (it.district || '')) + ' · ' + esc(it.kind) + '</div>' +
       '<div class="modal-name">' + esc(it.name) + '</div></div>' +
       '<button type="button" class="modal-close" data-act="close" aria-label="닫기">✕</button></div>' +
-      '<div class="modal-body"><div class="mtable">' + rows + '</div><div data-ref="wpslot">' + wpButton(it) + '</div>' + todoPanel(it) +
+      '<div class="modal-body"><div class="mtable">' + rows + '</div>' + todoPanel(it) +
+      '<a class="modal-calc" href="' + esc(calcLink(it)) + '" target="_blank" rel="noopener">이 단지로 대출·특공 자격 확인 →</a>' +
       '<div class="modal-btns">' + (go ? '<a class="go" href="' + esc(go) + '" target="_blank" rel="noopener">' + (youth ? '청년안심주택 공고' : it.source === 'lh' ? 'LH청약플러스 공고' : it.source === 'sh' ? 'SH 공고 원문' : '청약홈 바로가기') + '</a>' : '') +
-      (home ? '<a href="' + esc(home) + '" target="_blank" rel="noopener">' + (youth ? '청약신청 페이지' : it.source === 'sh' ? 'SH 홈페이지' : '분양 홈페이지') + '</a>' : '') + '</div></div></div></div>';
+      (home ? '<a href="' + esc(home) + '" target="_blank" rel="noopener">' + (youth ? '청약신청 페이지' : it.source === 'sh' ? 'SH 홈페이지' : '분양 홈페이지') + '</a>' : '') + '<span data-ref="wpslot">' + wpButton(it) + '</span></div></div></div>' +
+      '<a class="modal-remote" href="' + esc(calcLink(it)) + '" target="_blank" rel="noopener" data-act="noop">자격 확인<small>이 단지<br>대출·특공</small></a></div>';
   }
 
   root.addEventListener('click', function (e) {

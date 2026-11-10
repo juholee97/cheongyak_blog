@@ -248,10 +248,10 @@ try {
     assert.equal(await page.locator('.todo-list li').count(), 8, `${where}: 할 일 8개`);
     const hrefs = await page.$$eval('.todo-links a', (es) => es.map((e) => e.getAttribute('href')));
     assert.ok(hrefs.includes('https://auleezip.com/deep-2026000557/') && hrefs.includes('https://aulee.tistory.com/5') && hrefs.includes('https://aulee.tistory.com/27'), `${where}: 함께 볼 글 ${hrefs}`);
-    const wpBtn = page.locator('.modal-wp');
+    const wpBtn = page.locator('.modal-btns a.wp');
     assert.equal(await wpBtn.getAttribute('href'), 'https://auleezip.com/deep-2026000557/?utm_source=calendar&utm_medium=modal', `${where}: 우리의 집 버튼`);
     assert.equal(await wpBtn.getAttribute('target'), '_blank');
-    assert.ok((await wpBtn.innerText()).includes('이 단지 심층 분석 보기'));
+    assert.ok((await wpBtn.innerText()).includes('이 단지 심층 분석'));
     assert.ok((await wpBtn.boundingBox()).height >= 44, `${where}: 버튼 높이`);
     // 유형을 끄면 목록만 바뀌고 창은 그대로
     await page.locator('.todo-picks label', { hasText: '특별공급' }).click();
@@ -316,10 +316,10 @@ try {
     // 창을 닫았다 다시 열면 처음 상태
     await page.click('.modal-close');
     await openModal('youth-6718');
-    assert.equal(await page.locator('.modal-wp').getAttribute('href'), 'https://auleezip.com/deep-youth-6718/?utm_source=calendar&utm_medium=modal', `${where}: lh·youth 공고도 id 전체로 찾음`);
+    assert.equal(await page.locator('.modal-btns a.wp').getAttribute('href'), 'https://auleezip.com/deep-youth-6718/?utm_source=calendar&utm_medium=modal', `${where}: lh·youth 공고도 id 전체로 찾음`);
     await page.click('.modal-close');
     await openModal('lh');
-    assert.equal(await page.locator('.modal-wp').count(), 0, `${where}: 글 없는 공고엔 버튼 없음`);
+    assert.equal(await page.locator('.modal-btns a.wp').count(), 0, `${where}: 글 없는 공고엔 버튼 없음`);
     await page.click('.todo summary');
     assert.equal(await page.locator('.todo-picks input').count(), 1, `${where}: 유형 하나도 끌 수 있음`);
     assert.ok((await page.locator('.todo-list').innerText()).includes('접수 마감'));

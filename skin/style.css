@@ -702,3 +702,21 @@ body { letter-spacing: 0; }
 .core-text b { font-size: 16px; font-weight: 700; line-height: 1.4; letter-spacing: -0.02em; }
 .core-text span { font-size: 13px; color: var(--sub); line-height: 1.5; }
 @media (max-width: 900px) { .core-grid { grid-template-columns: minmax(0, 1fr); gap: 8px; } .core-card { padding: 14px; } }
+/* 달력 상세 창: 아래 버튼 줄에 심층 분석(있을 때만) 셋째 칸, 창 오른쪽에 「자격 확인」 리모콘(휴대폰은 창 안 한 줄) — 2026-11-10 사용자 */
+.modal-btns > [data-ref=wpslot] { display: contents; }
+.modal-btns a.wp { background: #111; border-color: #111; color: #e8c766; font-weight: 700; } /* 심층 분석: 검정 바탕에 금색 글자(2026-11-10 사용자) */
+.modal-btns a.wp:hover { background: #000; color: #f3d98a; }
+.overlay { gap: 12px; }
+.modal-remote { flex: none; align-self: center; display: flex; flex-direction: column; align-items: center; gap: 4px; width: 84px; padding: 14px 6px; border-radius: 3px; background: var(--primary); color: #fff; font-size: 13px; font-weight: 700; text-align: center; line-height: 1.35; box-shadow: 0 2px 8px rgba(15, 37, 87, .25); }
+.modal-remote small { font-size: 11px; font-weight: 400; }
+body:has(.overlay) .cy-remote { display: none; } /* 창이 열리면 화면 오른쪽 기본 리모콘 대신 창 옆 리모콘만 */
+.modal-remote:hover { color: #fff; text-decoration: none; background: var(--navy); }
+.modal-calc { display: none; }
+@media (max-width: 700px) {
+  .overlay { gap: 0; }
+  .modal-remote { display: none; }
+  .modal-calc { display: flex; align-items: center; justify-content: center; min-height: 44px; margin-bottom: 8px; border-radius: 12px; background: var(--tint); color: var(--primary); font-size: 14px; font-weight: 700; }
+  .modal-calc:hover { text-decoration: none; }
+  .modal-btns { flex-wrap: wrap; }
+  .modal-btns a.wp { flex-basis: 100%; }
+}
