@@ -81,6 +81,7 @@
     { k: 'sp', label: '특별공급', full: '특별공급 접수', c: '#0a4ec2', bg: '#eaf0fb' },
     { k: 'p1', label: '1순위', full: '1순위 접수', c: '#00745f', bg: '#e5f3ef' },
     { k: 'p2', label: '2순위', full: '2순위 접수', c: '#9a5a00', bg: '#f8f0e2' },
+    { k: 'end', label: '마감', full: '접수 마감', c: '#00745f', bg: '#e5f3ef' }, // LH 접수 마감일. 시작일을 모르는 공고는 p1 자체가 마감일이다(viewKey)
     { k: 'win', label: '당첨발표', full: '당첨발표', c: '#b3261e', bg: '#fbebea' },
     { k: 'con', label: '계약', full: '계약', c: '#4b4f9c', bg: '#eeeef8' },
   ];
@@ -140,12 +141,15 @@
     return '<span class="box' + (sm ? ' sm' : '') + (on ? ' on' : '') + '">' + (on ? (part ? '–' : '✓') : '') + '</span>';
   };
   // APT 말고는 순위가 없으니 p1을 "접수"로. 청년안심주택 발표는 서류심사 대상자·당첨자 발표라 "발표"로
+  var deadlineOnly = function (item) { return item.source === 'lh' && !item.startKnown; };
   var phaseOf = function (item, k) {
     var p = PHK[k];
-    if (k === 'p1' && item.source === 'lh') return Object.assign({}, p, { label: '마감', full: '접수 마감' }); // LH 임대는 마감일만 안다
+    if (k === 'p1' && deadlineOnly(item)) return Object.assign({}, p, { label: '마감', full: '접수 마감' }); // 시작일을 못 받은 LH 공고
     if (k === 'p1' && item.kind !== 'APT') return Object.assign({}, p, { label: '접수', full: '접수' });
     return k === 'win' && (item.kind === '청년안심주택' || item.source === 'sh') ? Object.assign({}, p, { label: '발표', full: '발표' }) : p;
   };
+  var viewKey = function (item, k) { return k === 'p1' && deadlineOnly(item) ? 'end' : k; };
+  var lhEnd = function (item, ph) { return item.startKnown && ph.k === 'p1' ? ph.end : null; }; // LH 접수 마지막 날(시작일과 다를 때만 값이 있다)
   var load = function (k, allowed) {
     try {
       var v = JSON.parse(localStorage.getItem(k) || 'null');
@@ -164,7 +168,7 @@
     off: (function () { var o = {}; DIMS.forEach(function (dm) { try { var v = JSON.parse(localStorage.getItem(dm.store) || '[]'); o[dm.k] = Array.isArray(v) ? v : []; } catch (e) { o[dm.k] = []; } }); return o; })(),
     folded: (function () { try { return localStorage.getItem(STORE_FOLD) === '1'; } catch (e) { return false; } })(),
     srcFilter: (function () { try { return localStorage.getItem(STORE_SRCF) !== '0'; } catch (e) { return true; } })(), // 기관별 목록에 위 필터 적용(기본 켬) // PC: 지역 칸 접기(요약 줄만, 2026-10-27)
-    phases: PH.map(function (p) { return p.k; }),
+    phases: PH.map(function (p) { return p.k; }).filter(function (k) { return k !== 'end' && k !== 'con'; }), // 달력은 청약하려는 사람이 본다: 마감·계약은 기본으로 꺼 둔다(2026-11-11 사용자)
     y: today.getFullYear(), m: today.getMonth(), sel: key(today),
     // 홈 달력의 날짜 칸(#d=YYYY-MM-DD)으로 오면 그 날을 고른 채로 연다
     _d: (function () { var x = /^#d=(\d{4})-(\d{2})-(\d{2})$/.exec(location.hash); return x && x[0].slice(3); })(),
@@ -206,7 +210,8 @@
     S.data.forEach(function (it) {
       if (!visible(it, rs)) return;
       it.phases.forEach(function (ph) {
-        if (!ps.has(ph.k) || !PHK[ph.k]) return;
+        if (lhEnd(it, ph) && ps.has('end')) (by[ph.end] = by[ph.end] || []).push({ it: it, p: PHK.end });
+        if (!ps.has(viewKey(it, ph.k)) || !PHK[ph.k]) return;
         (by[ph.date] = by[ph.date] || []).push({ it: it, p: phaseOf(it, ph.k) });
       });
     });
@@ -225,7 +230,7 @@
     // 지역·구별 이 달 단지 수 (필터와 무관)
     var counts = {}, subCounts = {}, dimCounts = { house: {}, notice: {} };
     S.data.forEach(function (it) {
-      if (!it.phases.some(function (p) { return p.date.slice(0, 7) === ym; })) return;
+      if (!it.phases.some(function (p) { return p.date.slice(0, 7) === ym || (lhEnd(it, p) || '').slice(0, 7) === ym; })) return;
       counts[it.region] = (counts[it.region] || 0) + 1;
       DIMS.forEach(function (dm) { var c = dimCounts[dm.k], v = dm.of(it); c[v] = (c[v] || 0) + 1; });
       if (SUB[it.region]) { var c = subCounts[it.region] = subCounts[it.region] || {}, k = SUB[it.region].key(it); c[k] = (c[k] || 0) + 1; }
@@ -258,9 +263,9 @@
     root.classList.toggle('sheet-open', S.filterOpen);
     // 아래 기관별 목록도 같은 필터로(지역·구·주택·공고 종류는 visible, 단계 체크는 접수 단계만 남긴다)
     if (S.status === 'ok') {
-      var allPh = S.phases.length === PH.length, allDim = DIMS.every(function (dm) { return !S.off[dm.k].length; });
+      var allPh = ['sp', 'p1', 'p2'].every(function (k) { return ps.has(k); }), allDim = DIMS.every(function (dm) { return !S.off[dm.k].length; });
       renderSrcList(!S.srcFilter ? S.data : S.data.filter(function (it) { return visible(it, rs); }).map(function (it) {
-        return allPh ? it : Object.assign({}, it, { phases: it.phases.filter(function (p) { return ps.has(p.k); }) });
+        return allPh ? it : Object.assign({}, it, { phases: it.phases.filter(function (p) { return ps.has(p.k) || viewKey(it, p.k) === 'end'; }) }); // LH 마감일은 이 목록의 접수 자체라 체크와 상관없이 남긴다
       }), S.srcFilter, S.srcFilter && !(rs.size === ALL.length && !anyPart && allDim && allPh));
     }
 
@@ -506,7 +511,8 @@
         .sort(function (a, b) { return PHK[a.k].i - PHK[b.k].i; })
         .map(function (ph) {
           var p = phaseOf(it, ph.k);
-          return '<div class="th"><span class="tl-dot" style="' + pvars(p) + '"></span>' + p.full + '</div><div>' + fmt(ph.date) + '</div>';
+          return '<div class="th"><span class="tl-dot" style="' + pvars(p) + '"></span>' + p.full + '</div><div>' + fmt(ph.date) + '</div>' +
+            (lhEnd(it, ph) ? '<div class="th"><span class="tl-dot" style="' + pvars(PHK.end) + '"></span>' + PHK.end.full + '</div><div>' + fmt(ph.end) + '</div>' : '');
         }).join('');
     var go = safeUrl(it.applyhomeUrl), home = safeUrl(it.homepageUrl), youth = it.kind === '청년안심주택';
     refs.modal.innerHTML = '<div class="overlay" data-act="close"><div class="modal" role="dialog" aria-modal="true" aria-label="' + esc(it.name) + '" data-act="noop">' +

@@ -99,6 +99,9 @@ const l = build(lh, ['p1'], '2026-11-09');
 assert.deepEqual(ids(l), ['tip-read', 'tip-prep', 'p1']);
 assert.equal(l[2].title, '접수 마감');
 assert.ok(l[2].note.includes('마감일만') && l[2].note.includes('발표·계약 일정은 자료에 없어요'));
+const lhRange = build({ ...lh, startKnown: true, phases: [{ k: 'p1', date: '2026-11-18', end: '2026-11-20' }] }, ['p1'], '2026-11-09'); // 접수 시작일을 받은 LH 공고
+assert.deepEqual(lhRange.filter((t) => !t.tip).map((t) => t.title), ['접수 시작', '접수 마지막 날']);
+assert.ok(!lhRange.some((t) => (t.note || '').includes('마감일만')));
 
 // 깨진 날짜·이상한 주소
 const bad = { id: '4-4', name: '표본', kind: 'APT', applyhomeUrl: 'javascript:alert(1)', phases: [{ k: 'p1', date: '미정' }, { k: 'win', date: '2026-11-21' }] };

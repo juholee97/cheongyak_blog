@@ -92,7 +92,7 @@ assert.equal(sh.district, null); // 여러 구를 한 공고로
 assert.deepEqual(sh.phases, [{ k: 'p1', date: '2026-08-11', end: '2026-08-13' }, { k: 'win', date: '2026-12-11' }]);
 
 // LH 임대공고(lh.mjs): 응답 모양에 기대지 않고 PAN_ID 행을 모으고, 마감일을 「접수 마감」(p1)으로
-const { rowsOf, toLhItem, dot } = await import('./lh.mjs');
+const { rowsOf, toLhItem, dot, startOf, withStart } = await import('./lh.mjs');
 assert.equal(dot('2026.10.23'), '2026-10-23');
 assert.equal(dot('20261023'), '2026-10-23');
 const lhRows = rowsOf([{ dsSch: [{ PAN_NT_ST_DT: '2026.09.01' }] }, { dsList: [{ PAN_ID: '0000059133', PAN_NM: '서울 강남 행복주택 입주자 모집', AIS_TP_CD_NM: '행복주택', CNP_CD_NM: '서울특별시', PAN_NT_ST_DT: '2026.10.20', CLSG_DT: '2026.11.03', DTL_URL: 'https://apply.lh.or.kr/x' }], resHeader: [{ SS_CODE: 'Y' }] }]);
@@ -104,6 +104,15 @@ assert.equal(lh.region, '서울');
 assert.equal(lh.noticeDate, '2026-10-20');
 assert.deepEqual(lh.phases, [{ k: 'p1', date: '2026-11-03' }]);
 assert.equal(toLhItem({ PAN_ID: '1', CNP_CD_NM: '전국', CLSG_DT: '2026.11.03' }).region, null); // 전국 공고는 시·도 필터에 못 걸어 뺀다
+// 접수 시작일(상세정보): 단지 중 가장 이른 날, 신청일시로만 오는 공고, 마감보다 늦은 값·빈 값은 버린다. 시작=마감이면 end 없이
+assert.equal(startOf([{ dsSch: [] }, { dsSplScdl: [{ SBSC_ACP_ST_DT: '2026.11.23' }, { SBSC_ACP_ST_DT: '2026.11.20' }] }], '2026-11-25'), '2026-11-20');
+assert.equal(startOf([{ dsSplScdl: [{ SBSC_ACP_ST_DT: '', ACP_DTTM: '2026.11.16 10:00 ~ 2026.11.16 17:00' }] }], '2026-11-16'), '2026-11-16');
+assert.equal(startOf([{ dsSplScdl: [{ SBSC_ACP_ST_DT: '', ACP_DTTM: '~' }] }], '2026-11-16'), null);
+assert.equal(startOf([{ dsSplScdl: [{ SBSC_ACP_ST_DT: '2026.12.01' }] }], '2026-11-16'), null);
+assert.deepEqual(withStart(lh, '2026-10-30').phases, [{ k: 'p1', date: '2026-10-30', end: '2026-11-03' }]);
+assert.equal(withStart(lh, '2026-10-30').startKnown, true);
+assert.deepEqual(withStart(lh, '2026-11-03').phases, [{ k: 'p1', date: '2026-11-03' }]);
+assert.equal(withStart(lh, null), lh);
 
 // SH 모집공고(sh.mjs): 모집공고 글만, 글자 사이 띄어쓰기가 든 본문에서도 접수·발표일을 읽고, 접수일을 못 읽으면 일정을 비운다
 const { toShItem, isRecruit, kindOf, dates: shDates } = await import('./sh.mjs');

@@ -22,7 +22,7 @@
   function applyLabel(it, k) {
     if (k === 'sp') return '특별공급 접수';
     if (k === 'p2') return it.kind === 'APT' ? '2순위 접수(해당지역)' : '2순위 접수';
-    if (it.source === 'lh') return '접수 마감';
+    if (it.source === 'lh' && !it.startKnown) return '접수 마감';
     return it.kind === 'APT' ? '1순위 접수(해당지역)' : '접수'; // 자료의 1·2순위 날짜는 해당지역 칸뿐이다(crawler/fetch.mjs)
   }
   var spMissing = function (it) { return it.kind === 'APT' && !phase(it, 'sp'); };
@@ -67,7 +67,7 @@
     on.forEach(function (o, i) {
       var p = phase(it, o.k), name = applyLabel(it, o.k), open = hb ? { from: '09:00', to: '17:30' } : {}, notes = [];
       if (hb) notes.push('청약홈 → 청약신청 → APT에서 신청해요. 17:30 전에 최종신청까지 끝내야 하고, 신청일 17:30 전까지는 취소 후 다시 신청할 수 있어요.');
-      else if (it.source === 'lh') notes.push('자료에는 마감일만 있어요. 접수 시작일, 접수처, 시간은 공고문에서 확인해 주세요.');
+      else if (it.source === 'lh' && !it.startKnown) notes.push('자료에는 마감일만 있어요. 접수 시작일, 접수처, 시간은 공고문에서 확인해 주세요.');
       else notes.push('접수처와 접수 시간은 공고문에서 확인해 주세요.');
       if (o.k === 'sp') notes.push('특별공급은 종류에 따라 접수 기간과 장소가 다를 수 있어요. 공고문에서 확인해 주세요.');
       if (it.kind === 'APT' && o.k !== 'sp') notes.push('해당지역 접수일이에요. 기타지역이면 공고문에서 접수일을 확인해 주세요.');
