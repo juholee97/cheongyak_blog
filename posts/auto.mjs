@@ -2,7 +2,7 @@
 // node posts/auto.mjs [--week YYYY-MM-DD] [--dry-run] [--quiet]
 //   --dry-run  티스토리 단계를 저장 없이 시험(draft.mjs --dry-run)   --quiet  끝 알림 창 없음
 // 이미 임시저장이 확인된 주(save.json ok)는 건너뛴다. 아니면 최신 수집본으로 다시 만든다(--force).
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { readFile, appendFile, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { ROOT } from '../tistory/common.mjs';
@@ -10,7 +10,11 @@ import { nextMonday } from './weekly.mjs';
 
 const arg = (k) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : null; };
 const dryRun = process.argv.includes('--dry-run');
-const week = arg('--week') || nextMonday();
+// --catch-up(매일 07:00 analysis_auto.bat, 2026-11-11): 월요일에만, 일요일 18:00에 저장 못 한 이번 주 글을 다시 만든다(그날 다른 글보다 먼저). 다른 요일은 아무것도 안 함
+const kstNow = new Date(Date.now() + 9 * 3600e3);
+const catchUp = process.argv.includes('--catch-up');
+if (catchUp && kstNow.getUTCDay() !== 1) process.exit(0);
+const week = arg('--week') || (catchUp ? kstNow.toISOString().slice(0, 10) : nextMonday());
 const base = `drafts/${week}_weekly`;
 const LOG = join(ROOT, 'data', 'logs', 'weekly_auto.log');
 await mkdir(join(ROOT, 'data', 'logs'), { recursive: true });
@@ -20,7 +24,8 @@ const log = async (s) => { console.log(s); await appendFile(LOG, s + '\n'); };
 function notify(msg) {
   if (process.argv.includes('--quiet')) return;
   const ps = `Add-Type -AssemblyName PresentationFramework; [System.Windows.MessageBox]::Show('${msg.replace(/'/g, "''")}', '청약 주간 글 자동 실행') | Out-Null`;
-  spawnSync('powershell', ['-NoProfile', '-Command', ps], { stdio: 'ignore' });
+  // 창을 띄우고 기다리지 않는다 — 07:00 실행기의 다음 단계가 창 때문에 멈추지 않게
+  spawn('powershell', ['-NoProfile', '-Command', ps], { stdio: 'ignore', detached: true }).unref();
 }
 
 const run = async (name, args) => {
@@ -29,7 +34,7 @@ const run = async (name, args) => {
   return r.status;
 };
 
-const DRAFT_EXIT = { 1: '티스토리 입력 중 오류', 2: '저장본 대조 불일치(티스토리 임시저장 목록 확인 필요)', 3: '티스토리 로그인 필요 — tistory_login.bat으로 직접 로그인', 4: '검수 실패', 5: '티스토리 하루 글 한도(50개)', 6: '티스토리 보안 확인(reCAPTCHA) — 사람이 직접 확인 필요' };
+const DRAFT_EXIT = { 1: '티스토리 입력 중 오류', 2: '저장본 대조 불일치(티스토리 임시저장 목록 확인 필요)', 3: '티스토리 로그인 필요 — tistory_login.bat으로 직접 로그인', 4: '검수 실패', 5: `티스토리 저장 한도(하루 3번·쉬는 기간) — ${catchUp ? '이번 주 글은 weekly_auto.bat으로 직접 실행' : '월요일 07:00에 다시 시도'}`, 6: '티스토리 보안 확인(reCAPTCHA) — 사람이 직접 확인 필요' };
 
 async function main() {
   await log(`\n===== ${new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 16).replace('T', ' ')} KST · ${week} 주${dryRun ? ' · 시험' : ''} =====`);

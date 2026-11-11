@@ -10,7 +10,7 @@ export const clean = (h) => String(h || '').replace(/<script[\s\S]*?<\/script>/g
   .replace(/&nbsp;/g, ' ').replace(/&middot;/g, '·').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/\s+/g, ' ');
 
 // 모집공고 글만: 「입주자 모집공고」·「모집 공고」. 당첨자 발표·사전점검·계약 안내·입주 안내·정정·변경은 뺀다
-export const isRecruit = (title) => /모집\s*공고|입주자\s*모집/.test(title) && !/당첨자|예비입주자\s*발표|사전점검|계약\s*안내|입주\s*안내|입주안내|정정|변경|취소|연기|결과|발표|서류\s*심사|심사\s*서류|서류\s*제출|제출\s*안내|임대상가|기숙사/.test(title);
+export const isRecruit = (title) => /모집\s*공고|입주자\s*모집/.test(title) && !/당첨자|예비입주자\s*발표|사전점검|계약\s*안내|입주\s*안내|입주안내|정정|변경|취소|연기|결과|발표|서류\s*심사|심사\s*서류|서류\s*제출|제출\s*안내|임대상가|기숙사|돌보미|사무지원|채용|직원|기간제|인턴/.test(title); // 집이 아닌 사람 모집(2026-11-11: 희망돌보미 사무지원 공고가 달력·주간 글에 들어감)
 
 // 제목 → 종류
 export function kindOf(title) {
@@ -112,6 +112,7 @@ if (process.argv.includes('--check')) {
   assert.equal(isRecruit('제50차 장기전세주택 입주자 모집공고'), true);
   assert.equal(isRecruit('제50차 장기전세주택 입주자 모집공고 당첨자 및 예비입주자 발표'), false);
   assert.equal(isRecruit('[사전점검 안내문] 동작 보라매역 프리센트(제50차 장기전세)'), false);
+  assert.equal(isRecruit('2027년 양천영등포주거안심종합센터 희망돌보미(사무지원)모집공고'), false);
   assert.equal(kindOf('강북구 신혼부부(수요자맞춤형)주택 입주자 모집 공고'), '수요자맞춤형'); assert.equal(isRecruit('2026년 2차 장기미임대 매입임대주택 입주자 모집공고(2026. 8. 28.) 서류심사 대상자 발표'), false);
   assert.deepEqual(dates('모집신청일: 2026년 10월 28일(수) ~ 2026년 11월 3일(화)', 2026), ['2026-10-28', '2026-11-03']);
   assert.deepEqual(dates('’26. 11. 4. ~ 11. 6.', 2026), ['2026-11-04', '2026-11-06']);
