@@ -186,7 +186,7 @@ export async function render(key, { local = false } = {}) {
     if (b.plan) return planHtml(b.plan);
     if (b.timeline) return `<figure class="az-fig"><img src="${esc(figs[b.timeline.kind])}" alt="${esc(altOf(b.timeline))}" width="720" loading="lazy">${b.timeline.caption ? `<figcaption>${esc(b.timeline.caption)}</figcaption>` : ''}</figure>`;
     // 공식 조감도·투시도(zip/views.mjs로 받아 둔 것) — 출처를 그림 밑에 단다
-    if (b.view) { const v = views[b.view], href = v?.page || v?.homepage, site = esc(v?.site || '분양 홈페이지'); return !v?.file ? '' : `<figure class="az-fig"><img src="${esc(local ? `../zip_views/${b.view}.jpg` : v.url)}" alt="${esc(b.alt || v.label || '조감도')}" width="800" loading="lazy"><figcaption>${esc(v.label || '조감도')} · ${href ? `<a href="${esc(href)}" rel="nofollow noopener">${site}</a>` : site}${b.caption ? ` · ${esc(b.caption)}` : ''}</figcaption></figure>`; }
+    if (b.view) { const v = views[b.view], href = v?.page || v?.homepage, site = esc(v?.site || '분양 홈페이지'); return !v?.file || (!local && !v.url) ? '' : `<figure class="az-fig"><img src="${esc(local ? `../zip_views/${b.view}.jpg` : v.url)}" alt="${esc(b.alt || v.label || '조감도')}" width="800" loading="lazy"><figcaption>${esc(v.label || '조감도')} · ${href ? `<a href="${esc(href)}" rel="nofollow noopener">${site}</a>` : site}${b.caption ? ` · ${esc(b.caption)}` : ''}</figcaption></figure>`; }
     if (b.note) return note(tx(b.note));
     if (b.src) return src(tx(b.src));
     // 2026-11-02 사용자 지시(가독성: 절마다 절제된 강조 한 곳, 실거주와 미래를 나눠 보기, 지금 시장 신호): take 절의 한 줄 결론, two 두 칸 비교, signals 시장 신호표, who 독자 유형별 판단
@@ -346,11 +346,14 @@ if (process.argv[1]?.endsWith('deep.mjs')) {
     const issues = await check(key);
     if (issues.length) { console.log(issues.join('\n')); process.exit(1); }
     const { upsert, uploadMedia } = await import('./wp.mjs');
+    const img = join(ROOT, 'data/zip_views', `${key}.jpg`), featured = await uploadMedia(img, `deep-${key}.jpg`, `${(await loadDeep(key)).title}`).catch(() => undefined);
+    // 본문 조망도 주소는 publish.mjs --go(매일 07:00)가 올리며 적는데, 그 전에 새 글이 올라가면 주소가 비어 깨진 그림이 됐다(2026-11-11 deep-2026910284). 썸네일로 올린 같은 그림 주소를 쓴다
+    const vf = join(ROOT, 'data/zip_views.json'), vs = JSON.parse(await readFile(vf, 'utf8').catch(() => '{}'));
+    if (featured && vs[key]?.file && !vs[key].url) { vs[key].url = (await (await import('./wp.mjs')).wp(`media/${featured}`)).source_url; await writeFile(vf, JSON.stringify(vs, null, 1)); }
     const post = await render(key), bad = leftovers(post.html), { loadStages, stamped } = await import('./stage.mjs');
+    post.featured = featured;
     post.title = stamped(post.title, (await loadStages())[post.slug]?.stage); // 고쳐 올려도 [신청마감]·[종료] 표시를 지우지 않는다
     if (bad.length) { console.log(`올리기 전 검수 실패\n${bad.join('\n')}`); process.exit(1); }
-    const img = join(ROOT, 'data/zip_views', `${key}.jpg`);
-    post.featured = await uploadMedia(img, `deep-${key}.jpg`, `${post.title}`).catch(() => undefined);
     // 공개 시각(2026-10-30 사용자 결정): 첫 접수일 7일 전 06:00 예약, 그 시각이 지났으면 바로. 이미 공개된 글은 고쳐도 공개 그대로
     const d = await loadDeep(key), nos = Object.values(await folders()).find((n) => n.includes(key)) || [key];
     const { items } = JSON.parse(await readFile(join(ROOT, 'data/deals.json'), 'utf8').catch(() => '{"items":[]}'));
