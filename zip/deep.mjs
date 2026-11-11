@@ -25,6 +25,71 @@ const FOLDERS = join(ROOT, 'data/deep_folders.json'), DIR = join(ROOT, 'data/zip
 export const folders = async () => JSON.parse(await readFile(FOLDERS, 'utf8').catch(() => '{}'));
 const folderOf = async (key) => Object.entries(await folders()).find(([, nos]) => nos[0] === key)?.[0];
 export const loadDeep = async (key) => JSON.parse(await readFile(join(DIR, `${key}.json`), 'utf8').catch(() => 'null'));
+
+// 청약 결과(2026-11-11 사용자 결정): 접수가 끝난 공고의 경쟁률·당첨 가점을 청약홈 공개 자료(한국부동산원 청약홈 경쟁률 API, 공공데이터포털 같은 키)에서 받아
+// 글 맨 위 「청약 결과」 절로 붙인다. 접수 뒤 「○○ 경쟁률」「당첨 가점」 검색을 받기 위해서다. 자료는 data/zip_results.json(공고번호 → 행), 바뀌면 그 글을 다시 올린다
+const RESULTS = join(ROOT, 'data/zip_results.json'), CMPET = 'https://api.odcloud.kr/api/ApplyhomeInfoCmpetRtSvc/v1/';
+const OPS = { apt: 'getAPTLttotPblancCmpet', score: 'getAptLttotPblancScore', remndr: 'getRemndrLttotPblancCmpet' };
+export const loadResults = async () => JSON.parse(await readFile(RESULTS, 'utf8').catch(() => '{}'));
+const tyOf = (t) => `${Math.floor(parseFloat(t))}${String(t).replace(/^[\d.\s]+/, '').trim()}`;
+const n0 = (v) => Number(String(v).replace(/,/g, '')) || 0;
+const rate = (req, sup) => (sup ? `${(req / sup).toFixed(1)}대\u00a01` : '-');
+// 한 글(공고번호 여럿일 수 있음)의 결과 → 글 블록. 결과가 없으면 []
+export function resultBlocks(nos, res, winDate) {
+  const rows = (k) => nos.flatMap((no) => res[no]?.[k] || []), apt = rows('apt'), score = rows('score'), rem = rows('remndr'), at = nos.map((no) => res[no]?.at).filter(Boolean).sort().at(-1);
+  if (!apt.length && !rem.length) return [];
+  const types = [...new Set([...apt, ...rem].map((r) => r.HOUSE_TY))], out = [];
+  let sup = 0, req = 0;
+  const body = types.map((ty) => {
+    const a1 = apt.filter((r) => r.HOUSE_TY === ty && r.SUBSCRPT_RANK_CODE == 1), a2 = apt.filter((r) => r.HOUSE_TY === ty && r.SUBSCRPT_RANK_CODE == 2), rm = rem.filter((r) => r.HOUSE_TY === ty);
+    const s = n0((a1[0] || rm[0] || {}).SUPLY_HSHLDCO), q = [...a1, ...rm].reduce((t, r) => t + n0(r.REQ_CNT), 0), q2 = a2.reduce((t, r) => t + n0(r.REQ_CNT), 0);
+    sup += s; req += q;
+    const sc = score.find((r) => r.HOUSE_TY === ty && r.RESIDE_SENM === '해당지역' && r.LWET_SCORE && r.LWET_SCORE !== '-');
+    return { ty: tyOf(ty), s, q, q2, sc };
+  });
+  const any2 = body.some((b) => b.q2), anySc = body.some((b) => b.sc), kind = apt.length ? '1순위' : '무순위';
+  const top = [...body].sort((x, y) => y.q / (y.s || 1) - x.q / (x.s || 1))[0], short = body.filter((b) => b.q < b.s);
+  out.push({ h: `청약 결과: ${kind} 평균 ${rate(req, sup)}` });
+  out.push({ take: `${kind} ${apt.length ? '일반공급 ' : ''}${sup.toLocaleString()}세대에 ${req.toLocaleString()}건이 접수됐습니다. 가장 몰린 주택형은 ${top.ty}(${rate(top.q, top.s)})${short.length ? `이고, ${short.map((b) => b.ty).join('·')}은 접수가 공급보다 적었습니다` : '입니다'}.` });
+  out.push({ table: { compact: true, head: ['주택형', '공급', `${kind} 접수`, '접수 ÷ 공급', ...(any2 ? ['2순위 접수'] : []), ...(anySc ? ['당첨 가점(해당지역 최저·평균)'] : [])], rows: body.map((b) => [b.ty, `${b.s}세대`, `${b.q.toLocaleString()}건`, rate(b.q, b.s), ...(any2 ? [b.q2 ? `${b.q2.toLocaleString()}건` : '-'] : []), ...(anySc ? [b.sc ? `${b.sc.LWET_SCORE}점 · ${b.sc.AVRG_SCORE}점` : '-'] : [])]) } });
+  out.push({ src: `청약홈 경쟁률 공개 자료 ${String(at || '').replaceAll('-', '.')} 기준. ${apt.length ? '접수 건수는 거주지역(해당·기타) 합계이고, ' : ''}${apt.length ? '지역별 경쟁률과 특별공급은 청약홈에서 확인할 수 있습니다.' : '무순위는 추첨이라 가점이 없습니다.'}${anySc || !apt.length ? '' : ` 당첨 가점은 ${winDate ? `당첨자 발표(${winDate.slice(5).replace('-', '.')}) 뒤 ` : ''}청약홈에 올라오면 덧붙입니다.`}` });
+  return out;
+}
+// 청약홈에서 최근 결과를 받아(API 3번) 우리 글 공고만 남기고, 바뀐 글을 다시 올린다. analysis_auto.bat의 publish.mjs --go 끝과 예약 작업에서 부른다
+export async function updateResults({ republish = true } = {}) {
+  const { env } = await import('./wp.mjs'), { useApi } = await import('./guard.mjs'), { loadStages, isEnded } = await import('./stage.mjs');
+  let key = (await env('DATA_GO_KR_KEY')) || '';
+  if (/%[0-9a-f]{2}/i.test(key)) key = decodeURIComponent(key);
+  if (!key) throw new Error('DATA_GO_KR_KEY 없음');
+  const raw = {};
+  for (const [k, op] of Object.entries(OPS)) {
+    useApi('datago');
+    const u = new URL(CMPET + op);
+    u.searchParams.set('serviceKey', key); u.searchParams.set('page', 1); u.searchParams.set('perPage', 1000);
+    const r = await fetch(u);
+    if (!r.ok) throw new Error(`청약홈 결과 ${op} HTTP ${r.status}`); // 주소에 키가 있어 오류에 넣지 않는다
+    raw[k] = (await r.json()).data || [];
+  }
+  const stages = await loadStages(), today = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10), res = await loadResults(), changed = [];
+  for (const [, nos] of Object.entries(await folders())) {
+    const d = await loadDeep(nos[0]);
+    if (!d || d.status !== 'publish' || isEnded(stages, `deep-${nos[0]}`)) continue;
+    let diff = false;
+    for (const no of nos) {
+      const cur = Object.fromEntries(Object.keys(OPS).map((k) => [k, raw[k].filter((r) => r.PBLANC_NO === no)]));
+      if (!Object.values(cur).some((v) => v.length)) continue; // 최근 1,000행에서 빠진 옛 결과는 저장본을 그대로 둔다
+      const sig = JSON.stringify(cur);
+      if (res[no]?.sig === sig) continue;
+      res[no] = { ...cur, sig, at: today };
+      diff = true;
+    }
+    if (diff) changed.push(nos[0]);
+  }
+  await writeFile(RESULTS, JSON.stringify(res));
+  console.log(`청약 결과: 바뀐 글 ${changed.length}편 ${changed.join(' ')}`);
+  if (republish) for (const k of changed) (await import('node:child_process')).execFileSync(process.execPath, [join(ROOT, 'zip/deep.mjs'), '--publish', k], { stdio: 'inherit', cwd: ROOT });
+  return changed;
+}
 export async function allDeep() {
   const out = [];
   // youth-*: 청년안심주택, lh-*: LH 행복주택(2026-11-05)
@@ -171,6 +236,8 @@ export async function render(key, { local = false } = {}) {
   // PC 오른쪽 안내 칸(2026-10-30 사용자: PC에서는 PC답게 널널하게): 목차·핵심 숫자·함께 볼 글. 휴대폰에서는 숨긴다(site.css .az-deep-post)
   // 2026-11-10 사용자 요청: 썸네일과 같은 조망도를 첫 소제목(「어떤 단지인가」) 바로 밑에. 본문에 이미 있던 같은 그림은 그 자리로 옮긴다
   if (views[key]?.file) { const own = d.blocks.find((x) => x.view === key) || { view: key, alt: `${String(folder || '').replace(/\s*\(.*\)$/, '')} ${views[key].label || '조감도'}`.trim() }, at = d.blocks.findIndex((x) => x.h) + 1; d.blocks = d.blocks.filter((x) => x !== own); d.blocks.splice(at, 0, own); }
+  // 청약 결과 절은 맨 위(접수가 끝난 뒤 들어오는 사람이 찾는 것이 결과라서). 조망도 자리를 정한 뒤에 넣는다
+  { const nos = (await folders())[folder] || [key], { items } = await loadData(), win = items.filter((it) => nos.includes(noOf(it))).flatMap((it) => it.phases || []).find((p) => p.k === 'win')?.date; d.blocks.unshift(...resultBlocks(nos, await loadResults(), win)); }
   const heads = [...d.blocks.filter((b) => b.h).map((b) => b.h), '이 글의 자료'];
   let hn = 0;
   const more = d.blocks.find((b) => b.links && b.links.some(([, u]) => u.includes('/apt-')))?.links || [];
@@ -318,7 +385,18 @@ if (process.argv[1]?.endsWith('deep.mjs')) {
     assert.deepEqual(titleIssues('중화역 라온프라이빗 센트로 분양, 59형 추첨 60% 심층 분석', '중화역 라온프라이빗 센트로'), []);
     assert.equal(titleIssues('7호선 중화역 바로 앞 서울 신축, 59형은 추첨 60%?! 거주의무 없는 중화역 라온프라이빗 센트로 심층 분석', '중화역 라온프라이빗 센트로').length, 3, '후킹이 앞이고 긴 제목');
     assert.equal(titleIssues('청계 노르웨이숲 무순위 심층 분석 - 우리의 집', '청계 노르웨이숲 (무순위)').length, 1, '사이트 이름');
+    { // 청약 결과 절: 주택형별 거주지역 합계, 미달 표시, 무순위는 가점 없음
+      const r = (ty, sec, req, sup, rank = 1) => ({ HOUSE_TY: ty, RESIDE_SENM: sec, REQ_CNT: String(req), SUPLY_HSHLDCO: sup, SUBSCRPT_RANK_CODE: rank });
+      const b = resultBlocks(['1'], { 1: { at: '2026-11-11', apt: [r('084.7637A', '해당지역', 610, 10), r('084.7637A', '기타지역', 682, 10), r('059.9000B', '해당지역', 3, 5)], score: [] } }, '2026-11-17');
+      assert.equal(b[0].h, '청약 결과: 1순위 평균 86.3대 1');
+      assert.deepEqual(b[2].table.rows[0], ['84A', '10세대', '1,292건', '129.2대 1']);
+      assert.ok(b[1].take.includes('59B은 접수가 공급보다 적었습니다') && b[3].src.includes('당첨자 발표(11.17)'));
+      assert.ok(resultBlocks(['2'], { 2: { remndr: [r('084.3879B', '', 949, 1)] } })[3].src.includes('추첨이라 가점이 없습니다'));
+      assert.deepEqual(resultBlocks(['3'], {}), []);
+    }
     console.log('deep 점검 통과');
+  } else if (process.argv.includes('--results')) {
+    await updateResults(); // 청약홈 결과 받기 + 바뀐 글 다시 올리기(매일 publish.mjs --go 끝에서도 부른다)
   } else if (arg('--read')) {
     const key = arg('--read'), folder = await folderOf(key);
     await mkdir(join(ROOT, 'data/deep'), { recursive: true });

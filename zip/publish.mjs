@@ -129,6 +129,8 @@ ${html}
       const t = old ? await wp(`templates/twentytwentyfive//${slug}`, { method: 'POST', body: { content } }) : await wp('templates', { method: 'POST', body: { slug, title: `${cat.name} 목록`, content } });
       console.log(`${t?.content?.raw === content ? '✓' : '✗'} 목록 템플릿 ${slug} ${cat.name}`);
     }
+    // 청약 결과(경쟁률·당첨 가점, 2026-11-11 사용자 결정): 바뀐 심층 분석 글을 다시 올린다. 실패해도 매일 작업은 계속
+    try { await (await import('./deep.mjs')).updateResults(); } catch (e) { console.log('청약 결과 갱신 실패', e.message); }
     console.log('캐시 비우기', (await purge()) ? '✓' : '✗'); // 이 사이트는 글을 고쳐도 캐시를 자동으로 안 비운다
   }
 }

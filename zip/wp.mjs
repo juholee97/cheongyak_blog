@@ -9,7 +9,7 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { ROOT } from '../tistory/common.mjs';
 
-const env = async (k) => process.env[k] || (await readFile(join(ROOT, '.env'), 'utf8').catch(() => '')).match(new RegExp(`^${k}=(.+)$`, 'm'))?.[1]?.trim();
+export const env = async (k) => process.env[k] || (await readFile(join(ROOT, '.env'), 'utf8').catch(() => '')).match(new RegExp(`^${k}=(.+)$`, 'm'))?.[1]?.trim();
 
 export async function wp(path, { method = 'GET', body } = {}) {
   const [url, user, pass] = [await env('WP_URL'), await env('WP_USER'), await env('WP_APP_PASSWORD')];
