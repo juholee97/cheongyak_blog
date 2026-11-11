@@ -114,6 +114,21 @@ assert.equal(withStart(lh, '2026-10-30').startKnown, true);
 assert.deepEqual(withStart(lh, '2026-11-03').phases, [{ k: 'p1', date: '2026-11-03' }]);
 assert.equal(withStart(lh, null), lh);
 
+// 청년안심주택 건물 유형(youth_house.mjs): 혼합은 아파트, 도시형만 있으면 도시형, 세부가 없으면 null. 지번·도로명 구분, 도로명은 띄어쓰기와 무관하게 대조
+const { houseOf, cleanAddr, jibunOf, sameRoad } = await import('./youth_house.mjs');
+assert.equal(houseOf('공동주택(아파트),공동주택(도시형생활주택),근린생활시설'), '아파트');
+assert.equal(houseOf('도시형생활주택원룸형(98세대),근린생활시설(10호)'), '도시형');
+assert.equal(houseOf('공동주택 외 1'), null);
+assert.equal(cleanAddr('서울특별시 중구 광희동1가 166외 7필지'), '서울특별시 중구 광희동1가 166');
+assert.equal(cleanAddr('서울특별시 강서구 외발산동 12-3번지'), '서울특별시 강서구 외발산동 12-3');
+assert.equal(cleanAddr('서울특별시 성북구 종암동 83-3 일원'), '서울특별시 성북구 종암동 83-3');
+assert.deepEqual(jibunOf('서울특별시 중구 광희동1가 166'), { bun: '166', ji: '0' });
+assert.deepEqual(jibunOf('서울특별시 중랑구 상봉동 116-49'), { bun: '116', ji: '49' });
+assert.equal(jibunOf('서울특별시 용산구 효창원로 80'), null);
+assert.equal(sameRoad('서울특별시 관악구 남부순환로224길 25 (봉천동)', '서울특별시 관악구 남부순환로 224길 25'), true);
+assert.equal(sameRoad('서울특별시 관악구 남부순환로224길 31 (봉천동)', '서울특별시 관악구 남부순환로 224길 25'), false);
+assert.equal(sameRoad('서울특별시 강서구 화곡로 146', '서울시 강서구 화곡로 146'), true);
+
 // SH 모집공고(sh.mjs): 모집공고 글만, 글자 사이 띄어쓰기가 든 본문에서도 접수·발표일을 읽고, 접수일을 못 읽으면 일정을 비운다
 const { toShItem, isRecruit, kindOf, dates: shDates } = await import('./sh.mjs');
 assert.equal(isRecruit('제50차 장기전세주택 입주자 모집공고'), true);

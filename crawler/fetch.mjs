@@ -231,6 +231,9 @@ async function main() {
   // 서울시 청년안심주택(청약홈 밖의 공고). 실패해도 청약홈 일정은 그대로 배포한다
   try {
     const youth = await fetchYouth(noticeFrom);
+    // 건물 유형은 건축물대장을 로컬에서 조회해 둔 값(crawler/youth_house.json, push_house.bat)
+    const youthHouse = JSON.parse(await readFile(new URL('./youth_house.json', import.meta.url), 'utf8').catch(() => '{}'));
+    for (const it of youth) if (youthHouse[it.address]?.house) it.house = youthHouse[it.address].house;
     let kept = 0;
     for (const it of youth) if (it.phases.some((p) => p.date >= from && p.date <= to)) { items.set(it.id, it); kept++; }
     console.log(`청년안심주택: ${youth.length}건 중 ${kept}건${youth.some((i) => !i.phases.length) ? ` (일정 못 읽음 ${youth.filter((i) => !i.phases.length).length}건 — 본문 형식 확인)` : ''}`);

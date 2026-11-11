@@ -30,6 +30,8 @@ node zip\deep_targets.mjs --make >> data\logs\zip_daily.log 2>&1
 rem SH notices whose schedule is only in attachments: read the viewer page images with OCR (tools\ocr_venv) -> crawler\sh_attach.json (commit it to reach the calendar) (2026-10-28)
 node crawler\sh_attach.mjs >> data\logs\sh_attach.log 2>&1
 call crawler\push_attach.bat
+rem Seoul youth housing building types from the building register -> crawler\youth_house.json (2026-11-11)
+call crawler\push_house.bat
 rem analysis posts off 2026-11-10
 set RC=0         
 if not exist data\logs mkdir data\logs
