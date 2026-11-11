@@ -55,6 +55,17 @@ try {
   if (!st.href.endsWith(sel)) bad++;
   await p.screenshot({ path: join(OUT, 'flip_click.png') });
   await ctx.close();
+  // 시각 효과를 꺼 둔(최적화) 컴퓨터에서도 뒤집기 전환이 돈다
+  const rm_ = await browser.newContext({ viewport: { width: 1440, height: 900 }, reducedMotion: 'reduce' });
+  const rp = await setup(rm_);
+  await rp.p.hover('.hero-cta');
+  await rp.p.waitForTimeout(150);
+  const running = await rp.p.evaluate(() => document.getAnimations().filter((a) => a.transitionProperty && a.playState === 'running').length);
+  await rp.p.waitForTimeout(1300);
+  const done = await rp.p.evaluate(() => getComputedStyle(document.querySelector('.mc-day:not(.is-pad)')).opacity);
+  console.log('reduced-motion', 'running', running, 'opacity', done);
+  if (running < 20 || done !== '1') bad++;
+  await rm_.close();
   // 휴대폰: 효과 없음, 넘침 없음
   const m = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
   const mm = await setup(m);
@@ -66,7 +77,7 @@ try {
   // 영상: 마우스를 버튼에 올렸다 떼기를 두 번
   const vdir = join(OUT, 'flip_video');
   await rm(vdir, { recursive: true, force: true });
-  const vc = await browser.newContext({ viewport: { width: 1440, height: 900 }, recordVideo: { dir: vdir, size: { width: 1440, height: 900 } } });
+  const vc = await browser.newContext({ viewport: { width: 1440, height: 900 }, reducedMotion: 'reduce', recordVideo: { dir: vdir, size: { width: 1440, height: 900 } } });
   const v = await setup(vc);
   // 영상에는 마우스 포인터가 안 찍혀서, 보는 사람이 알 수 있게 포인터 모양을 그려 따라다니게 한다(영상에만)
   await v.p.evaluate(() => {
