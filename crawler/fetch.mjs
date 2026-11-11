@@ -188,7 +188,7 @@ async function main() {
   const seen = new Set((prev.items || []).map((it) => it.id));
   prev.items = [...(prev.items || []), ...(seed.items || []).filter((it) => !seen.has(it.id))];
   const keepPrev = (label, test) => {
-    const old = (prev.items || []).filter((it) => test(it) && it.phases?.some((p) => p.date >= from && p.date <= to));
+    const old = (prev.items || []).filter((it) => test(it) && it.phases?.some((p) => (p.end || p.date) >= from && p.date <= to)); // 기간이 범위에 걸치면 남긴다(LH는 시작일이 범위 앞이어도 마감이 범위 안일 수 있다)
     old.forEach((it) => items.set(it.id, it));
     console.warn(`  ↳ ${label}: 지난 배포본 ${old.length}건을 그대로 씀`);
   };
