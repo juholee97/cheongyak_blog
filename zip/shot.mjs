@@ -5,7 +5,8 @@ import { mkdir } from 'node:fs/promises';
 import { join, dirname } from 'node:path';
 import { ROOT } from '../tistory/common.mjs';
 
-const TRACKERS = /googletagmanager\.com|google-analytics\.com|analytics\.google\.com/;
+// 광고(애드센스) 요청도 막는다 — 점검 브라우저의 광고 노출은 무효 트래픽으로 잡힐 수 있다(2026-11-11)
+const TRACKERS = /googletagmanager\.com|google-analytics\.com|analytics\.google\.com|googlesyndication\.com|doubleclick\.net|googleadservices\.com|adtrafficquality\.google/;
 export const blockAnalytics = (page) => page.route((u) => TRACKERS.test(u.host), (r) => r.abort());
 
 if (process.argv[1]?.endsWith('shot.mjs')) {
@@ -24,6 +25,6 @@ if (process.argv[1]?.endsWith('shot.mjs')) {
     await p.goto(url, { waitUntil: 'networkidle' });
     await mkdir(dirname(out), { recursive: true });
     await p.screenshot({ path: out, fullPage: a.includes('--full') });
-    console.log(out, `(애널리틱스 요청 ${sent}건 막음)`);
+    console.log(out, `(애널리틱스·광고 요청 ${sent}건 막음)`);
   } finally { await b.close(); }
 }
