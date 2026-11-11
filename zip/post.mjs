@@ -14,7 +14,7 @@ const formalDisclaimer = DISCLAIMER.replace('확인하세요.', '확인하시기
 import { table, verdict, keyBox, rail, dotPlot, src, note, chip, banner, links, num, keepUnits, LOG_MARK } from './ui.mjs';
 
 export const CAT_ALL = '분양 시세비교', CAT_DEAL = '꿀분양';
-export const OPEN_URL = 'https://auleezip.com/open-notices/', CAL_URL = 'https://aulee.tistory.com/category/청약일정', METHOD_URL = 'https://auleezip.com/method/';
+export const OPEN_URL = 'https://auleezip.com/', CAL_URL = 'https://aulee.tistory.com/category/청약일정', METHOD_URL = 'https://auleezip.com/method/';
 const eok = (n) => { const a = Math.abs(n), s = a >= 10000 ? `${Math.floor(a / 10000)}억${a % 10000 ? ' ' + (a % 10000).toLocaleString() + '만' : ''}원` : `${a.toLocaleString()}만원`; return s; };
 // 「약 …」으로 쓰는 금액은 백만원 단위로 반올림(10만원 자리에서)
 const about = (n) => `약 ${eok(Math.round(Math.abs(n) / 100) * 100)}`;
@@ -31,12 +31,17 @@ export const span = (a, b) => (a === b ? md(a) : `${md(a)} ~ ${md(b)}`);
 export function buzzHtml(b) {
   if (!b || (!b.trend && !b.news && !b.youtube)) return [];
   const ok = (t) => !BANNED.some((w) => t.includes(w));
-  const rows = [];
+  const rows = [], ymd = (s) => s.replaceAll('-', '.'); // 기사 날짜는 연도까지(2024.11.18) — 연도가 없으면 지난해 기사가 앞날짜처럼 읽힌다
+  const newest = (b.news?.items || []).map((x) => x.date).filter(Boolean).sort().at(-1);
   if (b.trend) rows.push(['네이버 검색량(상대값)', `최근 4주 평균 ${b.trend.recent} · 그 전 8주 ${b.trend.before}<small>가장 많았던 주 ${md(b.trend.peak)}</small>`]);
-  if (b.news) rows.push(['네이버 뉴스', `단지명이 본문에 언급된 기사 ${b.news.total.toLocaleString()}건<small>최근 ${b.news.items[0] ? md(b.news.items[0].date) : '-'}</small>`]);
+  if (b.news) rows.push(['네이버 뉴스', `단지명으로 검색된 기사 ${b.news.total.toLocaleString()}건(기간 제한 없는 검색 결과 수)<small>최근 기사 ${newest ? ymd(newest) : '-'}</small>`]);
   if (b.youtube) rows.push(['유튜브(최근 1년)', `제목에 단지명이 든 영상 ${b.youtube.count}개 · 조회수 합 ${(b.youtube.views || 0).toLocaleString()}`]);
   const named = (t) => (b.q || '').split(' ').slice(0, 2).every((w) => t.replace(/\s+/g, '').includes(w)); // 제목에 단지명이 든 것만 목록에
-  const news = (b.news?.items || []).filter((x) => ok(x.title) && named(x.title)).slice(0, 3).map((x) => `<li><a href="${esc(x.link)}" rel="nofollow noopener">${esc(x.title)}</a> <span class="az-s">${md(x.date)}</span></li>`);
+  // 목록: 수집일 기준 1년 안 기사만, 같은 제목(공백 정리)·같은 링크는 한 번만, 최신순
+  const since = b.at ? `${+b.at.slice(0, 4) - 1}${b.at.slice(4, 10)}` : '', seenT = new Set(), seenL = new Set();
+  const news = (b.news?.items || []).filter((x) => x.date >= since && ok(x.title) && named(x.title)).sort((a, c) => c.date.localeCompare(a.date))
+    .filter((x) => { const t = x.title.replace(/\s+/g, ' ').trim(); if (seenT.has(t) || seenL.has(x.link)) return false; seenT.add(t); seenL.add(x.link); return true; })
+    .slice(0, 3).map((x) => `<li><a href="${esc(x.link)}" rel="nofollow noopener">${esc(x.title)}</a> <span class="az-s">${ymd(x.date)}</span></li>`);
   const vids = (b.youtube?.items || []).filter((x) => ok(x.title)).slice(0, 3).map((x) => `<li><a href="${esc(x.url)}" rel="nofollow noopener">${esc(x.title)}</a> <span class="az-s">${esc(x.channel)}${(b.q || '').split(' ').slice(0, 2).every((w) => x.channel.replace(/\s+/g, '').includes(w)) ? ' (단지 이름을 딴 채널 — 분양 홍보 영상일 수 있습니다)' : ''} · 조회 ${x.views.toLocaleString()}</span></li>`);
   return ['<h2>관심도</h2>', table(['지표', '값'], rows, { stack: false }),
     ...(news.length ? ['<h3>최근 기사</h3>', `<ul>${news.join('')}</ul>`] : []),
@@ -86,14 +91,14 @@ export function postOf(r, buzz, claims, ctx = {}) {
   const head = `[${area}] ${name}`;
   const forms = r.kind === '무순위'
     ? [`${head} 무순위 — 다시 찾아온 기회일까? 주변 시세 비교`, `${head} 무순위, 주변 단지와 시세 전격 비교`]
-    : [`${head} 분양가 — 주변 단지와 시세 전격 비교`, `${head} 분양가, 주변 단지 평균 시세는?`, `${head} 분양가, 적정 시세일까?`];
+    : [`${head} 분양가 — 주변 단지와 시세 전격 비교`, `${head} 분양가, 주변 단지 실거래와 비교하면?`, `${head} 분양가, 적정 시세일까?`];
   let title = forms[(+r.no.slice(-2) || 0) % forms.length];
   if (title.length > 44) title = `${head} 분양가, 주변 시세는?`; // 너무 길면 짧은 형태로
   const leaseNote = '토지임대부라 땅값이 빠진(토지는 따로 임대료를 내는) 분양가여서 일반 아파트 거래가와 그대로 비교할 수 없습니다.';
   const lead = `${name} 전용 ${m.area}㎡ 최고 분양가는 ${eok(m.max)}(3.3㎡당 ${r.own.toLocaleString()}만원)입니다. 생활권·급지·브랜드를 보고 고른 비교 단지 ${r.n}곳의 최근 12개월 실거래 중앙값(3.3㎡당 ${r.med.toLocaleString()}만원)으로 같은 면적을 환산하면 분양가가 ${diff}.${r.leasehold ? ` 다만 ${leaseNote}` : ''}`;
   const conv = Math.round((r.med * m.area) / 3.3058);
   // B 비교 결과 눈금(토지임대부는 그대로 견줄 수 없어 그리지 않는다). d: 분양가가 비교 시세보다 높으면 +
-  const d = -r.rate * 100, rounded = Math.round(Math.abs(d));
+  const d = -r.rate * 100, rounded = Math.round(Math.abs(d)), lower = cheap && rounded > 0; // 눈금 제목과 같은 기준의 「시세보다 낮음」
   const verdictHtml = r.leasehold ? '' : verdict(d, {
     title: rounded === 0 ? '주변 시세와 같은 수준입니다' : `주변 시세보다 <strong>${pct(r.rate)} ${cheap ? '낮습니다' : '높습니다'}</strong>`,
     rows: [[`분양가 (전용 ${m.area}㎡ 최고)`, eok(m.max)], [`비교 단지 ${r.n}곳 시세로 환산`, eok(conv)], ['차이', `${cheap ? '−' : '+'}${eok(Math.abs(r.gap))}`]],
@@ -127,7 +132,7 @@ export function postOf(r, buzz, claims, ctx = {}) {
   // 심층 분석 글이 있으면 맨 앞에 — 「시세보다 N% 높습니다」만 보고 이유 없이 비싼 집으로 읽히지 않게(2026-10-30 사용자)
   // 심층 분석으로 넘어가는 카드(2026-10-31 사용자 요청: 안내문이 아니라 누르면 넘어가는 다른 글로 보이게 — 조감도 작은 그림 + 제목 + 「읽기」 버튼, 광고처럼 보이지 않게 흰 바탕)
   const dp = ctx.deep;
-  const deepHtml = dp ? `<a class="az-deeplink" href="${esc(dp.link)}">${dp.img ? `<img src="${esc(dp.img)}" alt="" width="800" height="500" loading="lazy">` : ''}<span class="az-deeplink-b"><span class="az-deeplink-t">이어서 읽기 · 심층 분석</span><span class="az-deeplink-h">${esc(name)} 심층 분석</span><span class="az-deeplink-d">시세 비교만으로는 이 분양가가 어떻게 정해졌는지 알 수 없습니다. 입지·교통 계획, 주택형별 필요한 돈, 공고문과 맞춰 본 분석 의견을 정리했습니다.</span></span><span class="az-deeplink-go">읽기</span></a>` : '';
+  const deepHtml = dp ? `<a class="az-deeplink" href="${esc(dp.link)}">${dp.img ? `<img src="${esc(dp.img)}" alt="${esc(`${name} ${dp.label || '조감도'}`)}" width="800" height="500" loading="lazy">` : ''}<span class="az-deeplink-b"><span class="az-deeplink-t">이어서 읽기 · 심층 분석</span><span class="az-deeplink-h">${esc(name)} 심층 분석</span><span class="az-deeplink-d">시세 비교만으로는 이 분양가가 어떻게 정해졌는지 알 수 없습니다. 입지·교통 계획, 주택형별 필요한 돈, 공고문과 맞춰 본 분석 의견을 정리했습니다.</span></span><span class="az-deeplink-go">읽기</span></a>` : '';
   const html = [
     ctx.closed ? banner(OPEN_URL) : '',
     deepHtml,
@@ -146,7 +151,8 @@ export function postOf(r, buzz, claims, ctx = {}) {
     ...buzzHtml(buzz),
     ...((r.links || []).length > 1 ? [note(`청약홈에 같은 단지 공고가 ${r.links.length}건 따로 올라와 있어 글 하나로 묶었습니다. 공고마다 구분(불법행위 재공급·무순위)과 세대수가 달라서 위 공식 자료 확인표와 각 공고 링크를 함께 보시기 바랍니다.`)] : []),
     '<h2>확인할 조건</h2>',
-    `<p>분양가가 낮은 단지일수록 전매제한·실거주 의무·재당첨 제한이 붙는 경우가 많습니다. 적용 여부와 기간은 ${notices}에서 확인하시기 바랍니다.</p>`,
+    // 「분양가가 낮은 단지일수록」은 이 글의 결론이 시세보다 낮을 때만(높다고 쓴 글에 붙으면 모순 — 2026-11 SEO 점검)
+    `<p>${lower ? '분양가가 낮은 단지일수록 전매제한·실거주 의무·재당첨 제한이 붙는 경우가 많습니다. 적용 여부와 기간은' : '전매제한·실거주 의무·재당첨 제한의 적용 여부와 기간은'} ${notices}에서 확인하시기 바랍니다.</p>`,
     ...(ctx.more?.length ? ['<h2>함께 보면 좋은 글</h2>', links(ctx.more)] : []),
     LOG_MARK,
     note(`이 글은 공고와 공개 실거래 자료를 비교한 것이며 청약·투자 권유가 아닙니다. ${esc(formalDisclaimer)}`),
@@ -169,6 +175,25 @@ export function checkPost(p) {
 export async function previewHtml(posts) {
   const css = await readFile(join(ROOT, 'zip/site.css'), 'utf8');
   return `<!doctype html><html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;600&display=swap"><style>body{margin:0}${css}</style><body>${posts.map((p) => `<article style="border-bottom:6px solid #dde3e8;padding-bottom:40px"><div class="az-head"><p class="az-eyebrow">${esc(p.categories.join(' · '))}</p><h1 class="az-title">${esc(p.title)}</h1><div class="az-meta" style="display:flex"><div class="wp-block-post-author-name">aulee</div></div></div><div class="az-content">${p.html.replace(LOG_MARK, '')}</div></article>`).join('')}</body></html>`;
+}
+
+// node zip/post.mjs --check — 네트워크 없이 고정 문구·관심도·제목 규칙 점검
+if (process.argv[1]?.endsWith('post.mjs') && process.argv.includes('--check')) {
+  const assert = (await import('node:assert/strict')).default;
+  const R = (gap, rate, no = '2026000001') => ({ no, name: '테스트 단지', kind: 'APT', region: '서울', district: '강남구', gap, rate, own: 3000, med: 3500, n: 3, main: { area: 84, max: 90000 }, months: '2025.12~2026.11', refs: [{ apt: 'A', perPy: 3500, why: 'x' }], phases: [], applyhomeUrl: 'https://www.applyhome.co.kr/x', noticeDate: '2026-11-01' });
+  const COND = '분양가가 낮은 단지일수록';
+  assert.ok(postOf(R(10000, 0.2), null, null).html.includes(COND)); // 시세보다 낮음 → 붙임
+  assert.ok(!postOf(R(-10000, -0.3), null, null).html.includes(COND)); // 높음 → 빼고
+  assert.ok(postOf(R(-10000, -0.3), null, null).html.includes('전매제한·실거주 의무·재당첨 제한의 적용 여부와 기간은'));
+  for (let i = 0; i < 100; i++) assert.ok(!postOf(R(1, 0.1, `20260000${String(i).padStart(2, '0')}`), null, null).title.includes('평균')); // 계산은 중앙값
+  const titles = new Set(Array.from({ length: 3 }, (_, i) => postOf(R(1, 0.1, `202600000${i}`), null, null).title));
+  assert.equal(titles.size, 3); // 제목 형태끼리 겹치지 않음
+  const it = (title, link, date) => ({ title, link, date });
+  const bz = buzzHtml({ q: '테스트 단지', at: '2026-11-08T04:00:00Z', news: { total: 32, items: [it('테스트 단지  완판', 'a', '2026-10-01'), it('테스트 단지 완판', 'b', '2026-09-01'), it('테스트 단지 다른 기사', 'a', '2026-08-01'), it('테스트 단지 오래된 기사', 'c', '2024-11-18'), it('테스트 단지 최신', 'd', '2026-11-02')] } }).join('');
+  assert.equal((bz.match(/<li>/g) || []).length, 2); // 같은 제목·같은 링크 한 번, 1년 지난 기사 뺌
+  assert.ok(bz.includes('2026.11.02') && !bz.includes('2024.11.18') && bz.includes('최근 기사 2026.11.02')); // 연도 포함, 최근 = 가장 새 기사
+  console.log('post.mjs 점검 통과');
+  process.exit(0);
 }
 
 if (process.argv[1]?.endsWith('post.mjs')) {
@@ -198,7 +223,7 @@ if (process.argv[1]?.endsWith('post.mjs')) {
   const fo = Object.values(JSON.parse(await readFile(join(ROOT, 'data/deep_folders.json'), 'utf8').catch(() => '{}'))), ddir = join(ROOT, 'data/zip_deep'), deepOf = {}, views = JSON.parse(await readFile(join(ROOT, 'data/zip_views.json'), 'utf8').catch(() => '{}'));
   for (const f of (await readdir(ddir).catch(() => [])).filter((x) => /^\d+\.json$/.test(x))) {
     const d = JSON.parse(await readFile(join(ddir, f), 'utf8')), key = f.slice(0, -5);
-    if (liveDeep(d)) for (const no of fo.find((n) => n.includes(key)) || [key]) deepOf[no] = { link: d.link, img: views[key]?.url };
+    if (liveDeep(d)) for (const no of fo.find((n) => n.includes(key)) || [key]) deepOf[no] = { link: d.link, img: views[key]?.url, label: views[key]?.label };
   }
   const MORE = join(ROOT, 'data/zip_more.json'), frozen = JSON.parse(await readFile(MORE, 'utf8').catch(() => '{}'));
   for (const r of list) {

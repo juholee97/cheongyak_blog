@@ -31,21 +31,30 @@ export const loadDeep = async (key) => JSON.parse(await readFile(join(DIR, `${ke
 const RESULTS = join(ROOT, 'data/zip_results.json'), CMPET = 'https://api.odcloud.kr/api/ApplyhomeInfoCmpetRtSvc/v1/';
 const OPS = { apt: 'getAPTLttotPblancCmpet', score: 'getAptLttotPblancScore', remndr: 'getRemndrLttotPblancCmpet' };
 export const loadResults = async () => JSON.parse(await readFile(RESULTS, 'utf8').catch(() => '{}'));
-const tyOf = (t) => `${Math.floor(parseFloat(t))}${String(t).replace(/^[\d.\s]+/, '').trim()}`;
+// 주택형 이름: 084.7637A → 84A. 글자 없는 주택형이 같은 이름(84·84)이 되면 소수점 둘째 자리부터 갈릴 때까지 늘린다(84.95·84.49, 2026-11-12)
+const tyAt = (t, d) => { const [i, f = ''] = String(t).trim().match(/^[\d.]*/)[0].split('.'), x = f.slice(0, d).replace(/0+$/, ''); return `${Number(i)}${x ? `.${x}` : ''}${String(t).replace(/^[\d.\s]+/, '').trim()}`; };
+export function tyLabels(tys) {
+  const out = new Map(tys.map((t) => [t, tyAt(t, 0)]));
+  for (const t of tys) {
+    const same = tys.filter((u) => tyAt(u, 0) === tyAt(t, 0));
+    for (let d = 2; same.length > 1 && d <= 4; d++) if (new Set(same.map((u) => tyAt(u, d))).size === same.length) { out.set(t, tyAt(t, d)); break; }
+  }
+  return out;
+}
 const n0 = (v) => Number(String(v).replace(/,/g, '')) || 0;
 const rate = (req, sup) => (sup ? `${(req / sup).toFixed(1)}대\u00a01` : '-');
 // 한 글(공고번호 여럿일 수 있음)의 결과 → 글 블록. 결과가 없으면 []
 export function resultBlocks(nos, res, winDate) {
   const rows = (k) => nos.flatMap((no) => res[no]?.[k] || []), apt = rows('apt'), score = rows('score'), rem = rows('remndr'), at = nos.map((no) => res[no]?.at).filter(Boolean).sort().at(-1);
   if (!apt.length && !rem.length) return [];
-  const types = [...new Set([...apt, ...rem].map((r) => r.HOUSE_TY))], out = [];
+  const types = [...new Set([...apt, ...rem].map((r) => r.HOUSE_TY))], lab = tyLabels(types), out = [];
   let sup = 0, req = 0;
   const body = types.map((ty) => {
     const a1 = apt.filter((r) => r.HOUSE_TY === ty && r.SUBSCRPT_RANK_CODE == 1), a2 = apt.filter((r) => r.HOUSE_TY === ty && r.SUBSCRPT_RANK_CODE == 2), rm = rem.filter((r) => r.HOUSE_TY === ty);
     const s = n0((a1[0] || rm[0] || {}).SUPLY_HSHLDCO), q = [...a1, ...rm].reduce((t, r) => t + n0(r.REQ_CNT), 0), q2 = a2.reduce((t, r) => t + n0(r.REQ_CNT), 0);
     sup += s; req += q;
     const sc = score.find((r) => r.HOUSE_TY === ty && r.RESIDE_SENM === '해당지역' && r.LWET_SCORE && r.LWET_SCORE !== '-');
-    return { ty: tyOf(ty), s, q, q2, sc };
+    return { ty: lab.get(ty), s, q, q2, sc };
   });
   const any2 = body.some((b) => b.q2), anySc = body.some((b) => b.sc), kind = apt.length ? '1순위' : '무순위';
   const top = [...body].sort((x, y) => y.q / (y.s || 1) - x.q / (x.s || 1))[0], short = body.filter((b) => b.q < b.s);
@@ -54,6 +63,11 @@ export function resultBlocks(nos, res, winDate) {
   out.push({ table: { compact: true, head: ['주택형', '공급', `${kind} 접수`, '접수 ÷ 공급', ...(any2 ? ['2순위 접수'] : []), ...(anySc ? ['당첨 가점(해당지역 최저·평균)'] : [])], rows: body.map((b) => [b.ty, `${b.s}세대`, `${b.q.toLocaleString()}건`, rate(b.q, b.s), ...(any2 ? [b.q2 ? `${b.q2.toLocaleString()}건` : '-'] : []), ...(anySc ? [b.sc ? `${b.sc.LWET_SCORE}점 · ${b.sc.AVRG_SCORE}점` : '-'] : [])]) } });
   out.push({ src: `청약홈 경쟁률 공개 자료 ${String(at || '').replaceAll('-', '.')} 기준. ${apt.length ? '접수 건수는 거주지역(해당·기타) 합계이고, ' : ''}${apt.length ? '지역별 경쟁률과 특별공급은 청약홈에서 확인할 수 있습니다.' : '무순위는 추첨이라 가점이 없습니다.'}${anySc || !apt.length ? '' : ` 당첨 가점은 ${winDate ? `당첨자 발표(${winDate.slice(5).replace('-', '.')}) 뒤 ` : ''}청약홈에 올라오면 덧붙입니다.`}` });
   return out;
+}
+// 글에 보이는 결과가 바뀌었나: 두 저장본을 날짜는 같게, 행 순서는 정렬해 그려 비교한다(행 순서·「-」 가점 행만 달라지면 다시 올리지 않는다, 2026-11-12)
+export function resultsChanged(nos, before, after, winDate) {
+  const key = (r) => JSON.stringify(r), norm = (res) => Object.fromEntries(nos.filter((no) => res[no]).map((no) => [no, { ...Object.fromEntries(Object.keys(OPS).map((k) => [k, [...(res[no][k] || [])].sort((a, b) => (key(a) < key(b) ? -1 : 1))])), at: '2000-01-01' }]));
+  return JSON.stringify(resultBlocks(nos, norm(before), winDate)) !== JSON.stringify(resultBlocks(nos, norm(after), winDate));
 }
 // 청약홈에서 최근 결과를 받아(API 3번) 우리 글 공고만 남기고, 바뀐 글을 다시 올린다. analysis_auto.bat의 publish.mjs --go 끝과 예약 작업에서 부른다
 export async function updateResults({ republish = true } = {}) {
@@ -74,16 +88,14 @@ export async function updateResults({ republish = true } = {}) {
   for (const [, nos] of Object.entries(await folders())) {
     const d = await loadDeep(nos[0]);
     if (!d || d.status !== 'publish' || isEnded(stages, `deep-${nos[0]}`)) continue;
-    let diff = false;
+    const next = { ...res };
     for (const no of nos) {
       const cur = Object.fromEntries(Object.keys(OPS).map((k) => [k, raw[k].filter((r) => r.PBLANC_NO === no)]));
-      if (!Object.values(cur).some((v) => v.length)) continue; // 최근 1,000행에서 빠진 옛 결과는 저장본을 그대로 둔다
-      const sig = JSON.stringify(cur);
-      if (res[no]?.sig === sig) continue;
-      res[no] = { ...cur, sig, at: today };
-      diff = true;
+      if (Object.values(cur).some((v) => v.length)) next[no] = { ...cur, at: today }; // 최근 1,000행에서 빠진 옛 결과는 저장본을 그대로 둔다
     }
-    if (diff) changed.push(nos[0]);
+    if (!resultsChanged(nos, res, next)) continue; // 보이는 표가 같으면 저장본(날짜 포함)도 그대로
+    for (const no of nos) res[no] = next[no];
+    changed.push(nos[0]);
   }
   await writeFile(RESULTS, JSON.stringify(res));
   console.log(`청약 결과: 바뀐 글 ${changed.length}편 ${changed.join(' ')}`);
@@ -279,10 +291,12 @@ export async function render(key, { local = false } = {}) {
 }
 
 // 화면에 남은 표시 찾기(2026-10-30 사용자 지시: 「**개교시기 미정**」처럼 굵게 하려다 실패한 흔적을 작성·게시 뒤 항상 검수). 태그를 걷어낸 글자에서 찾는다
+// 작업 파일 경로(2026-11-12 SEO 점검: 출처 줄에 docs/policy/loans.md가 보였음). 주소 안의 /data/ 같은 것은 앞 글자가 / . 영문이라 뺀다
+export const PATH_RE = /(?<![\w./-])(?:docs|data|zip|refs)\/[\w./-]*|\b[\w-]+\.(?:md|json)\b|\b[A-Z]:\\/g;
 export function leftovers(html) {
   const t = String(html).replace(/<(script|style)[\s\S]*?<\/\1>/g, ' ').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&#(\d+);/g, (_, n) => String.fromCharCode(+n))
     .replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
-  const pats = [[/\*\*|__/g, '굵게 표시(** __)가 그대로 보임'], [/\[\[|\]\]/g, '색 표시([[ ]])가 그대로 보임'], [/&#?[A-Za-z0-9]+;/g, '문자 코드(&#…;)가 그대로 보임'], [/(^|\s)#{1,6}\s/g, '제목 표시(#)가 그대로 보임'], [/\\n/g, '줄바꿈 \\n이 글자로 보임'], [/\b(undefined|NaN|null)\b|\[object /g, '빈 값(undefined·NaN·null)'], [/\(\d+초\)|\bnotice\b|장면 s_\d/g, '리포트 안쪽 표시(재생 시점·notice·장면 번호)가 남음']];
+  const pats = [[/\*\*|__/g, '굵게 표시(** __)가 그대로 보임'], [/\[\[|\]\]/g, '색 표시([[ ]])가 그대로 보임'], [/&#?[A-Za-z0-9]+;/g, '문자 코드(&#…;)가 그대로 보임'], [/(^|\s)#{1,6}\s/g, '제목 표시(#)가 그대로 보임'], [/\\n/g, '줄바꿈 \\n이 글자로 보임'], [/\b(undefined|NaN|null)\b|\[object /g, '빈 값(undefined·NaN·null)'], [/\(\d+초\)|\bnotice\b|장면 s_\d/g, '리포트 안쪽 표시(재생 시점·notice·장면 번호)가 남음'], [PATH_RE, '작업 파일 경로가 보임']];
   return pats.flatMap(([re, m]) => [...t.matchAll(re)].slice(0, 3).map((x) => `${m}: 「${t.slice(Math.max(0, x.index - 18), x.index + 22).replace(/\s+/g, ' ').trim()}」`));
 }
 
@@ -332,19 +346,23 @@ export async function check(key) {
   texts.splice(0, texts.length, ...texts.map(unhl));
   const auto = d.blocks.some((b) => b.claims) ? claimRows(summary?.claim_checks).flatMap((c) => [c.claim, c.note, c.official]).filter(Boolean).map((t) => scrub(t, videos)) : []; // 대조표는 리포트 문장 그대로라 숫자 대조는 건너뛰고 표현만 본다
   // 리포트가 다시 만들어지면(분석기 재실행) 이미 쓴 글의 숫자가 새 리포트에서 빠질 수 있다 — --read가 남겨 둔 이전 리포트 글자(<키>.prev.txt)도 근거로 본다(2026-11-02)
-  const corpus = [await readFile(join(BASE, folder, '종합리포트.html'), 'utf8'), await readFile(join(ROOT, 'data/deep', `${key}.prev.txt`), 'utf8').catch(() => ''), await readFile(join(BASE, folder, '_data/notice.json'), 'utf8').catch(() => ''),
+  let corpus = [await readFile(join(BASE, folder, '종합리포트.html'), 'utf8'), await readFile(join(ROOT, 'data/deep', `${key}.prev.txt`), 'utf8').catch(() => ''), await readFile(join(BASE, folder, '_data/notice.json'), 'utf8').catch(() => ''),
     ...await Promise.all((await folders())[folder].map((n) => readFile(join(ROOT, 'data/zip_posts', `${n}.json`), 'utf8').catch(() => ''))),
     // 공고문 원문 글자(data/notice_text) — 그림으로만 열리는 LH 공고문은 읽은 대목을 옮겨 적어 둔다(2026-11-03)
     ...await Promise.all((await folders())[folder].map((n) => readFile(join(ROOT, 'data/notice_text', `${n}.json`), 'utf8').catch(() => ''))),
     // 지금 시장(zip/market.mjs)·금리·정책 정리(docs/policy)의 숫자도 근거로 인정한다(2026-11-02)
     ...await Promise.all((d.market || []).map((l) => readFile(join(ROOT, 'data/market', `${l}.json`), 'utf8').catch(() => ''))), await readFile(join(ROOT, 'data/rates.json'), 'utf8').catch(() => ''),
     ...await Promise.all((await readdir(join(ROOT, 'docs/policy')).catch(() => [])).map((x) => readFile(join(ROOT, 'docs/policy', x), 'utf8')))].join('\n').replace(/(\d),(?=\d{3})/g, '$1');
+  // 이미 공개된 글은 실제 페이지에 있는 숫자도 근거로 본다 — 가격 비교 자료가 달마다 다시 만들어져 게시 때 맞던 숫자가 빠짐(2026-11-12). 이번 수정에서 새로 넣은 숫자만 자료와 대조. 계산은 바탕 숫자가 페이지에 안 보이므로 보이는 결과가 이미 페이지에 있으면 바탕 숫자를 묻지 않는다(셈은 그대로 검사). 못 받으면 예전처럼
+  const live = !(d.link && d.status === 'publish') ? '' : await fetch(`${d.link}?lint=${Date.now()}`, { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36' }, signal: AbortSignal.timeout(1e4) })
+    .then((r) => (r.ok ? r.text() : '')).then((t) => t.replace(/<[^>]+>/g, ' ').replace(/(\d),(?=\d{3})/g, '$1')).catch(() => '');
+  corpus += '\n' + live;
   for (const k of d.blocks.find((b) => b.claims)?.claims.keep || []) if (!keptOk(claimRows(summary?.claim_checks), [k]).length) issues.push(`대조표 keep 「${k}」 — 공고문과 맞는 주장 중에 없음(리포트가 새로 만들어졌으면 다시 고른다)`);
   // 공고문 금액으로 계산한 숫자(잔금 30% 등): calc [[보이는 금액, 만원 단위 식]] — 식의 바탕 숫자가 자료에 있고 계산이 맞으면 통과(2026-10-31)
   let calcOk = '';
   for (const [shown, expr] of d.calc || []) {
     const miss = (expr.match(/\d+(?:\.\d+)?/g) || []).filter((n) => +n >= 100 && !corpus.includes(n) && !(n >= 1e4 && corpus.includes(`${Math.floor(n / 1e4)}억 ${n % 1e4}만`))), v = Function(`return ${expr.replace(/[^\d.+\-*/() ]/g, '')}`)();
-    if (miss.length) issues.push(`계산 ${expr} — 바탕 숫자 ${miss.join('·')}가 자료에 없음`);
+    if (miss.length && !(live && live.includes(shown.replace(/(\d),(?=\d{3})/g, '$1')))) issues.push(`계산 ${expr} — 바탕 숫자 ${miss.join('·')}가 자료에 없음`);
     else if (Math.abs(v - manwon(shown)) > 0.51) issues.push(`계산 ${expr} = ${v}만원인데 글에는 「${shown}」`);
     else calcOk += ` ${shown.replace(/(\d),(?=\d{3})/g, '$1')}`;
   }
@@ -352,6 +370,7 @@ export async function check(key) {
     if (!auto.includes(t)) for (const m of t.replace(/(\d),(?=\d{3})/g, '$1').match(/\d{2,}(?:\.\d+)?/g) || []) if (!corpus.includes(m) && !calcOk.includes(m)) issues.push(`숫자 ${m} — 리포트·공고 자료에 없음: 「${t.slice(0, 50)}」`);
     for (const w of BANNED) if (t.replace(/기관추천|수익공유(?:형)?/g, '').includes(w)) issues.push(`금지 표현 「${w}」: 「${t.slice(0, 50)}」`); // 공식 제도 이름(기관추천 특별공급, 신혼희망타운 수익공유형 모기지)은 금지 표현에서 뺀다
     if (FAMILY.test(t)) issues.push(`가족 정보: 「${t.slice(0, 50)}」`);
+    if (t.match(PATH_RE)) issues.push(`작업 파일 경로(공식 출처 이름으로): 「${t.slice(0, 50)}」`);
     if (/유튜브|영상|채널|출연자|자막|구독|조회수/.test(t) || videos.some((v) => t.includes(v.id.slice(0, 4)) || chNames(v).some((c) => t.includes(c)))) issues.push(`매체 흔적(채널·영상을 밝히지 않는다): 「${t.slice(0, 50)}」`);
     if (/(해요|에요|예요|세요|어요|아요|네요|죠)[.!?]/.test(t)) issues.push(`해요체: 「${t.slice(0, 50)}」`);
   }
@@ -381,6 +400,8 @@ if (process.argv[1]?.endsWith('deep.mjs')) {
     assert.ok(leftovers('<p>(가칭)계양2초 **개교시기 미정**으로</p>').length > 0);
     assert.ok(leftovers('<p>a &amp;#34; b</p>').length > 0);
     assert.equal(leftovers('<p>개교 <b>시기 미정</b>, 21% 높음</p><style>a{b:c}</style>').length, 0);
+    for (const bad of ['대책 정리(docs/policy/loans.md, 확인일)', '대책 등 docs/policy 정리', 'data/zip_deep/1.json 없음', 'zip/deep.mjs로', 'refs/a 참고', 'loans.md 기준', 'D:\\부동산 폴더']) assert.ok(leftovers(`<p>${bad}</p>`).some((x) => x.startsWith('작업 파일 경로')), bad);
+    for (const ok of ['<a href="https://x.com/data/a.json">공고 원문</a> 주택형 84A', '<p>https://www.fsc.go.kr/data/x 금융위원회 보도자료(2025.6.27.)</p>', '<p>주택형·데이터 2026.10.23. 확인, 84A:59B</p>']) assert.equal(leftovers(ok).filter((x) => x.startsWith('작업 파일 경로')).length, 0, ok);
     assert.deepEqual(titleIssues('해링턴 플레이스 용산 리버뷰 청년안심주택, 소득·자산 안 보는 507세대 심층 분석', '효창공원앞역 해링턴 플레이스 용산 리버뷰 (임대)'), []);
     assert.deepEqual(titleIssues('중화역 라온프라이빗 센트로 분양, 59형 추첨 60% 심층 분석', '중화역 라온프라이빗 센트로'), []);
     assert.equal(titleIssues('7호선 중화역 바로 앞 서울 신축, 59형은 추첨 60%?! 거주의무 없는 중화역 라온프라이빗 센트로 심층 분석', '중화역 라온프라이빗 센트로').length, 3, '후킹이 앞이고 긴 제목');
@@ -393,6 +414,20 @@ if (process.argv[1]?.endsWith('deep.mjs')) {
       assert.ok(b[1].take.includes('59B은 접수가 공급보다 적었습니다') && b[3].src.includes('당첨자 발표(11.17)'));
       assert.ok(resultBlocks(['2'], { 2: { remndr: [r('084.3879B', '', 949, 1)] } })[3].src.includes('추첨이라 가점이 없습니다'));
       assert.deepEqual(resultBlocks(['3'], {}), []);
+      // 다시 올릴지: 보이는 표가 바뀔 때만
+      const s = (ty, lw) => ({ HOUSE_TY: ty, RESIDE_SENM: '해당지역', LWET_SCORE: lw, AVRG_SCORE: lw });
+      const apt = [r('084.7637A', '해당지역', 610, 10), r('059.9000B', '해당지역', 3, 5)], old = { 1: { at: '2026-11-11', apt, score: [] } };
+      assert.equal(resultsChanged(['1', '9'], old, { 1: { at: '2026-11-12', apt: [...apt].reverse(), score: [s('084.7637A', '-')] } }), false, '순서·「-」 가점');
+      assert.equal(resultsChanged(['1'], old, { 1: { apt, score: [s('084.7637A', '60')] } }), true, '가점 생김');
+      assert.equal(resultsChanged(['1'], old, { 1: { apt: [...apt, r('084.7637A', '해당지역', 5, 10, 2)] } }), true, '2순위 생김');
+      assert.equal(resultsChanged(['1', '2'], old, { ...old, 2: { apt: [r('074.1000', '해당지역', 1, 1)] } }), true, '같은 글 다른 공고');
+      assert.equal(resultsChanged(['1'], {}, old), true, '처음');
+      // 주택형 이름: 겹칠 때만 길게
+      assert.deepEqual([...tyLabels(['084.9594 ', '084.4998 ', '060.9995 ', '084.7637A', '084.8159B']).values()], ['84.95', '84.49', '60', '84A', '84B']);
+      assert.deepEqual([...tyLabels(['084.9594', '084.9500']).values()], ['84.959', '84.95']);
+      const d = resultBlocks(['4'], { 4: { apt: [r('084.9594 ', '해당지역', 50, 10), r('084.4998 ', '해당지역', 5, 10)] } });
+      assert.deepEqual(d[2].table.rows.map((x) => x[0]), ['84.95', '84.49']);
+      assert.ok(d[1].take.includes('가장 몰린 주택형은 84.95(') && d[1].take.includes('84.49은'));
     }
     console.log('deep 점검 통과');
   } else if (process.argv.includes('--results')) {

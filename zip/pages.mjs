@@ -114,10 +114,10 @@ const metaOf = (parts, status) => [...parts, status ? `<span class="az-status${s
 const listItem = (meta, title, link, excerpt, card) => `<li class="az-vitem az-wide"><div class="az-vtext"><p class="az-vmeta">${meta}</p><h2><a href="${esc(link)}">${esc(title)}</a></h2><p class="az-vex">${esc(excerpt)}</p></div>${card}</li>`;
 
 // 심층 분석 카드(조감도 + 훅 세 줄)와 접수 순 정렬 — 「심층 분석」 목록과 첫 화면 격자가 같이 쓴다
-const deepCard = (d, r, v) => {
+const deepCard = (d, r, v, first = false) => {
   const h = d.hook || [d.card?.[1] || '', shortName(r?.name || d.title), ''];
   const label = esc(v?.label || '조감도'), site = esc(v?.site || '분양 홈페이지'), href = v?.page || v?.homepage;
-  return `<figure class="az-thumb-f"><a class="az-thumb deep" href="${esc(d.link)}" tabindex="-1" aria-hidden="true">${v?.url ? `<img src="${esc(v.url)}" alt="" width="800" height="500" loading="lazy">` : ''}<span class="k">${esc(h[0])}</span><span class="t">${esc(h[1])}${h[2] ? `<em>${esc(h[2])}</em>` : ''}</span></a>${v?.url ? `<figcaption>${label} · ${href ? `<a href="${esc(href)}" rel="nofollow noopener">${site}</a>` : site}</figcaption>` : ''}</figure>`;
+  return `<figure class="az-thumb-f"><a class="az-thumb deep" href="${esc(d.link)}" tabindex="-1" aria-hidden="true">${v?.url ? `<img src="${esc(v.url)}" alt="" width="800" height="500" ${first ? 'loading="eager" fetchpriority="high"' : 'loading="lazy"'}>` : ''}<span class="k">${esc(h[0])}</span><span class="t">${esc(h[1])}${h[2] ? `<em>${esc(h[2])}</em>` : ''}</span></a>${v?.url ? `<figcaption>${label} · ${href ? `<a href="${esc(href)}" rel="nofollow noopener">${site}</a>` : site}</figcaption>` : ''}</figure>`;
 };
 // d.r: 표 목록에 없는 공고(임대·접수 끝나 수집본에서만 보이는 공고)의 일정 자료 — publish.mjs가 붙인다
 const sortDeeps = (deeps, reg, today) => deeps.map((d) => [d, d.nos.map((n) => reg[n]).find(Boolean) || d.r]).sort(([, a], [, b]) => order(a, today) - order(b, today));
@@ -125,7 +125,9 @@ const sortDeeps = (deeps, reg, today) => deeps.map((d) => [d, d.nos.map((n) => r
 export const deepGrid = (deeps, list, today, views = {}) => {
   const reg = Object.fromEntries(list.map((r) => [r.no, r]));
   const tags = (r) => (r ? ` data-g="${regionOf(r)}" data-k="${kindOf(r)}"${closedOf(r.phases, today) ? ' data-cl="1"' : ''}` : ' data-cl="1"');
-  return deeps.length ? `<section class="az-dgrid" aria-label="심층 분석 글"><ul>${sortDeeps(deeps, reg, today).map(([d, r]) => `<li${tags(r)}>${deepCard(d, r, views[d.key])}<p class="az-vmeta">${metaOf([r ? esc(areaOf(r)) : ''], r ? statusOf(r.phases, today) : '')}</p><h3><a href="${esc(d.link)}">${esc(d.title)}</a></h3></li>`).join('')}</ul><p class="az-dcount" aria-live="polite"><a href="${esc(DEEP_URL)}">전체 보기</a></p></section>` : '';
+  // 휴대폰 LCP(2026-11-12 SEO 점검): 기본 화면(마감 숨김)에서 맨 위 카드의 그림만 바로 받는다
+  const sorted = sortDeeps(deeps, reg, today), lcp = sorted.find(([d, r]) => !tags(r).includes('data-cl') && views[d.key]?.url)?.[0];
+  return deeps.length ? `<section class="az-dgrid" aria-label="심층 분석 글"><ul>${sorted.map(([d, r]) => `<li${tags(r)}>${deepCard(d, r, views[d.key], d === lcp)}<p class="az-vmeta">${metaOf([r ? esc(areaOf(r)) : ''], r ? statusOf(r.phases, today) : '')}</p><h3><a href="${esc(d.link)}">${esc(d.title)}</a></h3></li>`).join('')}</ul><p class="az-dcount" aria-live="polite"><a href="${esc(DEEP_URL)}">전체 보기</a></p></section>` : '';
 };
 
 export function deepList(deeps, list, today, views = {}) {
