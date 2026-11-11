@@ -229,6 +229,16 @@ export async function verifyLive(link) {
 }
 
 // 점검: 글 숫자가 리포트·공고 자료에 있는지(지어낸 숫자 막기), 금지 표현, 가족 정보, 해요체(워드프레스는 합쇼체)
+// 심층 분석 글 제목(2026-11-11 사용자 결정, 새 글부터): 단지명 → 유형 → 핵심 숫자. 구글 결과가 30자 안팎에서 잘리므로 앞 30자에 단지명과 유형을 넣는다. 이미 올라간 글은 보지 않는다
+export function titleIssues(title, folder) {
+  const out = [], words = String(folder || '').replace(/\s*\(.*\)$/, '').split(/\s+/).filter((w) => w && !/(블록|BL)$/i.test(w)), head = title.slice(0, 30);
+  if (words.length && !(words.some((w) => title.startsWith(w)) && head.includes(words.at(-1)))) out.push(`제목을 단지명으로 시작하고 앞 30자 안에 단지명 전체를 넣는다(${words.join(' ')}): 「${title}」`);
+  if (!/분양|무순위|임의공급|청년안심주택|행복주택|신혼희망타운/.test(head)) out.push(`제목 앞 30자 안에 유형(분양·무순위·청년안심주택 등)을 넣는다: 「${title}」`);
+  if (title.length > 48) out.push(`제목이 ${title.length}자: 40자 안팎으로(48자까지)`);
+  if (title.includes('우리의 집')) out.push('제목에 사이트 이름을 넣지 않는다(끝에 자동으로 붙음)');
+  return out;
+}
+
 export async function check(key) {
   const d = await loadDeep(key), folder = await folderOf(key), issues = [];
   // 운영 원칙 1·2(2026-11-10): 「원문 공고 대비 이 글이 추가한 정보」가 없으면 발행 유보. 공식 원문 링크·공고 기준일 필수. 이미 공개된 글은 added 없이 비교 자료만 본다
@@ -236,6 +246,7 @@ export async function check(key) {
   if (!officialOf(d)) issues.push('공식 원문 링크 없음(sources에 청약홈·LH·SH·공공기관 주소)');
   if (!(await noticeDateOf(key, d))) issues.push('공고 기준일 없음(noticeDate)');
   if (!d.link) {
+    issues.push(...titleIssues(d.title, folder));
     const plain = (t) => t.replace(/(\d),(?=\d{3})/g, '$1');
     const notice = plain((await Promise.all(((await folders())[folder] || [key]).map((n) => readFile(join(ROOT, 'data/notice_text', `${n}.json`), 'utf8').catch(() => '')))).join('\n'));
     if (!d.added?.length) issues.push('added 없음: 원문 공고에 없는데 이 글이 더한 정보를 적는다 — 답이 없으면 발행 유보');
@@ -303,6 +314,10 @@ if (process.argv[1]?.endsWith('deep.mjs')) {
     assert.ok(leftovers('<p>(가칭)계양2초 **개교시기 미정**으로</p>').length > 0);
     assert.ok(leftovers('<p>a &amp;#34; b</p>').length > 0);
     assert.equal(leftovers('<p>개교 <b>시기 미정</b>, 21% 높음</p><style>a{b:c}</style>').length, 0);
+    assert.deepEqual(titleIssues('해링턴 플레이스 용산 리버뷰 청년안심주택, 소득·자산 안 보는 507세대 심층 분석', '효창공원앞역 해링턴 플레이스 용산 리버뷰 (임대)'), []);
+    assert.deepEqual(titleIssues('중화역 라온프라이빗 센트로 분양, 59형 추첨 60% 심층 분석', '중화역 라온프라이빗 센트로'), []);
+    assert.equal(titleIssues('7호선 중화역 바로 앞 서울 신축, 59형은 추첨 60%?! 거주의무 없는 중화역 라온프라이빗 센트로 심층 분석', '중화역 라온프라이빗 센트로').length, 3, '후킹이 앞이고 긴 제목');
+    assert.equal(titleIssues('청계 노르웨이숲 무순위 심층 분석 - 우리의 집', '청계 노르웨이숲 (무순위)').length, 1, '사이트 이름');
     console.log('deep 점검 통과');
   } else if (arg('--read')) {
     const key = arg('--read'), folder = await folderOf(key);
