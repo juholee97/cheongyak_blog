@@ -9,6 +9,9 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { ROOT } from '../tistory/common.mjs';
 
+export const UPDATE_CAP = 10; // 이미 공개된 글을 하루에 고치는 횟수(아래 upsert). 84편 틀을 한꺼번에 바꾸면 9일쯤에 나뉜다
+const BUDGET = join(ROOT, 'data/zip_update_budget.json');
+
 export const env = async (k) => process.env[k] || (await readFile(join(ROOT, '.env'), 'utf8').catch(() => '')).match(new RegExp(`^${k}=(.+)$`, 'm'))?.[1]?.trim();
 
 export async function wp(path, { method = 'GET', body } = {}) {
@@ -67,6 +70,15 @@ export async function upsert(post, at, now = false) {
   if (old?.status === 'publish' && !at && !now) throw new Error(`이미 공개된 글(${old.link}) — 고치려면 --at 없이 따로 결정`);
   // 서치 콘솔 비율이 오르면 새 글만 멈춘다(zip/index_watch.mjs). 임시글(at·now 없음)과 기존 글 고치기는 막지 않는다
   if (!old && (at || now)) { const hold = await (await import('./index_watch.mjs')).holdReason(); if (hold) { console.log(`새 글 보류 ${post.slug}: ${hold}`); return { id: null, link: '', status: 'held', ok: false }; } }
+  // 일괄 수정 속도 제한(2026-11-11 사용자: 일괄 수정에도 색인에서 빠지지 않게). 11.9~10에 이틀 동안 공개 글을 440번 고친 뒤 다시 크롤링된 글이 색인에서 빠졌다.
+  // 이미 공개된 글은 하루 UPDATE_CAP번까지만 고치고, 넘친 글은 고치지 않고 넘긴다(저장 표시를 안 남기므로 다음 날 같은 작업이 다시 시도해 며칠에 나뉜다).
+  // 제목이 바뀌는 수정([신청마감]·[종료] 표시)과 post.urgent(청약 결과 숫자)는 한도와 관계없이 바로 고친다
+  const bump = old?.status === 'publish' && !post.urgent && old.title.raw === post.title;
+  if (bump) {
+    const day = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10), used = JSON.parse(await readFile(BUDGET, 'utf8').catch(() => '{}'));
+    if ((used[day] || 0) >= UPDATE_CAP) { console.log(`미룸 ${post.slug}: 오늘 공개 글 수정 ${UPDATE_CAP}번을 다 씀 — 내일 다시`); return { id: old.id, link: old.link, status: 'deferred', ok: false }; }
+    await (await import('node:fs/promises')).writeFile(BUDGET, JSON.stringify({ [day]: (used[day] || 0) + 1 })); // 오늘 것만 남긴다
+  }
   const body = { slug: post.slug, title: post.title, content: post.html, excerpt: post.excerpt || '', tags: await termIds('tags', post.tags), categories: await termIds('categories', post.categories), ...(post.featured ? { featured_media: post.featured } : {}), status: at ? 'future' : now ? 'publish' : 'draft', ...(at ? { date: at.replace(' ', 'T') + ':00' } : now && old?.status === 'future' ? { date: new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 19) } : {}) }; // 예약 글을 바로 공개할 때는 날짜도 지금으로(미래 날짜가 남으면 워드프레스가 예약 상태로 둔다)
   const res = await wp(old ? `posts/${old.id}` : 'posts', { method: 'POST', body });
   // 확인: 다시 불러와 제목·본문 길이·상태 대조

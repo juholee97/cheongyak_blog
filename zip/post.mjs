@@ -200,13 +200,18 @@ if (process.argv[1]?.endsWith('post.mjs')) {
     const d = JSON.parse(await readFile(join(ddir, f), 'utf8')), key = f.slice(0, -5);
     if (liveDeep(d)) for (const no of fo.find((n) => n.includes(key)) || [key]) deepOf[no] = { link: d.link, img: views[key]?.url };
   }
+  const MORE = join(ROOT, 'data/zip_more.json'), frozen = JSON.parse(await readFile(MORE, 'utf8').catch(() => '{}'));
   for (const r of list) {
     if (only && !only.includes(r.no)) continue;
     const closed = closedOf(r.phases, today);
     const more = [];
     // 티스토리 분석 글은 2026-11-10 사용자 결정으로 중단·비공개 예정 — 연결하지 않는다
-    // 같은 지역의 다른 시세 비교 글 최대 2편(열린 공고 먼저)
-    for (const o of list.filter((x) => x.no !== r.no && x.region === r.region).sort((a, b) => closedOf(a.phases, today) - closedOf(b.phases, today)).slice(0, 2)) more.push({ url: `https://auleezip.com/apt-${o.no}/`, label: `${shortName(o.name)} 시세 비교` });
+    // 같은 지역의 다른 시세 비교 글 최대 2편(열린 공고 먼저). 처음 고른 2편을 data/zip_more.json에 고정한다(2026-11-11 사용자: 일괄 수정에도 색인에서 빠지지 않게) —
+    // 예전에는 새 글이 생길 때마다 목록이 바뀌어 시세 비교 글이 거의 매일 다시 저장됐다(2주 동안 글 하나에 최대 22번)
+    const keep = (frozen[r.no] || []).filter((no) => list.some((x) => x.no === no && x.no !== r.no));
+    const pick = [...keep, ...list.filter((x) => x.no !== r.no && x.region === r.region && !keep.includes(x.no)).sort((a, b) => closedOf(a.phases, today) - closedOf(b.phases, today)).map((x) => x.no)].slice(0, 2);
+    frozen[r.no] = pick;
+    for (const o of pick.map((no) => list.find((x) => x.no === no))) more.push({ url: `https://auleezip.com/apt-${o.no}/`, label: `${shortName(o.name)} 시세 비교` });
     more.push({ url: OPEN_URL, label: '심층 분석 보기' }, { url: CAL_URL, label: '청약 일정 달력 (우리의 청약달력)' });
     const p = postOf(r, buzz[r.no], claims[r.no], { closed, more, analysis: analysis[r.no], deep: [r.no, ...items.filter((x) => r.links.includes(x.applyhomeUrl)).map((x) => x.no)].map((no) => deepOf[no]).find(Boolean) }), issues = checkPost(p);
     if (issues.length) { console.log(`✗ ${r.name}: ${issues.join(', ')}`); continue; }
@@ -219,5 +224,6 @@ if (process.argv[1]?.endsWith('post.mjs')) {
   const index = JSON.parse(await readFile(join(dir, 'index.json'), 'utf8').catch(() => '{}'));
   for (const r of items.filter((x) => !x.skip)) { const m = [...seen.values()].find((x) => shortName(x.name) === shortName(r.name) && x.main.max === r.main.max); if (m) index[r.no] = `apt-${m.no}`; }
   await writeFile(join(dir, 'index.json'), JSON.stringify(index, null, 1));
+  await writeFile(MORE, JSON.stringify(frozen, null, 1));
   console.log(`\n글 ${posts.length}편 → data/zip_posts/ (미리보기 preview.html)`);
 }
