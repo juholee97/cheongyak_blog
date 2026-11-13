@@ -11,6 +11,8 @@ import { ROOT } from '../tistory/common.mjs';
 
 export const UPDATE_CAP = 10; // 이미 공개된 글을 하루에 고치는 횟수(아래 upsert). 84편 틀을 한꺼번에 바꾸면 9일쯤에 나뉜다
 const BUDGET = join(ROOT, 'data/zip_update_budget.json');
+export const APT_EDIT_HOLD = true; // 2026-11-13 사용자: 시세 비교 글 존폐 결정(11.14 뒤)까지 이미 공개된 apt 글 본문 수정 멈춤(제목이 바뀌는 날도 — 제목 표시는 publish.mjs의 stampLive가 제목만 고친다). 풀려면 false
+export const heldEdit = (slug, hold = APT_EDIT_HOLD) => hold && slug.startsWith('apt-');
 
 export const env = async (k) => process.env[k] || (await readFile(join(ROOT, '.env'), 'utf8').catch(() => '')).match(new RegExp(`^${k}=(.+)$`, 'm'))?.[1]?.trim();
 
@@ -74,6 +76,7 @@ export async function upsert(post, at, now = false) {
   // 이미 공개된 글은 하루 UPDATE_CAP번까지만 고치고, 넘친 글은 고치지 않고 넘긴다(저장 표시를 안 남기므로 다음 날 같은 작업이 다시 시도해 며칠에 나뉜다).
   // 제목이 바뀌는 수정([신청마감]·[종료] 표시)과 post.urgent(청약 결과 숫자)는 한도와 관계없이 바로 고친다
   const bump = old?.status === 'publish' && !post.urgent && old.title.raw === post.title;
+  if (old?.status === 'publish' && !post.urgent && heldEdit(post.slug)) { console.log(`미룸 ${post.slug}: 시세 비교 글 결정 전까지 기존 글 수정 멈춤`); return { id: old.id, link: old.link, status: 'deferred', ok: false }; }
   if (bump) {
     const day = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10), used = JSON.parse(await readFile(BUDGET, 'utf8').catch(() => '{}'));
     if ((used[day] || 0) >= UPDATE_CAP) { console.log(`미룸 ${post.slug}: 오늘 공개 글 수정 ${UPDATE_CAP}번을 다 씀 — 내일 다시`); return { id: old.id, link: old.link, status: 'deferred', ok: false }; }

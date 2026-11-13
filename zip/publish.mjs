@@ -45,6 +45,10 @@ if (process.argv.includes('--check')) {
   assert.equal(stageOf([{ k: 'win', date: '2026-01-01' }], '2026-11-09'), ''); // 접수일 없는 자료는 표시하지 않는다
   assert.equal(stamped(stamped('[서울] 제목', 'closed'), 'ended'), '[종료] [서울] 제목'); // 앞 표시만 갈아 끼우고 지역 표시는 둔다
   assert.equal(stamped('[종료] 제목', ''), '제목');
+  const { heldEdit } = await import('./wp.mjs'); // 시세 비교 글 수정 멈춤(2026-11-13)
+  assert.equal(heldEdit('apt-2026000517', true), true);
+  assert.equal(heldEdit('deep-2026000517', true), false);
+  assert.equal(heldEdit('apt-2026000517', false), false);
   console.log('publish 점검 통과');
 } else if (process.argv[1]?.endsWith('publish.mjs')) {
   const go = process.argv.includes('--go');
