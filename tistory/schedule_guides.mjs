@@ -3,12 +3,13 @@
 // node tistory/schedule_guides.mjs --queue data/guide_queue.txt   승인된 대기열(공백으로 나눈 slug)을 빈 시각에. 예약한 글은 대기열에서 빼고,
 //   티스토리 하루 글 한도(10-27부터 5개)에 걸리면 나머지는 남겨 둔 채 끝낸다(10-27부터 analysis_auto.bat 07:00 분석 글 뒤 --max 3, 예전 작업 스케줄러 cheongyak_guide_queue가 매일 00:30에 다시).
 //   대기열 항목을 slug@YYYY-MM-DD로 쓰면 그날(한국 시각)부터 예약한다(그 전엔 대기열에 그대로).
+// 예약 시각 = --times 기준 시각에서 3~17분 뒤(날짜·기준 시각으로 정해지는 값, common.mjs nudged). 관련 글 판정·--at·기록은 모두 이 실제 시각.
 // 순서: 빈 시각마다, 그 시각에 이미 공개돼 있을 관련 글이 가장 많은 글부터. 링크는 늘 더 이른 시각의 글만 가리킨다(guide.mjs --at).
 // 한 편마다 posts/guide.mjs로 다시 그려(관련 글 갱신) 검수한 뒤 draft.mjs --schedule. 하나라도 실패하면 멈춘다.
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { ROOT, dueOn, queueLeft } from './common.mjs';
+import { ROOT, dueOn, queueLeft, nudged, slotTaken } from './common.mjs';
 import { relatedOf } from '../posts/guide.mjs';
 
 // 대기열 자동 실행(작업 스케줄러)에서 멈추면 화면에 알림 창 하나
@@ -35,13 +36,13 @@ const pad = (n) => String(n).padStart(2, '0');
 
 if (!start || !slugs.length) { console.log('사용: node tistory/schedule_guides.mjs --start "YYYY-MM-DD HH:MM" [--times 08:00,12:00,19:00] slug ...'); process.exit(4); }
 
-// 빈 시각: start부터 하루씩 times를 돌며, 이미 예약된 시각은 건너뛴다
-const taken = new Set(Object.values(await json('posts/scheduled.json')).map((v) => v.when));
+// 빈 시각: start부터 하루씩 times(기준 시각)를 돌며, 이미 글이 있는 자리는 건너뛴다. 실제 예약은 기준 시각에서 3~17분 뒤(nudged — 정각 피함, 2026-11-13)
+const taken = Object.values(await json('posts/scheduled.json')).map((v) => v.when);
 function* slots() {
   const day = new Date(start.slice(0, 10) + 'T00:00:00');
   for (;;) {
     const d = `${day.getFullYear()}-${pad(day.getMonth() + 1)}-${pad(day.getDate())}`;
-    for (const t of times) { const w = `${d} ${t}`; if (w >= start && !taken.has(w)) yield w; }
+    for (const t of times) { const w = `${d} ${t}`; if (w >= start && !slotTaken(w, taken)) yield nudged(w); }
     day.setDate(day.getDate() + 1);
   }
 }

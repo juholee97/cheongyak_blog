@@ -6,6 +6,7 @@ import { chromium } from 'playwright';
 import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 import { readFile, writeFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 
 export const ROOT = fileURLToPath(new URL('..', import.meta.url));
 export const SESSION = join(ROOT, 'data', 'tistory-session'); // 절대 커밋·공유하지 않는다(.gitignore)
@@ -14,6 +15,14 @@ export const dayMax = (v = process.env.TISTORY_DAY_MAX) => { const n = parseInt(
 // 대기열 항목 「slug@YYYY-MM-DD」: 그날(한국 시각 day) 전에는 건너뛰고 대기열에 그대로 남긴다. 남길 땐 원래 표기 그대로(queueLeft)
 export const dueOn = (t, day) => !t.includes('@') || t.slice(t.indexOf('@') + 1) <= day;
 export const queueLeft = (raw, left, day) => raw.filter((t) => !dueOn(t, day) || left.includes(t.split('@')[0]));
+// 예약 시각 빗김(2026-11-13 사용자 「정각 피해서 빗겨 게시」): 기준 시각 'YYYY-MM-DD HH:MM'(--times 자리)에서 3~17분 뒤, 분이 5의 배수가 아닌 값.
+// 날짜·기준 시각의 md5로 정해져 다시 실행해도 같다(난수 아님). 늘 뒤쪽으로만 — 「1시간 뒤부터」·가드 「10분 넘게 뒤」가 그대로 성립
+const p2 = (n) => String(n).padStart(2, '0');
+const plusMin = (w, m) => { const d = new Date(new Date(w.replace(' ', 'T') + ':00').getTime() + m * 60e3); return `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())} ${p2(d.getHours())}:${p2(d.getMinutes())}`; };
+export const nudgeMin = (w) => { const m = +w.slice(14, 16), ok = Array.from({ length: 15 }, (_, i) => i + 3).filter((o) => (m + o) % 5); return ok[createHash('md5').update(w).digest().readUInt32BE(0) % ok.length]; };
+export const nudged = (w) => plusMin(w, nudgeMin(w));
+// 그 기준 자리가 찼나: 예약된 시각(scheduled.json when) 중 기준 시각~17분 뒤 사이가 하나라도 있으면(정각으로 저장된 예전 글 포함)
+export const slotTaken = (w, whens) => { const end = plusMin(w, 17); return whens.some((v) => v >= w && v <= end); };
 // 티스토리 로그인 쿠키는 세션 쿠키라 브라우저를 닫으면 프로필에서 사라진다 → 로그인 직후 따로 저장해 두고 실행 때 다시 넣는다
 const COOKIES = join(ROOT, 'data', 'tistory-cookies.json');
 const isTistory = (c) => /(^|\.)tistory\.com$/.test(c.domain.replace(/^\./, ''));
