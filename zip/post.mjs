@@ -132,7 +132,7 @@ export function postOf(r, buzz, claims, ctx = {}) {
   // 심층 분석 글이 있으면 맨 앞에 — 「시세보다 N% 높습니다」만 보고 이유 없이 비싼 집으로 읽히지 않게(2026-10-30 사용자)
   // 심층 분석으로 넘어가는 카드(2026-10-31 사용자 요청: 안내문이 아니라 누르면 넘어가는 다른 글로 보이게 — 조감도 작은 그림 + 제목 + 「읽기」 버튼, 광고처럼 보이지 않게 흰 바탕)
   const dp = ctx.deep;
-  const deepHtml = dp ? `<a class="az-deeplink" href="${esc(dp.link)}">${dp.img ? `<img src="${esc(dp.img)}" alt="${esc(`${name} ${dp.label || '조감도'}`)}" width="800" height="500" loading="lazy">` : ''}<span class="az-deeplink-b"><span class="az-deeplink-t">이어서 읽기 · 심층 분석</span><span class="az-deeplink-h">${esc(name)} 심층 분석</span><span class="az-deeplink-d">시세 비교만으로는 이 분양가가 어떻게 정해졌는지 알 수 없습니다. 입지·교통 계획, 주택형별 필요한 돈, 공고문과 맞춰 본 분석 의견을 정리했습니다.</span></span><span class="az-deeplink-go">읽기</span></a>` : '';
+  const deepHtml = dp ? `<a class="az-deeplink" href="${esc(dp.link)}">${dp.img ? `<img src="${esc(dp.img)}" alt="${esc(`${name} ${dp.label || '조감도'}`)}" width="800" height="500" loading="eager" fetchpriority="high">` : ''}<span class="az-deeplink-b"><span class="az-deeplink-t">이어서 읽기 · 심층 분석</span><span class="az-deeplink-h">${esc(name)} 심층 분석</span><span class="az-deeplink-d">시세 비교만으로는 이 분양가가 어떻게 정해졌는지 알 수 없습니다. 입지·교통 계획, 주택형별 필요한 돈, 공고문과 맞춰 본 분석 의견을 정리했습니다.</span></span><span class="az-deeplink-go">읽기</span></a>` : '';
   const html = [
     ctx.closed ? banner(OPEN_URL) : '',
     deepHtml,

@@ -55,6 +55,11 @@ if (process.argv.includes('--check')) {
   assert.equal(heldEdit('apt-2026000517', true), true);
   assert.equal(heldEdit('deep-2026000517', true), false);
   assert.equal(heldEdit('apt-2026000517', false), false);
+  { // 목록 첫 그림만 바로 받기(2026-11-13 휴대폰 LCP): 그림 없는 칸은 건너뛰고 실제 첫 그림이 eager, 나머지는 lazy
+    const R = (no) => ({ no, name: `단지${no}`, region: '서울', phases: [{ k: 'p1', date: `2026-12-0${no}` }] }), V = { url: 'v.jpg' };
+    const html = saleList([R(1), R(2), R(3)], '2026-11-13', {}, { 1: { link: 'a' }, 2: { link: 'b' }, 3: { link: 'c' } }, { 2: V, 3: V });
+    assert.deepEqual([...html.matchAll(/<img [^>]*?(loading="\w+"(?: fetchpriority="high")?)/g)].map((m) => m[1]), ['loading="eager" fetchpriority="high"', 'loading="lazy"']);
+  }
   console.log('publish 점검 통과');
 } else if (process.argv[1]?.endsWith('publish.mjs')) {
   const go = process.argv.includes('--go');

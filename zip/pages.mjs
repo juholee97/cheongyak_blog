@@ -83,6 +83,7 @@ export function saleList(list, today, res = {}, posts = {}, views = {}) {
   const items = list.filter((r) => r.source !== 'sh' && posts[r.no]);
   const open = items.filter((r) => !closedOf(r.phases, today)).sort((a, b) => (start(a) < start(b) ? -1 : 1));
   const done = items.filter((r) => closedOf(r.phases, today)).sort((a, b) => ((receiptOf(a.phases)?.end || '') < (receiptOf(b.phases)?.end || '') ? 1 : -1));
+  const lcp = [...open, ...done].find((r) => views[r.no]?.url); // 휴대폰 LCP(2026-11-13): 맨 위 그림만 바로 받는다
   const item = (r) => {
     const p = posts[r.no], v = views[r.no], rc = receiptOf(r.phases), x = res[r.no];
     const status = !rc ? '' : closedOf(r.phases, today) ? '접수 마감' : recLabel(rc, today);
@@ -90,7 +91,7 @@ export function saleList(list, today, res = {}, posts = {}, views = {}) {
     // 그림 밑 출처: 그림 이름(조감도·투시도) · 그림이 있던 곳(기본 분양 홈페이지 — LH 공고·공고문에서 받은 것은 그 이름, zip/views.mjs의 label·site)
     const label = esc(v?.label || '조감도'), site = esc(v?.site || '분양 홈페이지'), href = v?.page || v?.homepage;
     const img = v?.url
-      ? `<figure class="az-vimg"><a href="${esc(p.link)}" tabindex="-1" aria-hidden="true"><img src="${esc(v.url)}" alt="${esc(shortName(r.name))} ${label}" width="800" height="500" loading="lazy"></a><figcaption>${label} · ${href ? `<a href="${esc(href)}" rel="nofollow noopener">${site}</a>` : site}</figcaption></figure>`
+      ? `<figure class="az-vimg"><a href="${esc(p.link)}" tabindex="-1" aria-hidden="true"><img src="${esc(v.url)}" alt="${esc(shortName(r.name))} ${label}" width="800" height="500" ${r === lcp ? 'loading="eager" fetchpriority="high"' : 'loading="lazy"'}></a><figcaption>${label} · ${href ? `<a href="${esc(href)}" rel="nofollow noopener">${site}</a>` : site}</figcaption></figure>`
       : `<div class="az-vph" aria-hidden="true">${esc(shortName(r.name))}</div>`;
     return `<li class="az-vitem"><div class="az-vtext"><p class="az-vmeta">${meta}</p><h2><a href="${esc(p.link)}">${esc(p.title)}</a></h2><p class="az-vex">${esc(p.excerpt)}</p>${x && !x.text && !x.leasehold ? `<p class="az-vcmp">${cmpBar(x.d)}</p>` : ''}</div>${img}</li>`;
   };
@@ -132,10 +133,11 @@ export const deepGrid = (deeps, list, today, views = {}) => {
 
 export function deepList(deeps, list, today, views = {}) {
   const reg = Object.fromEntries(list.map((r) => [r.no, r]));
-  const item = (d, r) => listItem(metaOf([r ? esc(areaOf(r)) : '', '심층 분석'], r ? statusOf(r.phases, today) : ''), d.title, d.link, d.excerpt, deepCard(d, r, views[d.key]));
+  const sorted = sortDeeps(deeps, reg, today), lcp = sorted.find(([d]) => views[d.key]?.url)?.[0]; // 맨 위 그림만 바로 받는다(2026-11-13)
+  const item = (d, r) => listItem(metaOf([r ? esc(areaOf(r)) : '', '심층 분석'], r ? statusOf(r.phases, today) : ''), d.title, d.link, d.excerpt, deepCard(d, r, views[d.key], d === lcp));
   return [
     `<p class="az-vlead">시세 비교만으로는 보이지 않는 것 — 입지·교통 계획, 주택형별 분양가와 필요한 돈, 공고문과 맞춰 본 공개된 분석 의견을 단지마다 정리했습니다. ${esc(today.replaceAll('-', '.'))} 기준입니다.</p>`,
-    `<ul class="az-vlist">${sortDeeps(deeps, reg, today).map(([d, r]) => item(d, r)).join('')}</ul>`,
+    `<ul class="az-vlist">${sorted.map(([d, r]) => item(d, r)).join('')}</ul>`,
     src('카드의 조감도·투시도는 사업주체 분양 홈페이지, LH 청약플러스 공고, 입주자모집공고문 같은 공식 자료에서 정보 제공을 위해 옮긴 그림으로, 실제와 다를 수 있습니다. 카드 문구는 각 글의 내용을 줄인 것입니다.'),
   ].join('\n');
 }
