@@ -466,7 +466,7 @@ if (process.argv[1]?.endsWith('deep.mjs')) {
     const post = await render(key), bad = leftovers(post.html), { loadStages, stamped } = await import('./stage.mjs');
     post.featured = featured;
     post.urgent = process.argv.includes('--urgent'); // 청약 결과 숫자(updateResults)는 하루 수정 한도와 관계없이 바로(wp.mjs upsert)
-    post.title = stamped(post.title, (await loadStages())[post.slug]?.stage); // 고쳐 올려도 [신청마감]·[종료] 표시를 지우지 않는다
+    post.title = stamped(post.title, (await loadStages())[post.slug]?.stage); // 고쳐 올려도 [종료] 표시를 지우지 않는다
     if (bad.length) { console.log(`올리기 전 검수 실패\n${bad.join('\n')}`); process.exit(1); }
     // 공개 시각(2026-10-30 사용자 결정): 첫 접수일 7일 전 06:00 예약, 그 시각이 지났으면 바로. 이미 공개된 글은 고쳐도 공개 그대로
     const d = await loadDeep(key), nos = Object.values(await folders()).find((n) => n.includes(key)) || [key];

@@ -16,7 +16,7 @@ import { allDeep, folders as deepFolders } from './deep.mjs';
 import { loadViews } from './views.mjs';
 import { loadLog, saveLog, applyLog } from './revlog.mjs';
 import { purge } from './site.mjs';
-import { loadStages, stageOf, stamped, stampLive, isEnded } from './stage.mjs';
+import { loadStages, stageOf, stamped, stampLive, isEnded, deepFirst } from './stage.mjs';
 import { noOf } from './deep_targets.mjs';
 
 const kst = () => new Date(Date.now() + 9 * 3600e3);
@@ -41,7 +41,13 @@ if (process.argv.includes('--check')) {
   const { recLabel } = await import('./pages.mjs'), RC = { start: '2026-11-02', end: '2026-11-04' };
   assert.deepEqual(['2026-10-30', '2026-11-03', '2026-11-04'].map((t) => recLabel(RC, t)), ['3일 뒤 접수 시작 · D-5', '접수 중 · 11.4 마감 · D-1', '오늘 접수 마감 · D-Day']); // 상태 줄에 마감까지 남은 날
   assert.equal(stamped('[D-12] 제목', ''), '제목'); // 예전 제목의 D-표시를 지운다
-  assert.equal(stamped('[D-12] 제목', 'closed'), '[신청마감] 제목');
+  assert.equal(stamped('[D-12] 제목', 'closed'), '제목'); // [신청마감]은 제목에 안 붙인다(2026-11-13)
+  assert.equal(stamped('[신청마감] X', 'closed'), 'X'); // 이미 붙은 표시는 뗀다
+  assert.equal(stamped('X', 'closed'), 'X');
+  assert.equal(stamped('[신청마감] X', 'ended'), '[종료] X');
+  assert.equal(stamped('[종료] X', 'ended'), '[종료] X');
+  assert.equal(stamped('[신청마감] X', ''), 'X');
+  assert.deepEqual(['apt-1', 'deep-2', 'apt-3', 'deep-4'].map((slug) => ({ slug })).sort(deepFirst).map((e) => e.slug), ['deep-2', 'deep-4', 'apt-1', 'apt-3']); // [신청마감] 떼기는 심층 분석 글부터
   assert.equal(stageOf([{ k: 'win', date: '2026-01-01' }], '2026-11-09'), ''); // 접수일 없는 자료는 표시하지 않는다
   assert.equal(stamped(stamped('[서울] 제목', 'closed'), 'ended'), '[종료] [서울] 제목'); // 앞 표시만 갈아 끼우고 지역 표시는 둔다
   assert.equal(stamped('[종료] 제목', ''), '제목');
@@ -91,7 +97,7 @@ if (process.argv.includes('--check')) {
     // 첫 화면 공고 표·일정은 티스토리 청약달력과 같은 수집본(schedule.json)에서 열린 공고를 거의 다 받는다(2026-10-31 사용자) — 글이 없는 공고는 청약홈·LH·SH 공고로 잇는다
     const { items: sched } = await (await import('../posts/weekly.mjs')).loadData().catch(() => ({ items: [] }));
     for (const d of deeps) d.r = sched.find((it) => d.nos.includes(noOf(it))); // 표에 없는 공고(임대·지난 공고)의 지역·구분·일정 — 첫 화면 고르는 칸이 쓴다
-    // 제목 앞 [신청마감]·[종료]: 공개된 글 제목을 고치고, 아래 목록·첫 화면에도 같은 제목을 쓴다
+    // 제목 앞 [종료](옛 [신청마감]은 뗀다): 공개된 글 제목을 고치고, 아래 목록·첫 화면에도 같은 제목을 쓴다
     const posts = {};
     for (const r of Object.values(reg)) { const j = JSON.parse(await readFile(join(ROOT, 'data/zip_posts', `${r.slug || r.no}.json`), 'utf8').catch(() => 'null')); if (j) posts[r.no] = { title: j.title, excerpt: j.excerpt, link: `https://auleezip.com/${j.slug}/`, slug: j.slug, phases: r.phases }; }
     const deepPhases = (d) => d.nos.flatMap((n) => reg[n]?.phases || sched.filter((it) => noOf(it) === n).flatMap((it) => it.phases || []));
