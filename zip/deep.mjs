@@ -317,6 +317,8 @@ export function titleIssues(title, folder) {
   if (!/분양|무순위|임의공급|청년안심주택|행복주택|신혼희망타운/.test(head)) out.push(`제목 앞 30자 안에 유형(분양·무순위·청년안심주택 등)을 넣는다: 「${title}」`);
   if (title.length > 48) out.push(`제목이 ${title.length}자: 40자 안팎으로(48자까지)`);
   if (title.includes('우리의 집')) out.push('제목에 사이트 이름을 넣지 않는다(끝에 자동으로 붙음)');
+  // 무순위 글은 「무순위 청약(줍줍)」(2026-11-13 사용자 결정, 새 글부터). 임의공급도 폴더가 (무순위)라 제목에 임의공급이 있으면 뺀다
+  if (/\(무순위\)$/.test(folder || '') && !title.includes('임의공급') && !title.includes('줍줍')) out.push(`무순위 글 제목에 「무순위 청약(줍줍)」처럼 줍줍을 함께 쓴다: 「${title}」`);
   return out;
 }
 
@@ -405,7 +407,9 @@ if (process.argv[1]?.endsWith('deep.mjs')) {
     assert.deepEqual(titleIssues('해링턴 플레이스 용산 리버뷰 청년안심주택, 소득·자산 안 보는 507세대 심층 분석', '효창공원앞역 해링턴 플레이스 용산 리버뷰 (임대)'), []);
     assert.deepEqual(titleIssues('중화역 라온프라이빗 센트로 분양, 59형 추첨 60% 심층 분석', '중화역 라온프라이빗 센트로'), []);
     assert.equal(titleIssues('7호선 중화역 바로 앞 서울 신축, 59형은 추첨 60%?! 거주의무 없는 중화역 라온프라이빗 센트로 심층 분석', '중화역 라온프라이빗 센트로').length, 3, '후킹이 앞이고 긴 제목');
-    assert.equal(titleIssues('청계 노르웨이숲 무순위 심층 분석 - 우리의 집', '청계 노르웨이숲 (무순위)').length, 1, '사이트 이름');
+    assert.equal(titleIssues('청계 노르웨이숲 무순위 청약(줍줍) 심층 분석 - 우리의 집', '청계 노르웨이숲 (무순위)').length, 1, '사이트 이름');
+    assert.deepEqual(titleIssues('청계 노르웨이숲 무순위 청약(줍줍), 청약통장 없이 서울 중구 신축 심층 분석', '청계 노르웨이숲 (무순위)'), []);
+    assert.equal(titleIssues('청계 노르웨이숲 무순위, 청약통장 없이 서울 중구 신축 심층 분석', '청계 노르웨이숲 (무순위)').length, 1, '무순위 글은 줍줍도');
     { // 청약 결과 절: 주택형별 거주지역 합계, 미달 표시, 무순위는 가점 없음
       const r = (ty, sec, req, sup, rank = 1) => ({ HOUSE_TY: ty, RESIDE_SENM: sec, REQ_CNT: String(req), SUPLY_HSHLDCO: sup, SUBSCRPT_RANK_CODE: rank });
       const b = resultBlocks(['1'], { 1: { at: '2026-11-11', apt: [r('084.7637A', '해당지역', 610, 10), r('084.7637A', '기타지역', 682, 10), r('059.9000B', '해당지역', 3, 5)], score: [] } }, '2026-11-17');
