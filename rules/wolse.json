@@ -1,0 +1,12 @@
+{
+  "schema": 1,
+  "checked": "2026-11-13",
+  "note": "월세 세액공제 계산기(skin/images/calc2.js) 값. 숫자는 docs/policy/yearend.md 1절(계산기용)에서만 옮긴다(doc = 파일#절#행 첫 칸, text가 그 행 안에 있어야 함 — preview/calc2.check.mjs가 대조). 금액은 원. 지방소득세는 yearend.md 10절 4번 결정 전이라 넣지 않는다",
+  "year": "2026년 귀속",
+  "basis": "조세특례제한법 제95조의2, 같은 법 시행령 제95조",
+  "tiers": [
+    { "key": "A", "pay": 55000000, "income": 45000000, "rate": 17, "text": ["5,500만원 이하", "4,500만원 이하", "**17%**"], "doc": "yearend.md#1-2#A" },
+    { "key": "B", "pay": 80000000, "income": 70000000, "rate": 15, "text": ["8,000만원 이하", "7,000만원 이하", "**15%**"], "doc": "yearend.md#1-2#B" }
+  ],
+  "cap": { "v": 10000000, "text": "연 **1,000만원**", "doc": "yearend.md#1-2#A" }
+}

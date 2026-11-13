@@ -47,7 +47,8 @@
   "savings-account-2026": [
     "youth-dream-2026",
     "first-rank-2026",
-    "starter"
+    "starter",
+    "wolse-tax-credit"
   ],
   "policy-recap-2026": [
     "ltv-dsr-2026",
@@ -257,7 +258,8 @@
   "newhome-types": [
     "public-general",
     "land-lease",
-    "public-income-asset"
+    "public-income-asset",
+    "equity-share"
   ],
   "public-general": [
     "newhome-types",
@@ -324,7 +326,8 @@
     "happy-house",
     "beotimmok-2026",
     "newlyweds",
-    "private-rental-decree-2026"
+    "private-rental-decree-2026",
+    "youth-jeonse-apply"
   ],
   "multi-child": [
     "special-once",
@@ -435,5 +438,21 @@
     "lh-purchase-rental",
     "happy-house",
     "jeonse-loan-guarantee"
+  ],
+  "youth-jeonse-apply": [
+    "lh-purchase-rental",
+    "youth-beotimmok",
+    "happy-house"
+  ],
+  "equity-share": [
+    "newhome-types",
+    "land-lease",
+    "public-income-asset"
+  ],
+  "wolse-tax-credit": [
+    "savings-account-2026",
+    "youth-beotimmok",
+    "beotimmok-2026",
+    "rent-report"
   ]
 }

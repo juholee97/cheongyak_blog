@@ -23,7 +23,13 @@ export async function buildRules() {
   const { schema, ...rest } = tables;
   const now = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 16).replace('T', ' ');
   if (special.schema !== 1 || !special.programs?.length) throw new Error('special.json 모양이 다름');
-  return { schema: 1, built: new Date().toISOString(), ...rest, loans: hideUnpublished(loans.products, scheduled, now), special: { ...special, programs: hideUnpublished(special.programs, scheduled, now) } };
+  // 계산기 2종(skin/images/calc2.js) 값: 파일이 없으면 그 칸만 빠진다(그 계산기만 「열 수 없음」)
+  const calc2 = {};
+  for (const k of ['equity', 'wolse']) {
+    const x = await readFile(new URL(`./${k}.json`, import.meta.url), 'utf8').catch((e) => (e.code === 'ENOENT' ? null : Promise.reject(e)));
+    if (x) { calc2[k] = JSON.parse(x); if (calc2[k].schema !== 1) throw new Error(`${k}.json schema가 1이 아님`); }
+  }
+  return { schema: 1, built: new Date().toISOString(), ...rest, loans: hideUnpublished(loans.products, scheduled, now), special: { ...special, programs: hideUnpublished(special.programs, scheduled, now) }, ...calc2 };
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

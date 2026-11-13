@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "checked": "2026-11-13",
+  "note": "지분적립형 「매달 얼마」 계산기(skin/images/calc2.js) 값. 숫자는 docs/policy/equity.md 행에서만 옮긴다(doc = 파일#절#행 첫 칸, text가 그 행 안에 있어야 함 — preview/calc2.check.mjs가 대조). example은 법령 값이 아니라 공고문 한 건의 예시라 화면에 출처 이름(label)을 함께 보인다",
+  "share": { "min": 10, "max": 25, "text": "10% 이상 25% 이하", "doc": "equity.md#2#회차별 취득 비율" },
+  "jeonseRatio": { "v": 80, "text": "전세계약금액 평균의 80%", "doc": "equity.md#3#국토교통부령 산식", "recheck": "2026-11-13 재확인 중 — 바뀌면 이 v만 고친다" },
+  "example": {
+    "label": "GH 광교 A17 공고문 기준 예시",
+    "basis": "공공주택 특별법 시행령 제2조의2·제46조의2, 시행규칙 제30조, GH 광교 A17 입주자모집공고(2026.10.30.)",
+    "price": { "v": 650100000, "text": "650,100,000", "doc": "equity.md#6-1#59A 1층" },
+    "shares": { "v": [25, 20, 20, 20, 15], "text": ["최초 **25%**", "5년마다 20% · 20% · 20% · 15%"], "doc": "equity.md#6#회차" },
+    "gapYears": { "v": 5, "text": "5년마다", "doc": "equity.md#6#회차" },
+    "deposit": { "v": 330000000, "text": "330,000,000원", "doc": "equity.md#6#최초 임대보증금" },
+    "convertPct": { "v": 80, "text": "최대 80%", "doc": "equity.md#6#월세 전환" },
+    "convertUnit": { "v": 1000000, "text": "100만원 단위", "doc": "equity.md#6#월세 전환" },
+    "convRate": { "v": 3.5, "text": "연 3.5%(현재 기준)", "doc": "equity.md#6#월세 전환" }
+  }
+}
