@@ -6,7 +6,7 @@
 // 주의(2026-10-22 실측): 편집기가 입력 도중 자동 임시저장을 하므로 "개수 +1"로 저장을 판정하지 않는다 → 저장본을 다시 열어 확인한다.
 import { readFile, writeFile } from 'node:fs/promises';
 import { join, basename } from 'node:path';
-import { launch, ensureLogin, NEWPOST, ROOT, BLOG, GUARD } from './common.mjs';
+import { launch, ensureLogin, NEWPOST, ROOT, BLOG, GUARD, dayMax } from './common.mjs';
 import { checkDraft } from '../posts/check.mjs';
 import { checkAnalysis, areaOf } from '../posts/analysis_post.mjs';
 import { checkNotice } from '../posts/notice_post.mjs';
@@ -15,9 +15,9 @@ import { IMG_RE } from '../posts/weekly.mjs';
 
 const SEL = JSON.parse(await readFile(join(ROOT, 'tistory', 'selectors.json'), 'utf8'));
 // 티스토리 쪽 부담 줄이기(2026-10-30 사용자 결정: 하루에 저장·대조가 몰린 뒤 보안 확인이 잦아짐).
-// 저장(예약·임시저장·고치기)은 모든 스크립트를 합쳐 하루 DAY_MAX번, 저장 사이는 GAP_MIN분 — 기다릴 땐 브라우저를 띄우기 전에 기다린다.
-// 한도에 걸리면 코드 5(부르는 쪽은 「내일 다시」). REST_UNTIL 전까지는 저장을 모두 쉰다(2026-10-31 사용자 결정: 5일 포스팅 정지 — 이미 예약된 글은 제시간에 공개). 기록 data/tistory_usage.json
-const DAY_MAX = 3, GAP_MIN = 30, REST_UNTIL = '2026-11-05';
+// 저장(예약·임시저장·고치기)은 모든 스크립트를 합쳐 하루 DAY_MAX번(기본 3, TISTORY_DAY_MAX로 낮춤 — 07:00 무인 실행은 1), 저장 사이는 GAP_MIN분 — 기다릴 땐 브라우저를 띄우기 전에 기다린다.
+// 한도에 걸리면 코드 5(부르는 쪽은 「내일 다시」). 저장 단추를 누르기 직전에 센다(markSave) — 보안 확인으로 실패한 시도도 1번. REST_UNTIL 전까지는 저장을 모두 쉰다(2026-10-31 사용자 결정: 5일 포스팅 정지 — 이미 예약된 글은 제시간에 공개). 기록 data/tistory_usage.json
+const DAY_MAX = dayMax(), GAP_MIN = 30, REST_UNTIL = '2026-11-05';
 const USAGE = join(ROOT, 'data', 'tistory_usage.json');
 const kstDay = () => new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
 const usage = async () => { const u = JSON.parse(await readFile(USAGE, 'utf8').catch(() => '{}')); return u.day === kstDay() ? u : { day: kstDay(), saves: 0, last: u.last }; };

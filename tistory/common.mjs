@@ -9,6 +9,11 @@ import { readFile, writeFile } from 'node:fs/promises';
 
 export const ROOT = fileURLToPath(new URL('..', import.meta.url));
 export const SESSION = join(ROOT, 'data', 'tistory-session'); // 절대 커밋·공유하지 않는다(.gitignore)
+// 하루 저장 한도: 기본 3, 환경 변수 TISTORY_DAY_MAX로 낮추기만 한다(2026-11-13 — analysis_auto.bat 07:00 무인 실행은 1). 점검 tistory/queue.check.mjs
+export const dayMax = (v = process.env.TISTORY_DAY_MAX) => { const n = parseInt(v, 10); return n >= 0 && n < 3 ? n : 3; };
+// 대기열 항목 「slug@YYYY-MM-DD」: 그날(한국 시각 day) 전에는 건너뛰고 대기열에 그대로 남긴다. 남길 땐 원래 표기 그대로(queueLeft)
+export const dueOn = (t, day) => !t.includes('@') || t.slice(t.indexOf('@') + 1) <= day;
+export const queueLeft = (raw, left, day) => raw.filter((t) => !dueOn(t, day) || left.includes(t.split('@')[0]));
 // 티스토리 로그인 쿠키는 세션 쿠키라 브라우저를 닫으면 프로필에서 사라진다 → 로그인 직후 따로 저장해 두고 실행 때 다시 넣는다
 const COOKIES = join(ROOT, 'data', 'tistory-cookies.json');
 const isTistory = (c) => /(^|\.)tistory\.com$/.test(c.domain.replace(/^\./, ''));

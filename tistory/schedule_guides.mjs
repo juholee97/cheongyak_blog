@@ -2,12 +2,13 @@
 // node tistory/schedule_guides.mjs --start "2026-10-24 19:00" --times 08:00,19:00 slug1 slug2 ...
 // node tistory/schedule_guides.mjs --queue data/guide_queue.txt   승인된 대기열(공백으로 나눈 slug)을 빈 시각에. 예약한 글은 대기열에서 빼고,
 //   티스토리 하루 글 한도(10-27부터 5개)에 걸리면 나머지는 남겨 둔 채 끝낸다(10-27부터 analysis_auto.bat 07:00 분석 글 뒤 --max 3, 예전 작업 스케줄러 cheongyak_guide_queue가 매일 00:30에 다시).
+//   대기열 항목을 slug@YYYY-MM-DD로 쓰면 그날(한국 시각)부터 예약한다(그 전엔 대기열에 그대로).
 // 순서: 빈 시각마다, 그 시각에 이미 공개돼 있을 관련 글이 가장 많은 글부터. 링크는 늘 더 이른 시각의 글만 가리킨다(guide.mjs --at).
 // 한 편마다 posts/guide.mjs로 다시 그려(관련 글 갱신) 검수한 뒤 draft.mjs --schedule. 하나라도 실패하면 멈춘다.
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { ROOT } from './common.mjs';
+import { ROOT, dueOn, queueLeft } from './common.mjs';
 import { relatedOf } from '../posts/guide.mjs';
 
 // 대기열 자동 실행(작업 스케줄러)에서 멈추면 화면에 알림 창 하나
@@ -23,9 +24,12 @@ const start = arg('--start') || soon || (queue ? `${from.getFullYear()}-${pad0(f
 const times = (arg('--times') || '08:00,12:00,19:00').split(',');
 const gap = +(arg('--gap') ?? (queue ? 180 : 0));
 const max = +(arg('--max') ?? (queue ? 6 : Infinity)); // 한 번에 예약할 최대 편수(대기열은 하루 6편 — 하루 3편씩 나가니 앞으로 쌓이는 양이 늘 2주쯤 앞서 있다) // 글 사이 쉬는 초(짧은 시간에 저장이 몰리면 보안 확인이 뜬다 — 2026-10-24)
-const slugs = queue ? (await readFile(join(ROOT, queue), 'utf8').catch(() => '')).split(/\s+/).filter(Boolean)
+// 대기열 항목 「slug@YYYY-MM-DD」는 그날(한국 시각) 전엔 건너뛰고 남긴다(2026-11-13)
+const today = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10);
+const raw = queue ? (await readFile(join(ROOT, queue), 'utf8').catch(() => '')).split(/\s+/).filter(Boolean) : [];
+const slugs = queue ? raw.filter((t) => dueOn(t, today)).map((t) => t.split('@')[0])
   : process.argv.slice(2).filter((a, i, all) => !a.startsWith('--') && !['--start', '--times', '--queue', '--gap', '--max'].includes(all[i - 1]));
-if (queue && !slugs.length) { console.log('대기열 비어 있음'); process.exit(0); }
+if (queue && !slugs.length) { console.log(raw.length ? `오늘 차례 없음 — 날짜 전이라 남김: ${raw.join(' ')}` : '대기열 비어 있음'); process.exit(0); }
 const json = async (p, d = {}) => JSON.parse(await readFile(join(ROOT, p), 'utf8').catch(() => JSON.stringify(d)));
 const pad = (n) => String(n).padStart(2, '0');
 
@@ -43,7 +47,8 @@ function* slots() {
 }
 
 // 예약이 실패한 글은 임시저장해 둔다(사람이 직접 발행할 수 있게, 2026-10-27 사용자 결정). 대기열엔 그대로 남아 다음에 다시 예약을 시도하고,
-// 같은 글을 두 번 임시저장하지 않게 data/drafted_fallback.txt에 적는다. 가이드 대기열의 하루 한도(코드 5)는 실패가 아니라 내일 차례라 빼고, --soon 글은 한도도 포함.
+// 같은 글을 두 번 임시저장하지 않게 data/drafted_fallback.txt에 적는다. 하루 한도(코드 5)는 실패가 아니라 내일 차례라 뺀다 — --soon 글도(2026-11-13: 임시저장도
+// draft.mjs 하루 한도를 쓰므로 한도에 걸린 글을 임시저장하려 해도 또 코드 5).
 async function toDrafts(slug, run) {
   const file = join(ROOT, 'data/drafted_fallback.txt');
   const had = (await readFile(file, 'utf8').catch(() => '')).split(/\s+/);
@@ -66,13 +71,13 @@ while (left.length && done < max) {
   const run = (args) => spawnSync(process.execPath, args, { cwd: ROOT, stdio: 'inherit' }).status;
   if (run(['posts/guide.mjs', `drafts/guide_${slug}.json`, '--at', when]) !== 0) { console.log(`검수 실패 — ${slug}에서 멈춤`); process.exit(4); }
   const code = run(['tistory/draft.mjs', `drafts/guide_${slug}.json`, '--approved', '--schedule', when]);
-  if (code && (code !== 5 || soon)) await toDrafts(slug, run);
+  if (code && code !== 5) await toDrafts(slug, run);
   if (code === 6) { const m = `티스토리 보안 확인(reCAPTCHA)이 떠서 멈춤 — ${left.length}편은 대기열에 남김. 티스토리에서 직접 글을 한 번 저장해 보거나 시간이 지난 뒤 다시`; console.log(m); notify(m); process.exit(6); }
   if (code === 5) { console.log(`티스토리 하루 글 한도 — ${left.length}편은 대기열에 남겨 두고 내일 다시`); process.exit(0); }
   if (code !== 0) { const m = `예약 실패(코드 ${code}) — ${slug}에서 멈춤. 티스토리 글 목록을 확인하세요.`; console.log(m); notify(m); process.exit(code); }
   left.splice(left.indexOf(slug), 1);
   done++;
-  if (queue) await writeFile(join(ROOT, queue), left.join(' '));
+  if (queue) await writeFile(join(ROOT, queue), queueLeft(raw, left, today).join(' '));
   if (gap && left.length) await new Promise((r) => setTimeout(r, gap * 1000));
 }
 console.log('\n모두 예약했습니다.');

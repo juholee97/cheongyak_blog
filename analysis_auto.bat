@@ -35,19 +35,20 @@ call crawler\push_house.bat
 rem analysis posts off 2026-11-10
 set RC=0         
 if not exist data\logs mkdir data\logs
-rem Tistory daily post limit is now 5 (2026-10-27), so one run in priority order: analysis posts, then up to 3 queued guides, then retrofits.
-rem Since 2026-10-30 tistory\draft.mjs allows 3 saves a day in total, 30 minutes apart, and no edits of posts until 2026-11-03 (data\tistory_usage.json).
-rem The 00:30 guide queue task is disabled; guides run here after analysis posts.
+rem Tistory saves here: at most 1 a day (2026-11-13 user decision). The second save of a morning usually hits Tistory's security check (reCAPTCHA)
+rem and nobody is at the PC at 07:00. Manual runs and weekly_auto.bat keep 3 a day (tistory\draft.mjs, data\tistory_usage.json).
+rem A failed try also uses the save, so later steps end with code 5 without opening a browser. Order: weekly retry, urgent posts, Tue/Fri guide, refresh.
+set TISTORY_DAY_MAX=1
 rem Weekly schedule post retry (2026-11-11): on Monday, if Sunday 18:00 could not save this week's post, it goes first here
 node posts\auto.mjs --catch-up > nul 2>> data\logs\weekly_auto.log
 rem Approved time-sensitive posts (policy news) first: data\priority_queue.txt, earliest free 09:30 or 15:30 slot from one hour later (2026-10-27)
 echo ===== %DATE% %TIME% priority >> data\logs\guide_queue.log
-node tistory\schedule_guides.mjs --queue data\priority_queue.txt --soon --times 09:30,15:30 --max 2 >> data\logs\guide_queue.log 2>&1
-rem Monthly refresh of published guides (new check date and month stamp, queue data\guide_refresh.txt) goes before new guides (2026-10-27)
+node tistory\schedule_guides.mjs --queue data\priority_queue.txt --soon --times 09:30,15:30 --max 1 >> data\logs\guide_queue.log 2>&1
+echo ===== %DATE% %TIME% >> data\logs\guide_queue.log
+call tistory\guide_week.bat
+rem Monthly refresh of published guides (new check date and month stamp, queue data\guide_refresh.txt), after the Tue/Fri guide since 2026-11-13
 echo ===== %DATE% %TIME% >> data\logs\guide_refresh.log
 node posts\refresh_run.mjs --max 2 >> data\logs\guide_refresh.log 2>&1
-echo ===== %DATE% %TIME% >> data\logs\guide_queue.log
-call tistory\guide_week.bat                                                                            
 rem Retrofit of published analysis posts stopped 2026-11-10.                                                                         
 rem off                                                    
 rem off                                                                         
