@@ -16,7 +16,7 @@ import { allDeep, folders as deepFolders } from './deep.mjs';
 import { loadViews } from './views.mjs';
 import { loadLog, saveLog, applyLog } from './revlog.mjs';
 import { purge } from './site.mjs';
-import { loadStages, stageOf, stamped, stampLive, isEnded, deepFirst } from './stage.mjs';
+import { loadStages, stageOf, stamped, stampLive, isEnded, deepFirst, unstampHeld } from './stage.mjs';
 import { noOf } from './deep_targets.mjs';
 
 const kst = () => new Date(Date.now() + 9 * 3600e3);
@@ -48,6 +48,7 @@ if (process.argv.includes('--check')) {
   assert.equal(stamped('[종료] X', 'ended'), '[종료] X');
   assert.equal(stamped('[신청마감] X', ''), 'X');
   assert.deepEqual(['apt-1', 'deep-2', 'apt-3', 'deep-4'].map((slug) => ({ slug })).sort(deepFirst).map((e) => e.slug), ['deep-2', 'deep-4', 'apt-1', 'apt-3']); // [신청마감] 떼기는 심층 분석 글부터
+  assert.equal(unstampHeld(ymd(kst())), true); // 2026-11-14 미루기: 단계 그대로인 closed 글의 옛 [신청마감]은 떼지 않는다(stampLive·upsert). 날짜를 넣으면 이 줄을 고친다
   assert.equal(stageOf([{ k: 'win', date: '2026-01-01' }], '2026-11-09'), ''); // 접수일 없는 자료는 표시하지 않는다
   assert.equal(stamped(stamped('[서울] 제목', 'closed'), 'ended'), '[종료] [서울] 제목'); // 앞 표시만 갈아 끼우고 지역 표시는 둔다
   assert.equal(stamped('[종료] 제목', ''), '제목');

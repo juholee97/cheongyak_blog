@@ -20,8 +20,10 @@ export function stageOf(phases, today) {
 export const stamped = (title, stage) => (stage === 'ended' ? '[종료] ' : '') + title.replace(/^\[(?:종료|신청마감|D-(?:\d+|Day))\]\s*/, '');
 export const isEnded = (stages, slug) => stages[slug]?.stage === 'ended';
 
-// 옛 [신청마감] 떼기는 11.14 오전 색인 확인이 끝난 뒤(11.15)부터, 한꺼번에 46편을 고치지 않게 하루 수정 한도(wp.mjs UPDATE_CAP) 안에서 심층 분석 글부터
-const UNSTAMP_FROM = '2026-11-15';
+// 옛 [신청마감] 떼기는 한꺼번에 46편을 고치지 않게 하루 수정 한도(wp.mjs UPDATE_CAP) 안에서 심층 분석 글부터
+// 2026-11-14 사용자 결정(미루기): 구글 색인 이탈 확인 — 색인 회복 확인 뒤 날짜를 넣는다. 그 전엔 떼지 않는다(wp.mjs upsert도 이 값으로 공개 글의 옛 [신청마감]을 그대로 둔다)
+const UNSTAMP_FROM = '9999-12-31';
+export const unstampHeld = (today, from = UNSTAMP_FROM) => today < from;
 export const deepFirst = (a, b) => b.slug.startsWith('deep-') - a.slug.startsWith('deep-');
 
 // entries: [{ slug, title(표시 없는 제목), phases }]. 단계가 바뀐 글은 제목을 바로 고친다. 아직 공개 안 된 글은 건너뛴다
@@ -31,7 +33,7 @@ export async function stampLive(entries, stages, today) {
     if (isEnded(stages, slug)) continue;
     const ph = phases.length ? phases : stages[slug]?.phases || [], stage = stageOf(ph, today), changed = stage !== (stages[slug]?.stage || '');
     // ponytail: closed 글은 옛 [신청마감] 제목을 떼려고 매번 읽는다(읽기만, 다를 때만 고침). 장부의 closed 글이 모두 [신청마감] 없는 제목이 되면 이 예외를 지워도 된다
-    if (!changed && (stage !== 'closed' || today < UNSTAMP_FROM)) continue;
+    if (!changed && (stage !== 'closed' || unstampHeld(today))) continue;
     try {
       const [p] = await wp(`posts?slug=${encodeURIComponent(slug)}&status=publish&context=edit`);
       if (!p) continue;

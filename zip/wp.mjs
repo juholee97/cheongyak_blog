@@ -86,11 +86,13 @@ export async function upsert(post, at, now = false) {
   const bump = old?.status === 'publish' && !post.urgent && old.title.raw.replace(/^\[신청마감\]\s*/, '') === post.title; // 옛 [신청마감]만 떨어지는 수정은 한도 안에서(2026-11-13)
   if (old?.status === 'publish' && !post.urgent && heldEdit(post.slug)) { console.log(`미룸 ${post.slug}: 시세 비교 글 결정 전까지 기존 글 수정 멈춤`); return { id: old.id, link: old.link, status: 'deferred', ok: false }; }
   if (bump && !(await takeBudget())) { console.log(`미룸 ${post.slug}: 오늘 공개 글 수정 ${UPDATE_CAP}번을 다 씀 — 내일 다시`); return { id: old.id, link: old.link, status: 'deferred', ok: false }; }
-  const body = { slug: post.slug, title: post.title, content: post.html, excerpt: post.excerpt || '', tags: await termIds('tags', post.tags), categories: await termIds('categories', post.categories), ...(post.featured ? { featured_media: post.featured } : {}), status: at ? 'future' : now ? 'publish' : 'draft', ...(at ? { date: at.replace(' ', 'T') + ':00' } : now && old?.status === 'future' ? { date: new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 19) } : {}) }; // 예약 글을 바로 공개할 때는 날짜도 지금으로(미래 날짜가 남으면 워드프레스가 예약 상태로 둔다)
+  // 2026-11-14 미루기: 떼기 보류 중(stage.mjs UNSTAMP_FROM)엔 공개 글의 옛 [신청마감] 제목을 그대로 두고 본문·숫자만 고친다(--urgent 포함)
+  const title = old?.status === 'publish' && /^\[신청마감\]/.test(old.title.raw) && old.title.raw.replace(/^\[신청마감\]\s*/, '') === post.title && (await import('./stage.mjs')).unstampHeld(new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10)) ? old.title.raw : post.title;
+  const body = { slug: post.slug, title, content: post.html, excerpt: post.excerpt || '', tags: await termIds('tags', post.tags), categories: await termIds('categories', post.categories), ...(post.featured ? { featured_media: post.featured } : {}), status: at ? 'future' : now ? 'publish' : 'draft', ...(at ? { date: at.replace(' ', 'T') + ':00' } : now && old?.status === 'future' ? { date: new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 19) } : {}) }; // 예약 글을 바로 공개할 때는 날짜도 지금으로(미래 날짜가 남으면 워드프레스가 예약 상태로 둔다)
   const res = await wp(old ? `posts/${old.id}` : 'posts', { method: 'POST', body });
   // 확인: 다시 불러와 제목·본문 길이·상태 대조
   const back = await wp(`posts/${res.id}?context=edit`);
-  const ok = back.title.raw === post.title && back.content.raw === post.html && back.status === body.status;
+  const ok = back.title.raw === title && back.content.raw === post.html && back.status === body.status;
   if (ok) await u.save({ id: res.id, link: back.link, status: back.status });
   return { id: res.id, link: back.link, status: back.status, ok };
 }
