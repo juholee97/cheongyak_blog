@@ -1,4 +1,5 @@
 // auleezip.com 공개 규칙(2026-10-30 사용자 결정): 시세 비교·임대 글은 공고가 나오면 바로 발행(예전 「접수 7일 전 09:00 예약」은 폐기).
+// 2026-11-15 사용자 「멈추기」: 새 공고의 시세 비교 글은 올리지 않는다(wp.mjs APT_NEW_HOLD — 「미룸 apt-…」 로그, 장부·목록·링크 목록에도 안 들어감). 계산은 심층 분석 가격 절에 그대로.
 // 심층 분석 글만 첫 접수일 7일 전 06:00 예약(zip/deep.mjs, 규칙은 zip/post.mjs planOf) — 06:00이라 07:00 매일 실행이 그날 첫 화면·시세 비교 글에 연결한다.
 // 접수가 끝난 공고도 글에 「접수 마감」 표시를 달아 계속 공개한다(현재 열린 공고 페이지로 보내 사이트 안을 돌게 한다).
 // node zip/publish.mjs          계획만 출력(올리지 않음)
@@ -8,7 +9,7 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { ROOT } from '../tistory/common.mjs';
-import { upsert, upsertPage, uploadMedia, wp } from './wp.mjs';
+import { upsert, upsertPage, uploadMedia, wp, heldNew } from './wp.mjs';
 import { closedOf, planOf, liveDeep } from './post.mjs';
 export { planOf }; // zip/sh_write.mjs가 여기서 불러 쓴다
 import { openPage, methodPage, aboutPage, privacyPage, saleList, deepList, rentList, withSchedule, rentals } from './pages.mjs';
@@ -56,6 +57,10 @@ if (process.argv.includes('--check')) {
   assert.equal(heldEdit('apt-2026000517', true), true);
   assert.equal(heldEdit('deep-2026000517', true), false);
   assert.equal(heldEdit('apt-2026000517', false), false);
+  const { heldNew, APT_NEW_HOLD } = await import('./wp.mjs'); // 새 공고 시세 비교 글 멈춤(2026-11-15): 없거나 초안·예약인 apt 글만, 공개된 apt·deep 글은 무관
+  assert.equal(APT_NEW_HOLD, true); // 풀면 이 줄을 고친다
+  assert.deepEqual([undefined, 'draft', 'future'].map((s) => heldNew('apt-2026000600', s)), [true, true, true]);
+  assert.deepEqual([heldNew('apt-2026000517', 'publish'), heldNew('deep-2026000600', undefined), heldNew('deep-2026000600', 'future'), heldNew('apt-2026000600', undefined, false)], [false, false, false, false]);
   { // 목록 첫 그림만 바로 받기(2026-11-13 휴대폰 LCP): 그림 없는 칸은 건너뛰고 실제 첫 그림이 eager, 나머지는 lazy
     const R = (no) => ({ no, name: `단지${no}`, region: '서울', phases: [{ k: 'p1', date: `2026-12-0${no}` }] }), V = { url: 'v.jpg' };
     const html = saleList([R(1), R(2), R(3)], '2026-11-13', {}, { 1: { link: 'a' }, 2: { link: 'b' }, 3: { link: 'c' } }, { 2: V, 3: V });
@@ -77,13 +82,15 @@ if (process.argv.includes('--check')) {
     const phases = items.filter((x) => x.name === r.name).flatMap((x) => x.phases || []);
     const pl = planOf(phases, today);
     let res = '', held = false;
+    const fresh = heldNew(post.slug, reg[r.no] ? 'publish' : ''); // 장부에 없는 apt 글 = 아직 공개 안 된 새 글. 2026-11-15 멈춤 — 막는 곳은 wp.mjs upsert, 여기선 대표 이미지도 올리지 않는다
+    if (!go && fresh) res = ' → 멈춤(새 시세 비교 글)';
     if (go) {
-      post.featured = await uploadMedia(join(ROOT, 'data/zip_posts/img', `${r.no}.png`), `apt-${r.no}.png`, post.title).catch(() => undefined); // 대표 이미지(없으면 글만)
+      post.featured = fresh ? undefined : await uploadMedia(join(ROOT, 'data/zip_posts/img', `${r.no}.png`), `apt-${r.no}.png`, post.title).catch(() => undefined); // 대표 이미지(없으면 글만)
       post.title = stamped(post.title, stageOf(phases, today));
       post.html = applyLog(store, post, { today, first: pl.mode === 'at' ? pl.at.slice(0, 10) : today });
       const o = await upsert(post, pl.mode === 'at' ? pl.at : null, pl.mode === 'now');
       if (o.ok) await saveLog(store);
-      held = o.status === 'held';
+      held = o.status === 'held' || o.status === 'stopped'; // 공개 안 된 글은 장부·목록·링크 목록에 넣지 않는다
       res = ` → ${o.ok ? '✓' : '✗'} ${o.status} ${o.link}`;
     }
     if (pl.mode === 'now') live.push({ ...r, phases });

@@ -13,6 +13,8 @@ export const UPDATE_CAP = 10; // 이미 공개된 글을 하루에 고치는 횟
 const BUDGET = join(ROOT, 'data/zip_update_budget.json');
 export const APT_EDIT_HOLD = true; // 2026-11-13 사용자: 시세 비교 글 존폐 결정(11.14 뒤)까지 이미 공개된 apt 글 본문 수정 멈춤(제목이 바뀌는 날도 — 제목 표시는 publish.mjs의 stampLive가 제목만 고친다). 풀려면 false
 export const heldEdit = (slug, hold = APT_EDIT_HOLD) => hold && slug.startsWith('apt-');
+export const APT_NEW_HOLD = true; // 2026-11-15 사용자 「멈추기」: 새 공고의 시세 비교(apt) 글은 따로 올리지 않는다 — 워드프레스에 없거나 공개 전인 apt 글을 만들거나 공개하지 않음. 계산·자료(deals.mjs·post.mjs → data/zip_posts)는 그대로 심층 분석 가격 절이 쓴다. 공개된 apt 글은 그대로(APT_EDIT_HOLD). 풀려면 false
+export const heldNew = (slug, status, hold = APT_NEW_HOLD) => hold && slug.startsWith('apt-') && status !== 'publish';
 
 export const env = async (k) => process.env[k] || (await readFile(join(ROOT, '.env'), 'utf8').catch(() => '')).match(new RegExp(`^${k}=(.+)$`, 'm'))?.[1]?.trim();
 
@@ -78,6 +80,7 @@ export async function upsert(post, at, now = false) {
   if (u.hit) return { id: u.hit.id, link: u.hit.link, status: u.hit.status, ok: true, skipped: true };
   const [old] = await wp(`posts?slug=${encodeURIComponent(post.slug)}&status=draft,future,publish&context=edit`);
   if (old?.status === 'publish' && !at && !now) throw new Error(`이미 공개된 글(${old.link}) — 고치려면 --at 없이 따로 결정`);
+  if (heldNew(post.slug, old?.status)) { console.log(`미룸 ${post.slug}: 새 공고 시세 비교 글은 따로 올리지 않음(2026-11-15 멈추기)`); return { id: old?.id ?? null, link: old?.link || '', status: 'stopped', ok: false }; }
   // 서치 콘솔 비율이 오르면 새 글만 멈춘다(zip/index_watch.mjs). 임시글(at·now 없음)과 기존 글 고치기는 막지 않는다
   if (!old && (at || now)) { const hold = await (await import('./index_watch.mjs')).holdReason(); if (hold) { console.log(`새 글 보류 ${post.slug}: ${hold}`); return { id: null, link: '', status: 'held', ok: false }; } }
   // 일괄 수정 속도 제한(2026-11-11 사용자: 일괄 수정에도 색인에서 빠지지 않게). 11.9~10에 이틀 동안 공개 글을 440번 고친 뒤 다시 크롤링된 글이 색인에서 빠졌다.

@@ -226,6 +226,8 @@ if (process.argv[1]?.endsWith('post.mjs')) {
     if (liveDeep(d)) for (const no of fo.find((n) => n.includes(key)) || [key]) deepOf[no] = { link: d.link, img: views[key]?.url, label: views[key]?.label };
   }
   const MORE = join(ROOT, 'data/zip_more.json'), frozen = JSON.parse(await readFile(MORE, 'utf8').catch(() => '{}'));
+  // 2026-11-15 새 공고 시세 비교 글 멈춤(wp.mjs APT_NEW_HOLD): 「함께 보면 좋은 글」에는 공개된(장부에 있는) 글만 새로 고른다
+  const reg = JSON.parse(await readFile(join(ROOT, 'data/zip_registry.json'), 'utf8').catch(() => '{}')), { APT_NEW_HOLD } = await import('./wp.mjs');
   for (const r of list) {
     if (only && !only.includes(r.no)) continue;
     const closed = closedOf(r.phases, today);
@@ -234,7 +236,7 @@ if (process.argv[1]?.endsWith('post.mjs')) {
     // 같은 지역의 다른 시세 비교 글 최대 2편(열린 공고 먼저). 처음 고른 2편을 data/zip_more.json에 고정한다(2026-11-11 사용자: 일괄 수정에도 색인에서 빠지지 않게) —
     // 예전에는 새 글이 생길 때마다 목록이 바뀌어 시세 비교 글이 거의 매일 다시 저장됐다(2주 동안 글 하나에 최대 22번)
     const keep = (frozen[r.no] || []).filter((no) => list.some((x) => x.no === no && x.no !== r.no));
-    const pick = [...keep, ...list.filter((x) => x.no !== r.no && x.region === r.region && !keep.includes(x.no)).sort((a, b) => closedOf(a.phases, today) - closedOf(b.phases, today)).map((x) => x.no)].slice(0, 2);
+    const pick = [...keep, ...list.filter((x) => x.no !== r.no && x.region === r.region && !keep.includes(x.no) && (!APT_NEW_HOLD || reg[x.no])).sort((a, b) => closedOf(a.phases, today) - closedOf(b.phases, today)).map((x) => x.no)].slice(0, 2);
     frozen[r.no] = pick;
     for (const o of pick.map((no) => list.find((x) => x.no === no))) more.push({ url: `https://auleezip.com/apt-${o.no}/`, label: `${shortName(o.name)} 시세 비교` });
     more.push({ url: OPEN_URL, label: '심층 분석 보기' }, { url: CAL_URL, label: '청약 일정 달력 (우리의 청약달력)' });

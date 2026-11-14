@@ -330,6 +330,9 @@ export async function check(key) {
   if (!(await noticeDateOf(key, d))) issues.push('공고 기준일 없음(noticeDate)');
   if (!d.link) {
     issues.push(...titleIssues(d.title, folder));
+    // 2026-11-15 새 공고 시세 비교 글 멈춤(wp.mjs APT_NEW_HOLD): 공개된 적 없는 apt 글로 링크하지 않는다(올린 기록 data/zip_wp_state.json)
+    const { heldNew } = await import('./wp.mjs'), wst = JSON.parse(await readFile(join(ROOT, 'data/zip_wp_state.json'), 'utf8').catch(() => '{}'));
+    for (const [t, u] of d.blocks.flatMap((b) => b.links || [])) { const s = String(u).match(/auleezip\.com\/(apt-\d+)/)?.[1]; if (s && heldNew(s, wst[`post:${s}`]?.status)) issues.push(`없는 시세 비교 글로 링크(새 공고는 시세 비교 글을 따로 올리지 않음 — links에서 뺀다): 「${t}」 ${u}`); }
     const plain = (t) => t.replace(/(\d),(?=\d{3})/g, '$1');
     const notice = plain((await Promise.all(((await folders())[folder] || [key]).map((n) => readFile(join(ROOT, 'data/notice_text', `${n}.json`), 'utf8').catch(() => '')))).join('\n'));
     if (!d.added?.length) issues.push('added 없음: 원문 공고에 없는데 이 글이 더한 정보를 적는다 — 답이 없으면 발행 유보');
