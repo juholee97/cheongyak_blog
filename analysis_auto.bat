@@ -13,8 +13,6 @@ if not exist data\logs mkdir data\logs
 rem Policy news candidates (official press releases and legislative notices), list only: data\policy_candidates.md (2026-10-27)
 echo ===== %DATE% %TIME% >> data\logs\policy_watch.log
 node posts\policy_watch.mjs >> data\logs\policy_watch.log 2>&1
-rem auleezip: notices open for application with no price-comparison post yet -> popup + data\zip_new.json (2026-10-28). Posts are made together with the user.
-node zip\new_notices.mjs >> data\logs\zip_new.log 2>&1
 rem auleezip daily refresh (2026-10-29 user decision): closed-notice banners, open-notices page (receipt status, D-day), revision log, cache purge.
 rem Only existing data is re-rendered (no new notices are added here) and held drafts are not touched (--live = already published only).
 rem Interest numbers (Naver search trend, news count, YouTube metadata) refreshed once a week per notice; closed notices keep their last values (2026-10-29)
@@ -52,6 +50,10 @@ node posts\refresh_run.mjs --max 2 >> data\logs\guide_refresh.log 2>&1
 rem Retrofit of published analysis posts stopped 2026-11-10.                                                                         
 rem off                                                    
 rem off                                                                         
+rem Runs last: new_notices.mjs shows a popup that waits for a click, and nobody is at the PC at 07:00.
+rem On 2026-11-13 and 2026-11-14 that popup blocked every later step (auleezip refresh, Tistory scheduling).
+rem auleezip: notices open for application with no price-comparison post yet -> popup + data\zip_new.json (2026-10-28). Posts are made together with the user.
+node zip\new_notices.mjs >> data\logs\zip_new.log 2>&1
 exit /b %RC%
 :check
 node tistory\guard.check.mjs                

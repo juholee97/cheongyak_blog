@@ -8,12 +8,14 @@
 // 한 편마다 posts/guide.mjs로 다시 그려(관련 글 갱신) 검수한 뒤 draft.mjs --schedule. 하나라도 실패하면 멈춘다.
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { ROOT, dueOn, queueLeft, nudged, slotTaken } from './common.mjs';
 import { relatedOf } from '../posts/guide.mjs';
 
 // 대기열 자동 실행(작업 스케줄러)에서 멈추면 화면에 알림 창 하나
-const notify = (msg) => { if (!queue) return; const ps = `Add-Type -AssemblyName PresentationFramework; [System.Windows.MessageBox]::Show('${msg.replace(/'/g, "''")}', '청약 가이드 대기열 예약') | Out-Null`; spawnSync('powershell', ['-NoProfile', '-Command', ps], { stdio: 'ignore' }); };
+const notify = (msg) => { if (!queue) return; const ps = `Add-Type -AssemblyName PresentationFramework; [System.Windows.MessageBox]::Show('${msg.replace(/'/g, "''")}', '청약 가이드 대기열 예약') | Out-Null`;
+  // 창을 띄우고 기다리지 않는다 — 07:00 실행기의 다음 단계가 창 때문에 멈추지 않게(2026-11-14, posts/auto.mjs와 같은 방식)
+  spawn('powershell', ['-NoProfile', '-Command', ps], { stdio: 'ignore', detached: true }).unref(); };
 const arg = (k) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : null; };
 const queue = arg('--queue');
 const pad0 = (n) => String(n).padStart(2, '0');
