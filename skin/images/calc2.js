@@ -1,5 +1,5 @@
 /* 계산기 2종 — 지분적립형 「매달 얼마」(equity) · 월세 세액공제(wolse). 정책대출 확인기(calc.js)와 따로 둔 파일.
- * 글 주소가 PAGES에 있으면 그 글 본문 앞(.post-body 앞)에 계산기를 그린다. 값은 rules.json의 equity·wolse(원본 rules/equity.json·wolse.json)에서만 읽는다.
+ * 글 주소가 PAGES에 있으면 그 글 도입 문단 뒤, 목차 앞(목차가 없으면 첫 h2 앞, place)에 계산기를 그린다. 값은 rules.json의 equity·wolse(원본 rules/equity.json·wolse.json)에서만 읽는다.
  * 입력값은 이 스크립트 변수에만 둔다. 저장·전송하지 않는다. 전체를 try로 감싸 다른 스크립트·페이지를 막지 않게 한다.
  * node 점검(preview/calc2.check.mjs): vm으로 읽어 CY2만 꺼낸다(document가 없으면 화면 코드는 건너뜀). */
 (function (g) {
@@ -152,6 +152,15 @@
   function path(u) {
     try { return decodeURIComponent(new URL(u, location.href).pathname).replace(/\/+$/, '') || '/'; } catch (e) { return ''; }
   }
+  // 계산기 자리(2026-11-15): 본문 맨 위 광고와 붙지 않게 도입 문단 뒤, 목차 앞. 첫 h2 바로 앞이 목차 상자(글 안 #링크 목록 ol, posts/weekly.mjs toc)면 그 앞, 아니면 첫 h2 앞.
+  // h2가 없으면 첫 문단 뒤, 둘 다 없으면 본문 앞. calc.js에 같은 함수
+  function place(box, body) {
+    var h = body.querySelector('h2'), p = !h && body.querySelector('p');
+    if (h && h.previousElementSibling && h.previousElementSibling.querySelector('ol a[href^="#"]')) h = h.previousElementSibling;
+    if (h) h.parentNode.insertBefore(box, h);
+    else if (p) p.parentNode.insertBefore(box, p.nextSibling);
+    else body.parentNode.insertBefore(box, body);
+  }
   if (typeof document === 'undefined') return;
   try {
     var kind = (g.CY2_PAGES || PAGES)[path(location.href)], body = document.querySelector('.post-body');
@@ -160,13 +169,20 @@
     box.className = 'cy-calc';
     box.setAttribute('aria-label', LABEL[kind]);
     box.innerHTML = '<p class="cy-calc-loading">계산기를 불러오는 중이에요…</p>';
-    body.parentNode.insertBefore(box, body);
+    place(box, body);
     var fail = function () { box.innerHTML = '<p class="cy-calc-fail">지금은 계산기를 열 수 없어요. 아래 본문의 표와 예시를 확인해 주세요.</p>'; };
     var base = String(g.CHEONGYAK_SCHEDULE_URL || '').replace(/[^\/]*$/, '');
     if (!base) fail();
     else fetch(base + 'rules.json', { cache: 'no-cache' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (rules) {
       if (!rules || rules.schema !== 1 || !rules[kind] || rules[kind].schema !== 1) return fail();
       MOUNT[kind](box, rules[kind]);
+      // 사람이 입력한 뒤 결과 칸이 처음 나왔을 때 페이지 조회당 1번(GA, 지분적립형은 기본값 결과가 처음부터 있어 입력 뒤로 셈). 입력값은 보내지 않는다
+      var sent = false;
+      box.addEventListener('input', function () {
+        if (sent || !box.querySelector('.cy2-out .cy-group')) return;
+        sent = true;
+        if (g.gtag) g.gtag('event', 'calc_result', { calc_kind: kind });
+      });
     }).catch(fail);
   } catch (e) { /* 다른 스크립트와 페이지를 막지 않는다 */ }
 })(this);

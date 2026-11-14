@@ -447,7 +447,12 @@
   "equity-share": [
     "newhome-types",
     "land-lease",
-    "public-income-asset"
+    "public-income-asset",
+    "equity-calculator"
+  ],
+  "equity-calculator": [
+    "equity-share",
+    "loan-calculator"
   ],
   "wolse-tax-credit": [
     "savings-account-2026",

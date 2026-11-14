@@ -120,6 +120,13 @@ try {
   await page.route(/^https?:\/\/(?!localhost)/, (x) => x.abort());
   await page.goto(`${BASE}/post`);
   if (await page.locator('.cy2-out').count()) fails.push('/post에 calc2 계산기가 그려짐');
+  // 계산기 자리(calc.js·calc2.js place): 계산기 → 목차 상자 → 첫 h2(계산기 뒤엔 보이지 않는 알림 줄 .cy-live만 끼어도 됨)
+  for (const p of ['/calc', '/calc-equity', '/calc-wolse']) {
+    await page.goto(BASE + p);
+    await page.waitForSelector('.cy-calc');
+    const at = await page.evaluate(() => { let e = document.querySelector('.cy-calc').nextElementSibling; while (e?.classList.contains('cy-live')) e = e.nextElementSibling; return !!e?.querySelector('ol a[href^="#"]') && e.nextElementSibling === document.querySelector('.post-body h2'); });
+    if (!at) fails.push(`${p}: 계산기 → 목차 → 첫 h2 순서가 아님`);
+  }
 } finally {
   await browser.close();
   server?.kill();

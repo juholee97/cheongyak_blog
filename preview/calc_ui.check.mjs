@@ -157,6 +157,7 @@ try {
     await noOverflow(page, '결과'); await targets44(page, '결과');
     // 진짜 마우스: 숫자 칸을 고친 뒤 바로 다른 버튼
     await fill(page, '다른 대출', 123);
+    await q(page, '규제지역').locator('button', { hasText: '아니오' }).scrollIntoViewIfNeeded(); // 계산기가 본문 안(첫 h2 앞)으로 내려가 버튼이 화면 밖일 수 있다. 스크롤만 하고 칸 포커스는 그대로
     const box = await q(page, '규제지역').locator('button', { hasText: '아니오' }).boundingBox();
     await page.mouse.click(box.x + 5, box.y + 5);
     await page.waitForTimeout(50);

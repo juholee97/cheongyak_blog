@@ -1,6 +1,6 @@
 /* 정책대출 확인기(리모컨) — docs/eligibility-calculator-design.md 15·16절
  * 모든 화면: 오른쪽 아래 「정책대출 확인」 버튼(계산기 페이지로 가는 링크 하나). 분양분석 글이면 주소 뒤에 #n=공고번호, 대출 글이면 #calc=loan&t=유형.
- * 계산기 페이지(CALC_PAGE)에서만: 본문 앞에 계산기를 그리고 rules.json(+ #n=이면 notices.json)을 받는다.
+ * 계산기 페이지(CALC_PAGE)에서만: 도입 문단 뒤, 목차 앞(목차가 없으면 첫 h2 앞)에 계산기를 그리고 rules.json(+ #n=이면 notices.json)을 받는다.
  * 입력값은 이 스크립트 변수에만 둔다. 저장·전송하지 않는다(9-4). 전체를 try로 감싸 오류가 다른 스크립트·페이지를 막지 않게 한다.
  * node 점검: vm으로 읽어 CY만 꺼낸다(document가 없으면 화면 코드는 건너뜀). */
 (function (g) {
@@ -688,6 +688,7 @@
         noticeHead(kind) + '<p class="cy-sum" tabindex="-1">' + esc(sum || '결과 없음') + '</p>' + body +
         '<p class="cy-foot">공고마다 해당지역 거주기간·공급 비율이 달라요. 입력값은 이 계산기 코드가 저장하거나 보내지 않아요.</p>';
       live.textContent = sum || '결과 없음';
+      resultShown('special');
     }
     function render(sel, card) {
       var had = box.contains(document.activeElement);
@@ -1007,6 +1008,7 @@
         noticeBar() + '<p class="cy-sum" tabindex="-1">' + esc(sum || '결과 없음') + '</p>' + body +
         '<p class="cy-foot">입력값은 이 계산기 코드가 저장하거나 보내지 않아요. 결과를 남기려면 화면을 캡처하세요.</p>';
       live.textContent = sum || '결과 없음';
+      resultShown('loan');
     }
     function render(focusSel) {
       if (N.nstep) renderNotice();
@@ -1110,7 +1112,24 @@
     document.body.appendChild(a);
   }
 
-  // 계산기 페이지: 제목 아래(.post-body 앞)에 자리를 만들고 규칙을 받는다. 화면은 CY.mount(작업 5)가 그린다
+  // 계산기 자리(2026-11-15): 본문 맨 위 광고와 붙지 않게 도입 문단 뒤, 목차 앞. 첫 h2 바로 앞이 목차 상자(글 안 #링크 목록 ol, posts/weekly.mjs toc)면 그 앞, 아니면 첫 h2 앞.
+  // h2가 없으면 첫 문단 뒤, 둘 다 없으면 본문 앞. calc2.js에 같은 함수
+  function place(box, body) {
+    var h = body.querySelector('h2'), p = !h && body.querySelector('p');
+    if (h && h.previousElementSibling && h.previousElementSibling.querySelector('ol a[href^="#"]')) h = h.previousElementSibling;
+    if (h) h.parentNode.insertBefore(box, h);
+    else if (p) p.parentNode.insertBefore(box, p.nextSibling);
+    else body.parentNode.insertBefore(box, body);
+  }
+  // 결과가 처음 나왔을 때 확인기마다 페이지 조회당 1번(GA). 입력값은 보내지 않는다
+  var shown = {};
+  function resultShown(kind) {
+    if (shown[kind]) return;
+    shown[kind] = true;
+    if (g.gtag) g.gtag('event', 'calc_result', { calc_kind: kind });
+  }
+
+  // 계산기 페이지: 본문 안(place)에 자리를 만들고 규칙을 받는다. 화면은 CY.mount(작업 5)가 그린다
   function calcPage() {
     var body = document.querySelector('.post-body');
     if (!body) return;
@@ -1118,7 +1137,12 @@
     box.className = 'cy-calc';
     box.setAttribute('aria-label', '정책대출·특공 자격 예비 확인');
     box.innerHTML = '<p class="cy-calc-loading">계산기를 불러오는 중이에요…</p>';
-    body.parentNode.insertBefore(box, body);
+    place(box, body);
+    // 결과 칸의 내 블로그 글 링크(새 창이 아닌 링크) 클릭(GA). 공식 안내·청약홈 링크는 새 창이라 빠진다
+    box.addEventListener('click', function (e) {
+      var a = e.target.closest && e.target.closest('.cy-links a:not([target])');
+      if (a && g.gtag) g.gtag('event', 'calc_to_guide_click', { calc_kind: a.closest('#cy-pane-special') ? 'special' : 'loan', to_path: path(a.href) });
+    });
     var base = String(g.CHEONGYAK_SCHEDULE_URL || '').replace(/[^\/]*$/, '');
     var fail = function () {
       box.innerHTML = '<p class="cy-calc-fail">지금은 계산기를 열 수 없어요. 아래 표에서 상품별 조건을 확인해 주세요.</p>';
