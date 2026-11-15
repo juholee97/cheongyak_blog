@@ -11,6 +11,9 @@
   function won(n) { return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ',') + '원'; }
   function r3(n) { return Math.round(n * 1000) / 1000; }
   CY2.won = won;
+  // 「은/는」: 끝 글자가 한글이면 받침 있으면 은·없으면 는, 한글이 아니면(값 파일 라벨이 바뀌어도) 은(는)
+  function eun(s) { s = String(s); var c = s.charCodeAt(s.length - 1); return c >= 0xAC00 && c <= 0xD7A3 ? ((c - 0xAC00) % 28 ? '은' : '는') : '은(는)'; }
+  CY2.eun = eun;
 
   /* 지분적립형(docs/policy/equity.md 7-2). R = rules.equity
    * a: price(원), shares[%], gap(년), rate(연 %|null), deposit(원|null), jeonse(원|null), convertPct(%), convRate(연 %) */
@@ -42,7 +45,7 @@
       dep = { D: D, c: c, after: D - c, monthly: Math.floor(c * a.convRate / 1200 + 1e-6), fromCap: a.deposit == null };
       if (cap0 != null && D > cap0) warns.push('넣은 보증금이 전세 평균으로 계산한 1회차 뒤 상한(' + won(cap0) + ')보다 커요.');
     }
-    if (a.convertPct > E.convertPct.v) warns.push(E.label + '은 보증금의 ' + E.convertPct.text + '까지 전환이 원칙이에요.');
+    if (a.convertPct > E.convertPct.v) warns.push(E.label + eun(E.label) + ' 보증금의 ' + E.convertPct.text + '까지 전환이 원칙이에요.');
     return { errs: [], warns: warns, rounds: rounds, total: total, dep: dep };
   };
 
@@ -91,7 +94,7 @@
       h += '<div class="cy-group"><h3>남은 지분 임대료 — 1회차 취득 뒤</h3>';
       if (d) {
         h += '<div class="cy-card is-ok"><p class="cy-amt">월 임대료 <b>' + won(d.monthly) + '</b></p>' +
-          '<p class="cy-why">임대보증금 ' + won(d.D) + (d.fromCap ? '(전세 평균으로 계산한 상한)' : '') + ' 가운데 ' + won(d.c) + '를 월세로 전환 → 전환 후 보증금 <b>' + won(d.after) + '</b></p>' +
+          '<p class="cy-why">임대보증금 ' + won(d.D) + (d.fromCap ? '(전세 평균으로 계산한 상한)' : '') + ' 가운데 ' + won(d.c) + '을 월세로 전환 → 전환 후 보증금 <b>' + won(d.after) + '</b></p>' +
           '<p class="cy-note">월 임대료 = 전환 금액 × 전환요율 ' + a.convRate + '% ÷ 12. 전환한 금액에만 붙어요. 전환 금액은 ' + E.convertUnit.text + '로 끊었어요(' + E.label + ').</p></div>';
       } else h += '<p class="cy-note">최초 임대보증금이나 인근 전세 평균을 넣으면 보여요.</p>';
       h += '</div><div class="cy-group"><h3>회차별 지분 대금</h3>';
