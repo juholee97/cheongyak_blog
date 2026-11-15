@@ -20,10 +20,10 @@ import { purge } from './site.mjs';
 import { loadStages, stageOf, stamped, stampLive, isEnded, deepFirst, unstampHeld } from './stage.mjs';
 import { noOf } from './deep_targets.mjs';
 
-// crawler/auleezip_links.json(티스토리 달력 버튼)의 심층 분석 주소: 티스토리 스킨 todo.js wpLink()가 auleezip.com/(deep|apt)-…/ 꼴만 받는다(2026-11-16).
-// 켜져 있으면 자료에 slug(워드프레스 주소)가 있는 글도 옛 꼴 deep-<키>로 적는다 — 이미 공개된 글은 워드프레스가 옛 주소를 새 주소로 301로 넘긴다.
-// 티스토리 스킨 todo.js가 새 주소 꼴을 받게 되면 false — 그 전에 워드프레스에 처음부터 한글 주소로 만든 글이 생기면 옛 주소가 없어 404가 되니, 그런 글이 생기기 전에 스킨부터
-export const LINKS_OLD_FORM = true;
+// crawler/auleezip_links.json(티스토리 달력 버튼)의 심층 분석 주소. 2026-11-16 처음엔 티스토리 스킨 todo.js wpLink()가 auleezip.com/(deep|apt)-…/ 꼴만 받아 true였다.
+// 2026-11-16 02:55 스킨이 한글 주소를 받게 됨(7fc7470) → false. 달력 링크는 글의 지금 주소(d.link)를 쓴다. 스킨이 다시 옛 꼴만 받게 되면 true
+// 켜면 자료에 slug(워드프레스 주소)가 있는 글도 옛 꼴 deep-<키>로 적는다 — 공개된 글은 워드프레스가 옛 주소를 301로 넘기지만, 처음부터 한글 주소로 만든 글은 옛 주소가 없어 404
+export const LINKS_OLD_FORM = false;
 export const calLink = (d, old = LINKS_OLD_FORM) => (old && d.slug ? `https://auleezip.com/deep-${d.key}/` : d.link);
 const kst = () => new Date(Date.now() + 9 * 3600e3);
 const ymd = (d) => d.toISOString().slice(0, 10);
@@ -71,9 +71,12 @@ if (process.argv.includes('--check')) {
     for (const [x, at, now] of [[p, '2026-11-20 06:00', false], [p, null, true], [q, null, false], [{ ...p, wpSlug: undefined }, null, true]]) assert.equal(JSON.stringify(sigOf(x, at, now)), JSON.stringify([x.title, x.html, x.excerpt, x.tags, x.categories, x.featured, at, now]));
     assert.notEqual(JSON.stringify(sigOf({ ...p, wpSlug: '더샵-트리센트-분양' }, null, true)), JSON.stringify(sigOf(p, null, true))); // 주소만 바뀌어도 다시 보낸다
     assert.deepEqual([sendSlug(p), sendSlug({ ...p, wpSlug: '더샵-트리센트-분양' })], ['deep-1', '더샵-트리센트-분양']);
-    // 달력 링크 목록은 당분간 옛 꼴(LINKS_OLD_FORM): slug 있는 글만 deep-<키>, 없는 글은 자료의 link 그대로
-    assert.deepEqual([calLink({ key: '1', slug: '더샵-트리센트-분양', link: 'https://auleezip.com/%eb%8d%94/' }), calLink({ key: '2', link: 'https://auleezip.com/deep-2/' }), calLink({ key: '1', slug: 'x', link: 'L' }, false)], ['https://auleezip.com/deep-1/', 'https://auleezip.com/deep-2/', 'L']);
-    assert.equal(LINKS_OLD_FORM, true); // 스킨이 새 꼴을 받게 되어 풀면 이 줄을 고친다
+    // 달력 링크 목록(LINKS_OLD_FORM): 꺼져 있으면 slug 있는 글도 자료의 link 그대로, 켜면 slug 있는 글만 옛 꼴 deep-<키>
+    const cA = { key: '1', slug: '더샵-트리센트-분양', link: 'https://auleezip.com/%eb%8d%94/' }, cB = { key: '2', link: 'https://auleezip.com/deep-2/' };
+    assert.deepEqual([calLink(cA, false), calLink(cB, false)], [cA.link, cB.link]);
+    assert.deepEqual([calLink(cA, true), calLink(cB, true)], ['https://auleezip.com/deep-1/', cB.link]);
+    assert.deepEqual([calLink(cA), calLink(cB)], [calLink(cA, LINKS_OLD_FORM), calLink(cB, LINKS_OLD_FORM)]); // 기본값은 스위치를 따른다
+    assert.equal(LINKS_OLD_FORM, false); // 켜면 이 줄을 고친다
   }
   { // 목록 첫 그림만 바로 받기(2026-11-13 휴대폰 LCP): 그림 없는 칸은 건너뛰고 실제 첫 그림이 eager, 나머지는 lazy
     const R = (no) => ({ no, name: `단지${no}`, region: '서울', phases: [{ k: 'p1', date: `2026-12-0${no}` }] }), V = { url: 'v.jpg' };
