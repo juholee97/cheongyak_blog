@@ -6,6 +6,7 @@ import { chromium } from 'playwright';
 import { readFile, mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import vm from 'node:vm';
 
 const ROOT = fileURLToPath(new URL('../..', import.meta.url));
 const OUT = process.argv[2] || join(ROOT, 'preview', 'out', 'srcopen_20261116');
@@ -26,10 +27,12 @@ console.log(`일정 ${sched.items.length}건(${schedFrom}, ${sched.updatedAt}) �
 // 화면(calendar.js·todo.js)과 같은 규칙으로 공고별 버튼 수와 셋째 칸 이름을 미리 계산해 고를 공고를 정한다
 const byId = Object.fromEntries(sched.items.map((it) => [it.id, it]));
 const http = (u) => /^https?:\/\//i.test(u || '');
+const sandbox = {}; // 셋째 칸 판정은 todo.js wpLink를 그대로 쓴다(규칙이 갈라지지 않게)
+vm.runInNewContext(await readFile(join(ROOT, 'skin', 'images', 'todo.js'), 'utf8'), sandbox);
 const wpOf = (it) => {
   const id = String(it.id), k = /^\d+-\d+$/.test(id) ? id.split('-')[0] : id;
-  const m = /^https:\/\/auleezip\.com\/(deep|apt)-[\w-]+\/$/.exec(String(links[k] || ''));
-  return m ? (m[1] === 'deep' ? '이 단지 심층 분석' : '이 단지 주변 시세 비교') : '';
+  const w = sandbox.CY_TODO.wpLink(Object.prototype.hasOwnProperty.call(links, k) ? links[k] : null);
+  return w ? w.label : '';
 };
 const nBtns = (it) => +http(it.applyhomeUrl) + +http(it.homepageUrl) + +!!wpOf(it);
 

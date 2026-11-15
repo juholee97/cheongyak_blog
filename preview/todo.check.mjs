@@ -164,6 +164,27 @@ assert.equal(sg[0].items[0].label, '이 단지 심층 분석(우리의 집)');
 assert.equal(T.wpLink('https://auleezip.com/apt-2026000557/').label, '이 단지 주변 시세 비교');
 assert.equal(T.wpLink('/74'), null, '티스토리 분석 글은 더 안 받음');
 assert.equal(T.wpLink('https://auleezip.com/method/'), null, '글 주소만');
+// 한글 키워드 슬러그(2026-11-16): 날 한글·%인코딩 둘 다 심층 분석, url은 받은 그대로
+const KO = 'https://auleezip.com/고양창릉-지분적립형-분양가/';
+const KO_ENC = 'https://auleezip.com/' + encodeURIComponent('고양창릉-지분적립형-분양가') + '/';
+assert.deepEqual(plain(T.wpLink(KO)), { url: KO, label: '이 단지 심층 분석' }, '날 한글 슬러그');
+assert.deepEqual(plain(T.wpLink(KO_ENC)), { url: KO_ENC, label: '이 단지 심층 분석' }, '인코딩된 한글 슬러그');
+assert.equal(T.wpLink(KO_ENC.toLowerCase()).url, KO_ENC.toLowerCase(), '소문자 인코딩도 그대로');
+assert.equal(T.wpLink('https://auleezip.com/deep-2026000557/').label, '이 단지 심층 분석');
+for (const u of ['https://auleezip.com/%EA%B3%A/', 'https://auleezip.com/%ZZ%EA%B3%A0/', 'https://auleezip.com/고양/창릉/', 'https://auleezip.com/deep-1/x/',
+  'https://auleezip.com/고양창릉/?p=1', 'https://auleezip.com/고양창릉?x/', 'https://auleezip.com/고양창릉/#a', 'https://auleezip.com/고양%2F창릉/', 'https://auleezip.com/고양창릉',
+  'http://auleezip.com/고양창릉/', 'https://www.auleezip.com/고양창릉/', 'https://auleezip.com.evil.com/고양창릉/', 'https://auleezip.com//', 'https://auleezip.com/category/',
+  'https://auleezip.com/%61bc/', 'https://auleezip.com/deep-/', '', null, undefined])
+  assert.equal(T.wpLink(u), null, `받지 않음: ${u}`);
+for (const u of [KO, KO_ENC]) {
+  const kg = allLinks(sale, ['sp', 'p1'], u);
+  assert.deepEqual(kg[0].items[0], { path: u, label: '이 단지 심층 분석(우리의 집)' }, `links() 한글 주소: ${u}`);
+  const kIcs = T.ics(sale, T.build(sale, ['sp', 'p1'], '2026-11-09'), NOW, T.links(sale, ['sp', 'p1'], u));
+  for (const line of kIcs.split('\r\n')) assert.ok(Buffer.byteLength(line) <= 75, `한글 주소 .ics 75바이트 넘음: ${line}`);
+  assert.ok(kIcs.replace(/\r\n /g, '').includes('이 단지 심층 분석(우리의 집): ' + u + '?utm_source=todo&utm_medium=ics'), `ics() 한글 주소: ${u}`);
+  assert.ok(T.shareText(sale, T.build(sale, ['sp'], '2026-11-09'), 'https://x/#todo=1', T.links(sale, ['sp'], u)).includes('이 단지: 이 단지 심층 분석(우리의 집) ' + u + '?utm_source=todo&utm_medium=share'), `shareText() 한글 주소: ${u}`);
+  assert.ok(T.text(sale, T.build(sale, ['sp'], '2026-11-09'), '', T.links(sale, ['sp'], u)).includes(u + '?utm_source=todo&utm_medium=copy'), `text() 한글 주소: ${u}`);
+}
 assert.equal(sg[1].items[0].path, '/75#n=2026000557', '이 공고로 계산기');
 assert.ok(sg[2].items.some((x) => x.path === '/27'), '특공을 고르면 특공 글');
 assert.ok(!allLinks(sale, ['p1']).find((g) => g.name === '지원 혜택').items.some((x) => x.path === '/27'));

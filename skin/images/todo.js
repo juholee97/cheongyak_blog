@@ -106,15 +106,15 @@
   var SALE = ['APT', '무순위', '임의공급', '분양'], OFFICE = ['오피스텔', '도시형'];
   // 임대인가: 이름의 「토지임대부」는 분양이다
   var isRentName = function (it) { return /임대/.test(String(it.name || '').replace(/토지임대부?/g, '')); };
-  // 우리의 집(auleezip.com) 글 주소 → 버튼 이름. 심층 분석(deep-)과 시세 비교(apt-)만 받는다
+  // 우리의 집(auleezip.com) 글 주소 → 버튼 이름. https://auleezip.com/슬러그/ 한 칸만(?·# 없음). apt- → 시세 비교, deep- → 심층 분석,
+  // 그 밖엔 한글 슬러그(날 한글이든 %인코딩이든, 2026-11-16)만 심층 분석. 영문만인 주소(/method/ 등)·인코딩이 깨진 주소는 버린다. url은 받은 그대로 돌려준다
   function wpLink(url) {
-    var m = /^https:\/\/auleezip\.com\/(deep|apt)-[\w-]+\/$/.exec(String(url || ''));
-    return m ? { url: url, label: m[1] === 'deep' ? '이 단지 심층 분석' : '이 단지 주변 시세 비교' } : null;
-  }
-  // 우리의 집(auleezip.com) 글 주소 → 버튼 이름. 심층 분석(deep-)과 시세 비교(apt-)만 받는다
-  function wpLink(url) {
-    var m = /^https:\/\/auleezip\.com\/(deep|apt)-[\w-]+\/$/.exec(String(url || ''));
-    return m ? { url: url, label: m[1] === 'deep' ? '이 단지 심층 분석' : '이 단지 주변 시세 비교' } : null;
+    var m = /^https:\/\/auleezip\.com\/([^\/?#\s]+)\/$/.exec(String(url || '')), slug;
+    if (!m) return null;
+    try { slug = decodeURIComponent(m[1]); } catch (e) { return null; }
+    if (/[\/?#\s]/.test(slug)) return null;
+    var kind = /^apt-./.test(m[1]) ? 'apt' : /^deep-./.test(m[1]) || /[가-힣]/.test(slug) ? 'deep' : '';
+    return kind ? { url: url, label: kind === 'deep' ? '이 단지 심층 분석' : '이 단지 주변 시세 비교' } : null;
   }
   function links(it, picks, analysis) {
     var no = /^(\d+)-/.exec(String(it.id)), calc = no ? '/75#n=' + no[1] : '/75', groups = [], name = it.name || '';
@@ -231,5 +231,5 @@
     return '청약 할 일 - ' + (base || '공고') + '.ics';
   }
 
-  g.CY_TODO = { options: options, defaultPicks: defaultPicks, build: build, whenText: whenText, text: text, ics: ics, fileName: fileName, wpLink: wpLink, wpLink: wpLink, linkHash: linkHash, parseHash: parseHash, shareText: shareText, links: links, linkUrl: linkUrl, spMissing: spMissing, FOOT: FOOT, TIP_NOTE: TIP_NOTE };
+  g.CY_TODO = { options: options, defaultPicks: defaultPicks, build: build, whenText: whenText, text: text, ics: ics, fileName: fileName, wpLink: wpLink, linkHash: linkHash, parseHash: parseHash, shareText: shareText, links: links, linkUrl: linkUrl, spMissing: spMissing, FOOT: FOOT, TIP_NOTE: TIP_NOTE };
 })(this);
