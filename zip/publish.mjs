@@ -20,6 +20,11 @@ import { purge } from './site.mjs';
 import { loadStages, stageOf, stamped, stampLive, isEnded, deepFirst, unstampHeld } from './stage.mjs';
 import { noOf } from './deep_targets.mjs';
 
+// crawler/auleezip_links.json(티스토리 달력 버튼)의 심층 분석 주소: 티스토리 스킨 todo.js wpLink()가 auleezip.com/(deep|apt)-…/ 꼴만 받는다(2026-11-16).
+// 켜져 있으면 자료에 slug(워드프레스 주소)가 있는 글도 옛 꼴 deep-<키>로 적는다 — 이미 공개된 글은 워드프레스가 옛 주소를 새 주소로 301로 넘긴다.
+// 티스토리 스킨 todo.js가 새 주소 꼴을 받게 되면 false — 그 전에 워드프레스에 처음부터 한글 주소로 만든 글이 생기면 옛 주소가 없어 404가 되니, 그런 글이 생기기 전에 스킨부터
+export const LINKS_OLD_FORM = true;
+export const calLink = (d, old = LINKS_OLD_FORM) => (old && d.slug ? `https://auleezip.com/deep-${d.key}/` : d.link);
 const kst = () => new Date(Date.now() + 9 * 3600e3);
 const ymd = (d) => d.toISOString().slice(0, 10);
 
@@ -61,6 +66,15 @@ if (process.argv.includes('--check')) {
   assert.equal(APT_NEW_HOLD, true); // 풀면 이 줄을 고친다
   assert.deepEqual([undefined, 'draft', 'future'].map((s) => heldNew('apt-2026000600', s)), [true, true, true]);
   assert.deepEqual([heldNew('apt-2026000517', 'publish'), heldNew('deep-2026000600', undefined), heldNew('deep-2026000600', 'future'), heldNew('apt-2026000600', undefined, false)], [false, false, false, false]);
+  { // 워드프레스 주소(2026-11-16): wpSlug 없는 글의 저장 표시 지문 재료는 예전과 같아야 한다(다르면 공개 글이 한꺼번에 다시 저장된다)
+    const { sigOf, sendSlug } = await import('./wp.mjs'), p = { slug: 'deep-1', title: 't', html: '<p>h</p>', excerpt: 'e', tags: ['a'], categories: ['심층 분석'], featured: 7 }, q = { slug: 'apt-2', title: 't', html: 'h' };
+    for (const [x, at, now] of [[p, '2026-11-20 06:00', false], [p, null, true], [q, null, false], [{ ...p, wpSlug: undefined }, null, true]]) assert.equal(JSON.stringify(sigOf(x, at, now)), JSON.stringify([x.title, x.html, x.excerpt, x.tags, x.categories, x.featured, at, now]));
+    assert.notEqual(JSON.stringify(sigOf({ ...p, wpSlug: '더샵-트리센트-분양' }, null, true)), JSON.stringify(sigOf(p, null, true))); // 주소만 바뀌어도 다시 보낸다
+    assert.deepEqual([sendSlug(p), sendSlug({ ...p, wpSlug: '더샵-트리센트-분양' })], ['deep-1', '더샵-트리센트-분양']);
+    // 달력 링크 목록은 당분간 옛 꼴(LINKS_OLD_FORM): slug 있는 글만 deep-<키>, 없는 글은 자료의 link 그대로
+    assert.deepEqual([calLink({ key: '1', slug: '더샵-트리센트-분양', link: 'https://auleezip.com/%eb%8d%94/' }), calLink({ key: '2', link: 'https://auleezip.com/deep-2/' }), calLink({ key: '1', slug: 'x', link: 'L' }, false)], ['https://auleezip.com/deep-1/', 'https://auleezip.com/deep-2/', 'L']);
+    assert.equal(LINKS_OLD_FORM, true); // 스킨이 새 꼴을 받게 되어 풀면 이 줄을 고친다
+  }
   { // 목록 첫 그림만 바로 받기(2026-11-13 휴대폰 LCP): 그림 없는 칸은 건너뛰고 실제 첫 그림이 eager, 나머지는 lazy
     const R = (no) => ({ no, name: `단지${no}`, region: '서울', phases: [{ k: 'p1', date: `2026-12-0${no}` }] }), V = { url: 'v.jpg' };
     const html = saleList([R(1), R(2), R(3)], '2026-11-13', {}, { 1: { link: 'a' }, 2: { link: 'b' }, 3: { link: 'c' } }, { 2: V, 3: V });
@@ -114,13 +128,13 @@ if (process.argv.includes('--check')) {
     const posts = {};
     for (const r of Object.values(reg)) { const j = JSON.parse(await readFile(join(ROOT, 'data/zip_posts', `${r.slug || r.no}.json`), 'utf8').catch(() => 'null')); if (j) posts[r.no] = { title: j.title, excerpt: j.excerpt, link: `https://auleezip.com/${j.slug}/`, slug: j.slug, phases: r.phases }; }
     const deepPhases = (d) => d.nos.flatMap((n) => reg[n]?.phases || sched.filter((it) => noOf(it) === n).flatMap((it) => it.phases || []));
-    await stampLive([...Object.values(posts).filter((p) => p.slug?.startsWith('apt-')).map(({ slug, title, phases }) => ({ slug, title, phases: phases || [] })), ...deeps.map((d) => ({ slug: `deep-${d.key}`, title: d.title, phases: deepPhases(d) }))], stages, today);
+    await stampLive([...Object.values(posts).filter((p) => p.slug?.startsWith('apt-')).map(({ slug, title, phases }) => ({ slug, title, phases: phases || [] })), ...deeps.map((d) => ({ slug: `deep-${d.key}`, title: d.title, phases: deepPhases(d), id: d.id }))], stages, today);
     for (const p of Object.values(posts)) p.title = stamped(p.title, stages[p.slug]?.stage);
     for (const d of deeps) d.title = stamped(d.title, stages[`deep-${d.key}`]?.stage);
     // 달력이 공고에서 우리의 집 글로 잇는 목록(2026-11-10 티스토리 개편): 공고번호 → 심층 분석, 없으면 시세 비교. 크롤러는 data/를 못 보니 crawler/에 둔다
     const idx = JSON.parse(await readFile(join(ROOT, 'data/zip_posts/index.json'), 'utf8').catch(() => '{}')), liveSlugs = new Set(Object.values(posts).map((p) => p.slug)), zipLinks = {};
     for (const [no, slug] of Object.entries(idx)) if (liveSlugs.has(slug)) zipLinks[no] = `https://auleezip.com/${slug}/`;
-    for (const d of deeps) for (const n of d.nos) zipLinks[n] = d.link;
+    for (const d of deeps) for (const n of d.nos) zipLinks[n] = calLink(d);
     await (await import('node:fs/promises')).writeFile(join(ROOT, 'crawler/auleezip_links.json'), JSON.stringify(Object.fromEntries(Object.entries(zipLinks).sort()), null, 1) + '\n');
     // 조감도(data/zip_views.json, zip/views.mjs)를 미디어로 먼저 올린다 — 첫 화면 격자도 같은 그림을 쓰니 페이지보다 먼저(2026-11-05: 나중에 올려 새 그림이 첫 화면에 하루 늦게 붙던 것)
     const views = await loadViews();

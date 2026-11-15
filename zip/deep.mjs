@@ -213,8 +213,14 @@ const line = (h) => h.replace(LINE_RE, (m) => `<span class="az-line" style="--c:
 // 주로 빨강·노랑·초록, 파랑은 글 전체에서 손꼽을 핵심(분양가·필요한 돈 같은 것)에만 드물게. 굵게 하지 않는다(사용자 지시)
 const HL = { r: ['위험', '손해·자격 상실·돈이 크게 더 들 수 있는 것'], y: ['주의', '생활 불편·바뀔 수 있는 것·직접 확인할 것'], g: ['유리', '청약자에게 좋은 점'], b: ['핵심', '이 글에서 가장 중요한 숫자'] };
 const HL_RE = /\[\[([rybg]):(.+?)\]\]/g;
-const hl = (h) => h.replace(HL_RE, (_, c, t) => `<mark class="az-hl ${c}">${t}</mark>`);
-const unhl = (t) => String(t).replace(HL_RE, '$2');
+// 글 주소(2026-11-16): 자료의 slug(한글 워드프레스 주소)는 워드프레스가 주는 공개 글 링크처럼 소문자 퍼센트 인코딩으로
+export const siteUrl = (slug) => `https://auleezip.com/${encodeURIComponent(slug).replace(/%[0-9A-F]{2}/g, (m) => m.toLowerCase())}/`;
+export const deepUrl = (d, key) => (d?.slug ? siteUrl(d.slug) : d?.link || siteUrl(`deep-${key}`));
+// 문장 속 다른 심층 분석 글 링크(2026-11-16 사용자): [[l:보이는 글자|키]] → 대상 글 주소. 주소는 render가 대상 자료에서 미리 읽어 LINK_URLS에 둔다(대상 주소가 바뀌면 다시 렌더할 때 따라간다)
+export const LINK_RE = /\[\[l:([^\[\]|]+)\|([\w-]+)\]\]/g;
+let LINK_URLS = {};
+const hl = (h) => h.replace(LINK_RE, (_, t, k) => (LINK_URLS[k] ? `<a href="${esc(LINK_URLS[k])}">${t}</a>` : t)).replace(HL_RE, (_, c, t) => `<mark class="az-hl ${c}">${t}</mark>`);
+const unhl = (t) => String(t).replace(LINK_RE, '$1').replace(HL_RE, '$2');
 // 「2억 1,262만 5,000원」 → 21262.5(만원)
 const manwon = (s) => { const m = String(s).replace(/,/g, '').match(/(?:(\d+)억)?\s*(?:(\d+)만)?\s*(?:(\d+)원)?/); return (+m[1] || 0) * 1e4 + (+m[2] || 0) + (+m[3] || 0) / 1e4; };
 const tx = (t) => hl(line(esc(t)));
@@ -244,6 +250,8 @@ async function noticeDateOf(key, d) {
 export async function render(key, { local = false } = {}) {
   const d = await loadDeep(key), folder = await folderOf(key);
   if (!d) throw new Error(`data/zip_deep/${key}.json 없음`);
+  LINK_URLS = {}; // 문장 속 링크 대상 주소(없는 대상은 글자만 남고 --lint가 잡는다)
+  for (const [, , k] of JSON.stringify(d.blocks).matchAll(LINK_RE)) { const t = await loadDeep(k); if (t) LINK_URLS[k] = deepUrl(t, k); }
   const { summary, videos } = await analyzerData(folder), figs = await figures(key, d.blocks, local), views = JSON.parse(await readFile(join(ROOT, 'data/zip_views.json'), 'utf8').catch(() => '{}'));
   // PC 오른쪽 안내 칸(2026-10-30 사용자: PC에서는 PC답게 널널하게): 목차·핵심 숫자·함께 볼 글. 휴대폰에서는 숨긴다(site.css .az-deep-post)
   // 2026-11-10 사용자 요청: 썸네일과 같은 조망도를 첫 소제목(「어떤 단지인가」) 바로 밑에. 본문에 이미 있던 같은 그림은 그 자리로 옮긴다
@@ -279,7 +287,7 @@ export async function render(key, { local = false } = {}) {
   };
   const html = [
     src(`공고문과 공식 자료를 기준으로 우리의 집이 다시 검토한 글입니다. 공고 기준일 ${((await noticeDateOf(key, d)) || '').replaceAll('-', '.')} · <a href="${esc(officialOf(d) || '')}" rel="nofollow noopener">공고 원문</a> · <a href="#s${heads.length}">자료와 작성 기준 보기</a>`),
-    JSON.stringify(d.blocks).includes('[[') ? legend() : '',
+    /\[\[[rybg]:/.test(JSON.stringify(d.blocks)) ? legend() : '', // 색 표시가 있을 때만(문장 속 링크 [[l:]]만 있으면 안 붙인다)
     ...d.blocks.map(block),
     `<h2 id="s${heads.length}">이 글의 자료</h2>`,
     '<p>이 글은 입주자모집공고문과 청약홈·LH·교육청 같은 공식 자료를 기반으로, 온라인에 공개된 여러 분석 의견을 확인해보고 우리의 집(auleezip.com)에서 타당성을 객관적으로 재검토하고 심층분석하여 작성한 결과입니다.</p>',
@@ -287,7 +295,7 @@ export async function render(key, { local = false } = {}) {
     `<ul class="az-links">${(d.sources || []).map(([t, u]) => `<li><a href="${esc(u)}" rel="nofollow noopener">${esc(t)}</a></li>`).join('')}</ul>`,
     src('이 글은 청약 판단을 돕는 정보이고 청약이나 투자를 권하지 않습니다. 자격·분양가·일정은 청약 전에 청약홈 입주자모집공고 원문으로 다시 확인하시기 바랍니다.'),
   ].filter(Boolean).join('\n');
-  return { slug: `deep-${key}`, title: d.title, html: wrap(keepUnits(html.replace(/\*\*([^*<>]+?)\*\*/g, '<b>$1</b>')) + rail).replace('<div class="az">', '<div class="az az-deep-post">'), excerpt: d.excerpt, categories: [CAT_DEEP], tags: d.tags || [] };
+  return { slug: `deep-${key}`, title: d.title, html: wrap(keepUnits(html.replace(/\*\*([^*<>]+?)\*\*/g, '<b>$1</b>')) + rail).replace('<div class="az">', '<div class="az az-deep-post">'), excerpt: d.excerpt, categories: [CAT_DEEP], tags: d.tags || [], ...(d.slug ? { wpSlug: d.slug } : {}) }; // slug = 안쪽 이름(저장 표시·장부), wpSlug = 워드프레스 주소(자료의 slug, 2026-11-16)
 }
 
 // 화면에 남은 표시 찾기(2026-10-30 사용자 지시: 「**개교시기 미정**」처럼 굵게 하려다 실패한 흔적을 작성·게시 뒤 항상 검수). 태그를 걷어낸 글자에서 찾는다
@@ -322,12 +330,42 @@ export function titleIssues(title, folder) {
   return out;
 }
 
+// 워드프레스 주소(자료의 slug, 2026-11-16 사용자: 새 글과 대표 글은 한글 키워드 주소). others: 다른 글들의 slug
+export function slugIssues(slug, others = []) {
+  const out = [], s = String(slug);
+  if (!/^[가-힣a-z0-9]+(?:-[가-힣a-z0-9]+)*$/.test(s)) out.push(`slug 꼴: 한글·영문 소문자·숫자 낱말을 -로 잇는다(공백·밑줄·대문자·특수문자, 앞뒤 - 없이): 「${s}」`);
+  if (encodeURIComponent(s).length > 190) out.push(`slug가 김(인코딩 ${encodeURIComponent(s).length}바이트, 190 이하 — 한글 한 글자 9바이트): 「${s}」`);
+  if (/낮다|높다|%|심층|분석/.test(s)) out.push(`slug에 가격 판정(낮다·높다·%)이나 「심층」「분석」을 넣지 않는다: 「${s}」`);
+  if (/\d{6,}/.test(s)) out.push(`slug에 공고번호 같은 6자리 이상 숫자를 넣지 않는다: 「${s}」`);
+  if (others.includes(s)) out.push(`slug가 다른 글과 겹침: 「${s}」`);
+  return out;
+}
+// 문장 속 링크 [[l:보이는 글자|키]] 점검. targets: { 키: 글 자료 }, wst: data/zip_wp_state.json, stages: data/zip_stage.json
+export function linkIssues(texts, key, targets, wst, stages) {
+  const out = [], links = texts.flatMap((t) => [...String(t ?? '').matchAll(LINK_RE)]);
+  if (links.length > 4) out.push(`문장 속 링크가 ${links.length}개(한 글 2~3개, 4개까지)`);
+  for (const [, label, k] of links) {
+    const n = unhl(label).length;
+    if (!targets[k]) out.push(`링크 대상 글 없음(data/zip_deep/${k}.json): 「${label}」`);
+    else if (k === key) out.push(`링크가 자기 글을 가리킴: 「${label}」`);
+    else if (wst[`post:deep-${k}`]?.status !== 'publish') out.push(`링크 대상이 공개된 글이 아님(deep-${k}): 「${label}」`);
+    else if (stages[`deep-${k}`]?.stage === 'ended') out.push(`링크 대상이 일정이 끝난 글([종료] deep-${k}): 「${label}」`);
+    if (n < 2 || n > 30) out.push(`링크 글자 ${n}자(2~30자): 「${label}」`);
+    if (/여기|클릭|바로가기/.test(label)) out.push(`링크 글자에 「여기·클릭·바로가기」를 쓰지 않는다(무엇이 있는 글인지): 「${label}」`);
+  }
+  return out;
+}
+
 export async function check(key) {
   const d = await loadDeep(key), folder = await folderOf(key), issues = [];
   // 운영 원칙 1·2(2026-11-10): 「원문 공고 대비 이 글이 추가한 정보」가 없으면 발행 유보. 공식 원문 링크·공고 기준일 필수. 이미 공개된 글은 added 없이 비교 자료만 본다
   if (!d.blocks.some((b) => (b.timeline && ['bars', 'trend'].includes(b.timeline.kind)) || b.signals) && !(d.market || []).length) issues.push('원문 대비 추가 정보 없음(실거래·시장 비교 없음) — 발행 유보');
   if (!officialOf(d)) issues.push('공식 원문 링크 없음(sources에 청약홈·LH·SH·공공기관 주소)');
   if (!(await noticeDateOf(key, d))) issues.push('공고 기준일 없음(noticeDate)');
+  // 워드프레스 주소(2026-11-16): 아직 워드프레스에 없는 새 글은 slug 필수, 이미 올라간 글은 선택. 있으면 꼴·길이·겹침을 본다
+  const all = await allDeep();
+  if (d.slug != null) issues.push(...slugIssues(d.slug, all.filter((x) => x.key !== key).map((x) => x.slug).filter(Boolean)));
+  else if (!d.link) issues.push('slug 없음: 새 글은 워드프레스 주소를 한글 키워드로(단지명 + 공급 유형, 예: 더샵-트리센트-분양 — docs/deep-writing-guide.md)');
   if (!d.link) {
     issues.push(...titleIssues(d.title, folder));
     // 2026-11-15 새 공고 시세 비교 글 멈춤(wp.mjs APT_NEW_HOLD): 공개된 적 없는 apt 글로 링크하지 않는다(올린 기록 data/zip_wp_state.json)
@@ -341,13 +379,17 @@ export async function check(key) {
   const { summary, videos } = await analyzerData(folder);
   const tl = (t) => (!t ? [] : [t.title, t.sub, t.caption, t.note, ...(t.items || []).flatMap((x) => [x.date, x.label, x.sub]), ...(t.cash || []).flatMap((c) => [c.date, c.label, won(c.amount)]), t.loan?.label, ...(t.loan?.dates || []), t.loan && won(t.loan.amount), t.interest?.label, t.total?.label, t.total?.value, ...(t.rows || []).flatMap((x) => [x.label, x.sub, String(x.value)])]);
   const texts = d.blocks.flatMap((b) => [b.h, b.h3, b.p, b.note, b.src, ...(b.ul || []), ...(b.key || []), ...(b.table ? [...b.table.head, ...b.table.rows.flat()] : []), ...(b.grid ? [...b.grid.cols, ...b.grid.rows.flat()] : []), ...(b.plan || []).flat(), ...tl(b.timeline), b.take, ...(b.two || []).flatMap((c) => [c.t, ...c.items]), ...(b.signals?.rows || []).flat(), b.signals?.src, ...(b.who || []).flat()]).filter(Boolean).concat([d.title, d.excerpt, ...(d.card || [])]);
-  for (const t of texts) if (/\[\[|\]\]/.test(unhl(t))) issues.push(`색 표시 문법 틀림([[r:글귀]]·y·b·g만): 「${t.slice(0, 50)}」`);
+  for (const t of texts) if (/\[\[|\]\]/.test(unhl(t))) issues.push(`색 표시 문법 틀림([[r:글귀]]·y·b·g, 링크는 [[l:보이는 글자|키]]만): 「${t.slice(0, 50)}」`);
+  // 문장 속 링크(2026-11-16): 대상이 있고 공개됐고(저장 표시 상태) 자기 글·[종료] 글이 아닌지, 개수·글자
+  { const wst = JSON.parse(await readFile(join(ROOT, 'data/zip_wp_state.json'), 'utf8').catch(() => '{}')), stages = await (await import('./stage.mjs')).loadStages();
+    issues.push(...linkIssues(texts, key, Object.fromEntries(all.map((x) => [x.key, x])), wst, stages)); }
+  for (const b of d.blocks) for (const t of [b.h, b.h3]) if (t && /\[\[/.test(t)) issues.push(`소제목에는 색 표시·링크를 쓰지 않는다: 「${t.slice(0, 50)}」`);
   // v2 글(docs/deep-writing-guide.md): 소제목마다 바로 아래 한 줄 결론(take), 문단은 짧게
   if (d.v === 2) d.blocks.forEach((b, i) => {
     if (b.h && !d.blocks[i + 1]?.take) issues.push(`소제목 아래 한 줄 결론(take) 없음: 「${b.h}」`);
     if (b.p && unhl(b.p).length > 230) issues.push(`문단이 김(${unhl(b.p).length}자, 230자 이하로 나누기): 「${b.p.slice(0, 40)}」`);
   });
-  for (const t of [d.title, d.excerpt, ...(d.card || [])]) if (/\[\[[rybg]:/.test(t ?? '')) issues.push(`제목·요약·카드에는 색 표시를 쓰지 않는다: 「${t.slice(0, 50)}」`);
+  for (const t of [d.title, d.excerpt, ...(d.card || [])]) if (/\[\[[rybgl]:/.test(t ?? '')) issues.push(`제목·요약·카드에는 색 표시·링크를 쓰지 않는다: 「${t.slice(0, 50)}」`);
   texts.splice(0, texts.length, ...texts.map(unhl));
   const auto = d.blocks.some((b) => b.claims) ? claimRows(summary?.claim_checks).flatMap((c) => [c.claim, c.note, c.official]).filter(Boolean).map((t) => scrub(t, videos)) : []; // 대조표는 리포트 문장 그대로라 숫자 대조는 건너뛰고 표현만 본다
   // 리포트가 다시 만들어지면(분석기 재실행) 이미 쓴 글의 숫자가 새 리포트에서 빠질 수 있다 — --read가 남겨 둔 이전 리포트 글자(<키>.prev.txt)도 근거로 본다(2026-11-02)
@@ -436,6 +478,30 @@ if (process.argv[1]?.endsWith('deep.mjs')) {
       assert.deepEqual(d[2].table.rows.map((x) => x[0]), ['84.95', '84.49']);
       assert.ok(d[1].take.includes('가장 몰린 주택형은 84.95(') && d[1].take.includes('84.49은'));
     }
+    { // 워드프레스 주소(2026-11-16): 한글 slug는 소문자 퍼센트 인코딩 주소, 없으면 deep-<키>·자료 link 그대로
+      const u = siteUrl('더샵-트리센트-분양');
+      assert.ok(u.startsWith('https://auleezip.com/%eb%8d%94%ec%83%b5-') && u.endsWith('/') && !/%[0-9a-f]?[A-F]/.test(u) && decodeURIComponent(u) === 'https://auleezip.com/더샵-트리센트-분양/', u);
+      assert.equal(siteUrl('deep-2026000457'), 'https://auleezip.com/deep-2026000457/'); // 예약 글 링크가 예전과 같은 꼴
+      assert.deepEqual([deepUrl({ slug: '더샵-트리센트-분양', link: 'https://auleezip.com/deep-1/' }, '1'), deepUrl({ link: 'https://auleezip.com/deep-2/' }, '2'), deepUrl({}, 'youth-6718')], [u, 'https://auleezip.com/deep-2/', 'https://auleezip.com/deep-youth-6718/']);
+      // slug 점검: 안내서 예 3개는 통과, 꼴·길이·금지 낱말·6자리 숫자·겹침은 지적
+      for (const s of ['더샵-트리센트-분양', '용인-양지-서희스타힐스-하이뷰-무순위-청약', '해링턴-플레이스-용산-리버뷰-청년안심주택']) assert.deepEqual(slugIssues(s, ['다른-단지-분양']), [], s);
+      for (const s of ['더샵 트리센트', '더샵_트리센트', 'The-샵', '-더샵', '더샵-', '더샵--분양', '더샵/분양', '더샵-분양가-낮다', '더샵-심층', '더샵-20%', '더샵-2026000527', '가'.repeat(22)]) assert.ok(slugIssues(s).length, s);
+      assert.equal(encodeURIComponent('가'.repeat(21)).length, 189); assert.deepEqual(slugIssues('가'.repeat(21)), []); // 한글 21자 = 189바이트까지
+      assert.ok(slugIssues('더샵-트리센트-분양', ['더샵-트리센트-분양'])[0].includes('겹침'));
+      // 문장 속 링크: 대상 slug가 있으면 그 주소, 없으면 자료 link. 색 표시와 같이 써도 렌더 뒤에 [[ 가 남지 않는다
+      LINK_URLS = { 2026000527: deepUrl({ slug: '더샵-트리센트-분양' }), 'youth-6718': deepUrl({ link: 'https://auleezip.com/deep-youth-6718/' }) };
+      const h = tx('같은 지구의 [[l:더샵 트리센트 분양|2026000527]]보다 [[g:낮습니다]]. [[l:해링턴 청년안심주택|youth-6718]], [[l:없는 글|9]]');
+      assert.ok(h.includes(`<a href="${u}">더샵 트리센트 분양</a>`) && h.includes('<a href="https://auleezip.com/deep-youth-6718/">해링턴 청년안심주택</a>') && h.includes('<mark class="az-hl g">낮습니다</mark>') && h.endsWith('없는 글'), h);
+      assert.deepEqual(leftovers(`<p>${h}</p>`), []);
+      assert.equal(unhl('[[l:더샵 트리센트|2026000527]]와 [[r:위험]]'), '더샵 트리센트와 위험');
+      LINK_URLS = {};
+      // 링크 점검: 없는 글·자기 글·공개 안 된 글·[종료] 글·글자 길이·「여기」·5개 이상
+      const T = { 1: {}, 2: {}, 3: {}, 4: {} }, W = { 'post:deep-2': { status: 'publish' }, 'post:deep-3': { status: 'future' }, 'post:deep-4': { status: 'publish' } }, ST = { 'deep-4': { stage: 'ended' } };
+      assert.deepEqual(linkIssues(['[[l:다른 단지 분양|2]]와 비교'], '1', T, W, ST), []);
+      const bad = (t) => linkIssues([t], '1', T, W, ST);
+      for (const [t, w] of [['[[l:어떤 단지|9]]', '없음'], ['[[l:어떤 단지|1]]', '자기 글'], ['[[l:어떤 단지|3]]', '공개된 글이 아님'], ['[[l:어떤 단지|4]]', '[종료]'], ['[[l:가|2]]', '2~30자'], ['[[l:여기를 보세요|2]]', '여기']]) assert.ok(bad(t).some((x) => x.includes(w)), `${t} ${bad(t)}`);
+      assert.ok(bad('[[l:가나|2]] '.repeat(5)).some((x) => x.includes('5개')));
+    }
     console.log('deep 점검 통과');
   } else if (process.argv.includes('--results')) {
     await updateResults(); // 청약홈 결과 받기 + 바뀐 글 다시 올리기(매일 publish.mjs --go 끝에서도 부른다)
@@ -484,7 +550,7 @@ if (process.argv[1]?.endsWith('deep.mjs')) {
     const pl = now && d.status !== 'publish' ? planOf(phases, today, { lead: 7, time: '06:00' }) : { mode: 'now', why: '이미 공개된 글' };
     if (now) console.log(`공개 계획: ${pl.mode === 'at' ? `${pl.at} 예약` : '바로'} · ${pl.why}`);
     const o = await upsert(post, now && pl.mode === 'at' ? pl.at : null, now && pl.mode === 'now');
-    if (o.ok) await writeFile(join(DIR, `${key}.json`), JSON.stringify({ ...d, noticeDate: await noticeDateOf(key, d), link: o.status === 'future' ? `https://auleezip.com/${post.slug}/` : o.link, status: o.status, id: o.id, at: o.status === 'future' ? pl.at : undefined }, null, 1));
+    if (o.ok) await writeFile(join(DIR, `${key}.json`), JSON.stringify({ ...d, noticeDate: await noticeDateOf(key, d), link: o.status === 'future' ? siteUrl(post.wpSlug || post.slug) : o.link, status: o.status, id: o.id, at: o.status === 'future' ? pl.at : undefined }, null, 1));
     console.log(`${o.ok ? '✓' : '✗'} ${o.status} ${o.link}${o.status === 'draft' || o.status === 'future' ? ` (미리보기 https://auleezip.com/?p=${o.id}&preview=true)` : ''}`);
     if (o.ok && o.status === 'publish') await verifyLive(o.link);
     if (o.ok && o.status === 'future') console.log(`게시 뒤 검수는 공개(${pl.at}) 뒤 매일 실행의 --verify all에서`);

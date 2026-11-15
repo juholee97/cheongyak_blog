@@ -26,16 +26,18 @@ const UNSTAMP_FROM = '9999-12-31';
 export const unstampHeld = (today, from = UNSTAMP_FROM) => today < from;
 export const deepFirst = (a, b) => b.slug.startsWith('deep-') - a.slug.startsWith('deep-');
 
-// entries: [{ slug, title(표시 없는 제목), phases }]. 단계가 바뀐 글은 제목을 바로 고친다. 아직 공개 안 된 글은 건너뛴다
+// entries: [{ slug, title(표시 없는 제목), phases, id? }]. 단계가 바뀐 글은 제목을 바로 고친다. 아직 공개 안 된 글은 건너뛴다
+// slug는 안쪽 이름(deep-<키>). 워드프레스 주소가 다른 글(자료의 slug, 2026-11-16)은 slug로 못 찾으니 id로 찾는다
 export async function stampLive(entries, stages, today) {
   let left = 0;
-  for (const { slug, title, phases } of [...entries].sort(deepFirst)) {
+  for (const { slug, title, phases, id } of [...entries].sort(deepFirst)) {
     if (isEnded(stages, slug)) continue;
     const ph = phases.length ? phases : stages[slug]?.phases || [], stage = stageOf(ph, today), changed = stage !== (stages[slug]?.stage || '');
     // ponytail: closed 글은 옛 [신청마감] 제목을 떼려고 매번 읽는다(읽기만, 다를 때만 고침). 장부의 closed 글이 모두 [신청마감] 없는 제목이 되면 이 예외를 지워도 된다
     if (!changed && (stage !== 'closed' || unstampHeld(today))) continue;
     try {
-      const [p] = await wp(`posts?slug=${encodeURIComponent(slug)}&status=publish&context=edit`);
+      let [p] = await wp(`posts?slug=${encodeURIComponent(slug)}&status=publish&context=edit`);
+      if (!p && id) p = await wp(`posts/${id}?context=edit`).then((x) => (x.status === 'publish' ? x : null)).catch(() => null);
       if (!p) continue;
       const want = stamped(title, stage);
       if (p.title.raw !== want) {

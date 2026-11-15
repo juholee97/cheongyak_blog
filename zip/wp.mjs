@@ -4,7 +4,7 @@
 // node zip/wp.mjs post.json                  임시글(draft)로 올림 — 같은 slug가 있으면 그 글을 고친다
 // node zip/wp.mjs post.json --at "YYYY-MM-DD HH:MM"   그 시각 예약(future)
 // 즉시 공개(--now)는 zip/publish.mjs가 사용자 승인 뒤에만 쓴다(2026-10-30: 시세 비교·임대 글은 바로, 심층 분석 글만 접수 7일 전 06:00 예약)
-// post.json: { slug, title, html, excerpt?, tags?[], categories?[] }  (zip/post.mjs가 만든다)
+// post.json: { slug, title, html, excerpt?, tags?[], categories?[], wpSlug? }  (zip/post.mjs가 만든다. wpSlug = 워드프레스 주소가 slug와 다를 때 — zip/deep.mjs)
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { ROOT } from '../tistory/common.mjs';
@@ -64,7 +64,7 @@ async function unchanged(key, sig) {
   const { createHash } = await import('node:crypto');
   const file = join(ROOT, 'data/zip_wp_state.json'), st = JSON.parse(await readFile(file, 'utf8').catch(() => '{}'));
   const hash = createHash('sha1').update(JSON.stringify(sig)).digest('hex');
-  return { hit: !process.env.ZIP_FORCE && st[key]?.hash === hash ? st[key] : null, save: async (v) => { st[key] = { hash, ...v }; await (await import('node:fs/promises')).writeFile(file, JSON.stringify(st, null, 1)); } };
+  return { hit: !process.env.ZIP_FORCE && st[key]?.hash === hash ? st[key] : null, prev: st[key], save: async (v) => { st[key] = { hash, ...v }; await (await import('node:fs/promises')).writeFile(file, JSON.stringify(st, null, 1)); } };
 }
 
 // 오늘 공개 글 수정 한도에서 한 번을 쓴다. 다 썼으면 false. upsert와 stage.mjs stampLive(옛 [신청마감] 떼기)가 같이 쓴다
@@ -75,10 +75,17 @@ export async function takeBudget() {
   return true;
 }
 
+// 저장 표시 지문 재료. post.wpSlug(워드프레스 주소, 2026-11-16)는 있을 때만 넣는다 — 없는 글은 예전과 한 글자도 같아야 공개 글이 한꺼번에 다시 저장되지 않는다(publish.mjs --check)
+export const sigOf = (post, at, now) => [post.title, post.html, post.excerpt, post.tags, post.categories, post.featured, at, now, ...(post.wpSlug ? [post.wpSlug] : [])];
+export const sendSlug = (post) => post.wpSlug || post.slug; // 워드프레스에 보내는 주소
+// post.slug = 안쪽 이름(저장 표시·단계 장부·로그, 심층 분석은 deep-<키>), post.wpSlug = 워드프레스 주소(없으면 post.slug)
 export async function upsert(post, at, now = false) {
-  const u = await unchanged(`post:${post.slug}`, [post.title, post.html, post.excerpt, post.tags, post.categories, post.featured, at, now]);
+  const u = await unchanged(`post:${post.slug}`, sigOf(post, at, now));
   if (u.hit) return { id: u.hit.id, link: u.hit.link, status: u.hit.status, ok: true, skipped: true };
-  const [old] = await wp(`posts?slug=${encodeURIComponent(post.slug)}&status=draft,future,publish&context=edit`);
+  // 글 찾기: 저장 표시의 id → 워드프레스 주소 → 안쪽 이름 순. 주소가 바뀐 글을 새 글로 다시 만들지 않게(2026-11-16)
+  const LIVE = ['draft', 'future', 'publish'], byId = u.prev?.id ? await wp(`posts/${u.prev.id}?context=edit`).catch(() => null) : null;
+  let [old] = LIVE.includes(byId?.status) ? [byId] : [];
+  for (const s of [post.wpSlug, post.slug]) if (!old && s) [old] = await wp(`posts?slug=${encodeURIComponent(s)}&status=draft,future,publish&context=edit`);
   if (old?.status === 'publish' && !at && !now) throw new Error(`이미 공개된 글(${old.link}) — 고치려면 --at 없이 따로 결정`);
   if (heldNew(post.slug, old?.status)) { console.log(`미룸 ${post.slug}: 새 공고 시세 비교 글은 따로 올리지 않음(2026-11-15 멈추기)`); return { id: old?.id ?? null, link: old?.link || '', status: 'stopped', ok: false }; }
   // 서치 콘솔 비율이 오르면 새 글만 멈춘다(zip/index_watch.mjs). 임시글(at·now 없음)과 기존 글 고치기는 막지 않는다
@@ -91,11 +98,14 @@ export async function upsert(post, at, now = false) {
   if (bump && !(await takeBudget())) { console.log(`미룸 ${post.slug}: 오늘 공개 글 수정 ${UPDATE_CAP}번을 다 씀 — 내일 다시`); return { id: old.id, link: old.link, status: 'deferred', ok: false }; }
   // 2026-11-14 미루기: 떼기 보류 중(stage.mjs UNSTAMP_FROM)엔 공개 글의 옛 [신청마감] 제목을 그대로 두고 본문·숫자만 고친다(--urgent 포함)
   const title = old?.status === 'publish' && /^\[신청마감\]/.test(old.title.raw) && old.title.raw.replace(/^\[신청마감\]\s*/, '') === post.title && (await import('./stage.mjs')).unstampHeld(new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10)) ? old.title.raw : post.title;
-  const body = { slug: post.slug, title, content: post.html, excerpt: post.excerpt || '', tags: await termIds('tags', post.tags), categories: await termIds('categories', post.categories), ...(post.featured ? { featured_media: post.featured } : {}), status: at ? 'future' : now ? 'publish' : 'draft', ...(at ? { date: at.replace(' ', 'T') + ':00' } : now && old?.status === 'future' ? { date: new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 19) } : {}) }; // 예약 글을 바로 공개할 때는 날짜도 지금으로(미래 날짜가 남으면 워드프레스가 예약 상태로 둔다)
+  const body = { slug: sendSlug(post), title, content: post.html, excerpt: post.excerpt || '', tags: await termIds('tags', post.tags), categories: await termIds('categories', post.categories), ...(post.featured ? { featured_media: post.featured } : {}), status: at ? 'future' : now ? 'publish' : 'draft', ...(at ? { date: at.replace(' ', 'T') + ':00' } : now && old?.status === 'future' ? { date: new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 19) } : {}) }; // 예약 글을 바로 공개할 때는 날짜도 지금으로(미래 날짜가 남으면 워드프레스가 예약 상태로 둔다)
   const res = await wp(old ? `posts/${old.id}` : 'posts', { method: 'POST', body });
   // 확인: 다시 불러와 제목·본문 길이·상태 대조
   const back = await wp(`posts/${res.id}?context=edit`);
-  const ok = back.title.raw === title && back.content.raw === post.html && back.status === body.status;
+  // 워드프레스 주소: 한글은 소문자 퍼센트 인코딩으로 돌려준다. 겹쳐서 -2가 붙거나 잘리면 실패로
+  const slugOk = !post.wpSlug || decodeURIComponent(back.slug || '') === post.wpSlug;
+  if (!slugOk) console.log(`주소 다름 ${post.slug}: 원한 주소 ${post.wpSlug}, 워드프레스 주소 ${decodeURIComponent(back.slug || '')}`);
+  const ok = back.title.raw === title && back.content.raw === post.html && back.status === body.status && slugOk;
   if (ok) await u.save({ id: res.id, link: back.link, status: back.status });
   return { id: res.id, link: back.link, status: back.status, ok };
 }
