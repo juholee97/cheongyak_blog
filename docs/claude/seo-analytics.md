@@ -9,7 +9,7 @@
 - 사이트맵 점검: `curl -A "Mozilla/5.0 …" https://auleezip.com/post-sitemap.xml | grep -c "<loc>"` = 공개 글 수(2026-11-01).
 
 ## 색인 감시 (우리의 집, 2026-11-10 운영 원칙 3)
-- `node zip/index_watch.mjs`에 「크롤링됨 - 현재 색인이 생성되지 않음」 글 수를 적는다(피드 제외). 비율이 오르면 `wp.mjs upsert`가 새 공개 글을 멈춘다. `--release`는 사용자만.
+- `node zip/index_watch.mjs`에 「크롤링됨 - 현재 색인이 생성되지 않음」 글 수를 적는다(피드 제외). 비율이 오르면 `wp.mjs upsert`가 새 공개 글을 멈춘다(한번 멈추면 비율이 같거나 내려간 줄이 더 적혀도 `--release` 전까지 유지). `--release`는 사용자만.
 - 서치콘솔 속성은 `https://auleezip.com/`(sc-domain 속성은 권한 없음). 매주 월요일 예약 작업 `cheongyak-weekly-seo-check`가 크롬으로 보고서를 읽어 장부에 적는다(보고서가 안 바뀌었으면 적지 않음).
 - 기준선(2026-11-10): 색인 70, 공개 80, 크롤링됨-색인 안 됨 실제 글 5편(6.3%).
 - 경과: 11-09~10 일괄 수정 뒤 다시 크롤링된 글이 색인에서 빠짐(원인 미확정) → 수정 한도·멈춤 스위치(`auleezip.md`). 11-14 기준 구글 웹 검색 노출 하루 0, 홈만 색인. 실제 페이지는 200·`index, follow`·자기 canonical·robots.txt 허용으로 정상.
