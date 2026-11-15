@@ -4,8 +4,8 @@
  * node 점검(preview/calc2.check.mjs): vm으로 읽어 CY2만 꺼낸다(document가 없으면 화면 코드는 건너뜀). */
 (function (g) {
   'use strict';
-  // 글 주소 → 계산기. 글을 공개해 번호가 생기면 채운다(예: '/80': 'equity'). 비어 있으면 아무것도 그리지 않는다. 미리보기는 window.CY2_PAGES로 덮는다
-  var PAGES = {};
+  // 글 주소 → 계산기. /78 = 지분적립형 계산기 전용 글(2026-11-15). 월세 세액공제 계산기는 아직 글이 없다(번호가 생기면 채운다). 없는 주소엔 아무것도 그리지 않는다. 미리보기는 window.CY2_PAGES로 덮는다
+  var PAGES = { '/78': 'equity' };
   var CY2 = g.CY2 = {};
 
   function won(n) { return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ',') + '원'; }

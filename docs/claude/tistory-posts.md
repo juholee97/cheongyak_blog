@@ -34,7 +34,7 @@
 - 계산기는 전용 글에 둔다(/75 방식). 목적은 검색이 아니라 글 안 연계 조회수.
 - 자리: 도입 문단 뒤·목차 앞(`place` — `calc.js`·`calc2.js` 같은 함수. 목차가 없으면 첫 h2 앞, h2도 없으면 첫 문단 뒤). 본문 맨 위 광고와 입력 칸이 맞붙지 않게.
 - GA 이벤트 `calc_result`(`calc_kind`)·`calc_to_guide_click`(`to_path`). 입력값은 보내지 않는다.
-- 값은 `rules/*.json`(equity·wolse 등), 점검 `preview/calc2.check.mjs`. 계산기가 붙을 글 주소는 `PAGES`에 — 글 공개 뒤 채우고 스킨 적용.
+- 값은 `rules/*.json`(equity·wolse 등), 점검 `preview/calc2.check.mjs`. 계산기가 붙을 글 주소는 `PAGES`에 — /78 = equity(2026-11-15 채움, 스킨 적용은 따로), 월세 세액공제는 글 번호가 생기면 채운다.
 - 가이드 본문 속 링크는 render가 글자 그대로 내보내 넣을 수 없다 → 연결은 「함께 보면 좋은 글」. 계산기 글을 가이드보다 먼저 예약한다.
 - 가이드→계산기 링크는 새 가이드와 어차피 고칠 때만(일괄 재저장 안 함).
 - 자격 계산기 설계는 `docs/eligibility-calculator-design.md`(195KB — 필요한 절만 읽는다).
