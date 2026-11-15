@@ -522,7 +522,7 @@
       '<button type="button" class="modal-close" data-act="close" aria-label="닫기">✕</button></div>' +
       '<div class="modal-body"><div class="mtable">' + rows + '</div>' + todoPanel(it) +
       '<a class="modal-calc" href="' + esc(calcLink(it)) + '" target="_blank" rel="noopener">이 단지로 대출·특공 자격 확인 →</a>' +
-      '<div class="modal-btns">' + (go ? '<a class="go" href="' + esc(go) + '" target="_blank" rel="noopener">' + (youth ? '청년안심주택 공고' : it.source === 'lh' ? 'LH청약플러스 공고' : it.source === 'sh' ? 'SH 공고 원문' : '청약홈 바로가기') + '</a>' : '') +
+      '<div class="modal-btns">' + (go ? '<a class="go" href="' + esc(go) + '" target="_blank" rel="noopener">' + (youth ? '청년안심주택 공고' : it.source === 'lh' ? 'LH청약플러스 공고' : it.source === 'sh' ? 'SH 공고 원문' : '청약홈 게시글 보기') + '</a>' : '') +
       (home ? '<a href="' + esc(home) + '" target="_blank" rel="noopener">' + (youth ? '청약신청 페이지' : it.source === 'sh' ? 'SH 홈페이지' : '분양 홈페이지') + '</a>' : '') + '<span data-ref="wpslot">' + wpButton(it) + '</span></div></div></div>' +
       '<a class="modal-remote" href="' + esc(calcLink(it)) + '" target="_blank" rel="noopener" data-act="noop">자격 확인<small>이 단지<br>대출·특공</small></a></div>';
   }
@@ -651,14 +651,14 @@
     return w;
   }
   function md(s) { var d = parse(s); return (d.getMonth() + 1) + '.' + pad(d.getDate()) + '(' + W[d.getDay()] + ')'; }
+  // 줄을 누르면 달력 칸과 같은 상세 창(2026-11-16 사용자): 공고 원문·홈페이지·우리의 집 글은 창의 버튼 줄에서
   function heroRow(x, t) {
-    var u = safeUrl(x.it.applyhomeUrl), tag = u ? 'a' : 'div';
-    return '<' + tag + ' class="hero-row"' + (u ? ' href="' + esc(u) + '" target="_blank" rel="noopener"' : '') + '>' +
+    return '<button type="button" class="hero-row" data-act="open" data-id="' + esc(x.it.id) + '">' +
       '<span class="when">' + (x.p.date < t ? '~' + md(x.p.end || x.p.date) + '까지' : md(x.p.date)) + ' ' + phaseOf(x.it, x.p.k).label + '</span>' +
       '<span class="name">' + esc(x.it.name) + '</span>' +
       '<span class="where">' + esc(x.it.region + ' ' + (x.it.district || '')) + '</span>' +
       '<span class="kind">' + esc(x.it.kind) + '</span>' +
-      '<span class="units">' + (x.it.units ? x.it.units.toLocaleString() + '세대' : '') + '</span></' + tag + '>';
+      '<span class="units">' + (x.it.units ? x.it.units.toLocaleString() + '세대' : '') + '</span></button>';
   }
   // 달력 페이지: 기관별 이번 주 남은 접수 전체 목록(홈 블록의 「자세히 보기」가 #src-기관으로 온다)
   // on: 제목 옆 토글(달력 필터 적용 켜기·끄기, 2026-11-10 사용자). filtered: 켜져 있고 위 필터가 전체가 아닐 때 — 빈 칸 문구를 바꾼다
