@@ -23,6 +23,8 @@
 ## 보안 확인·로그인
 - **보안 확인(reCAPTCHA, `/manage/dkaptcha`)이 뜨면 멈춘다. 대신 풀거나 넘기지 않는다**(2026-10-24). 대기열·자동 실행은 알림 창.
 - 티스토리는 화면 없는 브라우저에 보안 확인을 띄운다 → 실행기마다 `TISTORY_HEADED=1`. 스킨 적용도 헤드리스는 로그인 확인 실패. 다른 프로필이 필요하면 `TISTORY_PROFILE=data\tistory-profile-2`.
+- 화면에 띄운 창은 다른 창 뒤에 열린다 → 보안 확인이 뜬 것 같으면 `raiseWindow()`(`common.mjs` → `tistory/raise_window.ps1`)가 그 창을 맨 위로 올리고 알림음을 한 번 낸다(2026-11-15, 점검 `node tistory/raise.check.mjs`). 사람이 5분 안에 못 풀면 그날 저장 1번을 쓰고, 이어지는 임시저장이 1번을 더 쓰려 한다.
+- PowerShell은 읽히는 `.ps1` 파일을 `-File`로만 실행한다. 인코딩한 명령(`-EncodedCommand`)·숨긴 창은 Defender가 트로이목마로 잡는다(2026-11-15).
 - 세션 쿠키는 몇 시간이면 끊긴다 → `ensureLogin`이 카카오 간편로그인의 저장된 계정 1개만 누른다(아무것도 입력하지 않음, 비밀번호·동의 화면이면 멈춤, 시험 `relogin.check.mjs`). 그 밖엔 사용자에게 `tistory_login.bat`.
 - 자동화 브라우저는 방문 통계·광고 요청을 막는다(`TRACKERS`: tiara·wcslog·gtag·애드센스) — 점검 방문이 조회수·무효 트래픽에 섞이지 않게(2026-11-01).
 

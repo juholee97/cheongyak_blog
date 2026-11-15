@@ -6,7 +6,7 @@
 // 주의(2026-10-22 실측): 편집기가 입력 도중 자동 임시저장을 하므로 "개수 +1"로 저장을 판정하지 않는다 → 저장본을 다시 열어 확인한다.
 import { readFile, writeFile } from 'node:fs/promises';
 import { join, basename } from 'node:path';
-import { launch, ensureLogin, NEWPOST, ROOT, BLOG, GUARD, dayMax } from './common.mjs';
+import { launch, ensureLogin, NEWPOST, ROOT, BLOG, GUARD, dayMax, raiseWindow } from './common.mjs';
 import { checkDraft } from '../posts/check.mjs';
 import { checkAnalysis, areaOf } from '../posts/analysis_post.mjs';
 import { checkNotice } from '../posts/notice_post.mjs';
@@ -320,7 +320,7 @@ async function main() {
           const saving = await page.evaluate(() => (document.querySelector('#publish-btn')?.innerText || '').includes('저장중')).catch(() => false);
           captcha = saving && i * 2 >= 20;
           if (captcha && !headed) break;
-          if (captcha && headed && i * 2 === 20) log('※ 보안 확인이 뜬 것 같아요 — 화면의 티스토리 창에서 직접 풀어 주세요(5분 기다림)');
+          if (captcha && headed && i * 2 === 20) { log('※ 보안 확인이 뜬 것 같아요 — 화면의 티스토리 창에서 직접 풀어 주세요(5분 기다림)'); raiseWindow(); } // 창을 맨 위로 + 알림음 한 번(2026-11-15)
           await page.waitForTimeout(2000);
         }
         if (captcha) { report.shot = await shot('captcha'); step('티스토리 보안 확인(reCAPTCHA) — 자동으로 풀지 않음. TISTORY_HEADED=1로 화면에 띄워 사람이 풀거나 시간이 지난 뒤 다시', false); return 6; }

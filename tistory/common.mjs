@@ -4,9 +4,10 @@
 try { process.title = 'cheongyak'; } catch { /* 무시 */ }
 import { chromium } from 'playwright';
 import { fileURLToPath } from 'node:url';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { readFile, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
+import { spawn } from 'node:child_process';
 
 export const ROOT = fileURLToPath(new URL('..', import.meta.url));
 export const SESSION = join(ROOT, 'data', 'tistory-session'); // 절대 커밋·공유하지 않는다(.gitignore)
@@ -51,6 +52,24 @@ export async function launch({ headless = true } = {}) {
   await context.route(TRACKERS, (r) => r.abort());
   const page = context.pages()[0] || (await context.newPage());
   return { context, page };
+}
+
+// 보안 확인이 뜬 것 같을 때(화면에 띄운 실행만) 자동화 창을 맨 위로 올리고, 작업 표시줄 단추를 깜박이고, 알림음을 한 번 낸다.
+// 2026-11-15: 창이 다른 창(클로드 앱) 뒤에 열려 보안 확인을 못 봤고 5분이 지나갔다. 윈도우는 뒤쪽 프로세스의 포커스 가져오기를 막으니 SetForegroundWindow 대신 맨 위(HWND_TOPMOST)로.
+// 창은 프로필 폴더(--user-data-dir)가 같은 chrome.exe로 찾는다 — 사용자가 평소 쓰는 크롬은 건드리지 않는다. Win32 코드는 tistory/raise_window.ps1(-File로 실행).
+// 같은 날: 인코딩한 긴 PowerShell 명령은 Defender가 트로이목마로 잡았다 → 읽히는 .ps1 파일만 쓴다.
+// 티스토리 화면(제목·DOM)과 보안 확인 자체는 건드리지 않는다. 기다리지 않고 던지지 않는다(띄우고 unref). 윈도우가 아니면 아무것도 안 함.
+// detached는 쓰지 않는다 — 클로드 도구에서 떼어 띄운 PowerShell은 아무것도 안 하고 끝났다(2026-11-15 실측). 4초 안팎이면 끝나고 draft.mjs는 그동안 5분 기다리는 중이다.
+export const RAISE_PS = join(ROOT, 'tistory', 'raise_window.ps1');
+export const raisePs = (dir, mode, opts = {}) => spawn('powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', RAISE_PS, '-Dir', resolve(dir).replace(/[\\/]+$/, ''), '-Mode', mode], { windowsHide: true, ...opts });
+export function raiseWindow(dir = process.env.TISTORY_PROFILE || SESSION) {
+  if (process.platform !== 'win32') return null;
+  try {
+    const child = raisePs(dir, 'raise', { stdio: 'ignore' });
+    child.on('error', () => {});
+    child.unref();
+    return child;
+  } catch { return null; }
 }
 
 // 티스토리 세션이 끊겼으면 살아 있는 카카오 로그인으로 다시 들어간다. 버튼만 누르고 아무것도 입력하지 않는다.
