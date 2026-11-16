@@ -51,6 +51,6 @@ for (const [n, { it }] of w.receipt.entries()) {
 }
 await browser.close();
 
-const next = draftOf(data, d.week.start, d.summary, images);
+const next = draftOf(data, d.week.start, d.summary, images, d.deepLinks); // 심층 분석 링크(--deep-links로 저장된 값)는 그대로 둔다
 await writeFile(path, JSON.stringify(next, null, 2));
 console.log(`그림 ${images.length}장 (썸네일·주간 그림 2 · 카드 ${w.receipt.length} · 지도 ${maps}) → ${out}/`);

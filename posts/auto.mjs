@@ -40,7 +40,8 @@ async function main() {
   await log(`\n===== ${new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 16).replace('T', ' ')} KST · ${week} 주${dryRun ? ' · 시험' : ''} =====`);
   const prev = await readFile(join(ROOT, base + '.save.json'), 'utf8').then(JSON.parse, () => null);
   if (!dryRun && prev?.ok && prev.mode !== 'dry-run') { await log('이미 임시저장 확인된 주 — 건너뜀'); return null; }
-  if (await run('초안', ['posts/weekly.mjs', '--week', week, '--force', '--auto'])) return '초안 만들기 실패(수집본을 못 받았을 수 있음)';
+  // --deep-links(2026-11-16 사용자 「켜기」): 우리의 집 심층 분석 글이 열리는 단지에만 링크. 장부·확인이 실패하면 링크 없이 만든다
+  if (await run('초안', ['posts/weekly.mjs', '--week', week, '--force', '--auto', '--deep-links'])) return '초안 만들기 실패(수집본을 못 받았을 수 있음)';
   if (await run('그림', ['posts/images.mjs', base + '.json'])) return '그림 만들기 실패';
   if (await run('검수', ['posts/check.mjs', base + '.json'])) return '검수 실패 — 저장하지 않음';
   const code = await run('티스토리', ['tistory/draft.mjs', base + '.json', dryRun ? '--dry-run' : '--approved']);

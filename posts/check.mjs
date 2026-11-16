@@ -3,14 +3,20 @@
 // 3) 투자 권유·과장 표현 없음 4) 출처·기준일시·면책 문구 있음
 import { readFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
-import { draftOf, build, DISCLAIMER, updatedLabel } from './weekly.mjs';
+import { draftOf, build, DISCLAIMER, updatedLabel, deepUrl } from './weekly.mjs';
 
 export const BANNED = ['추천', '강추', '로또', '무조건', '대박', '반드시 넣', '꼭 넣', '오른다', '오를', '시세차익', '수익', '투자 가치', '투자가치', '놓치면 후회', '안전한 투자', '확실'];
 
 export function checkDraft(draft, data) {
   const issues = [];
-  const again = draftOf(data, draft.week.start, draft.summary, draft.images || []);
+  const again = draftOf(data, draft.week.start, draft.summary, draft.images || [], draft.deepLinks);
   if (again.html !== draft.html) issues.push('본문이 수집본에서 다시 그린 결과와 다릅니다(본문을 직접 고치지 말고 summary만 고친 뒤 --render).');
+  // 심층 분석 링크(--deep-links): 그 주 글의 단지이고 우리의 집 심층 분석 주소(apt- 시세 비교 등 제외)여야
+  const ids = new Set(data.items.map((it) => it.id));
+  for (const [id, url] of Object.entries(draft.deepLinks || {})) {
+    if (!ids.has(id)) issues.push(`심층 분석 링크의 단지가 수집본에 없습니다: ${id}`);
+    if (!deepUrl(url)) issues.push(`심층 분석 글 주소가 아닙니다: ${url}`);
+  }
   if (again.title !== draft.title) issues.push('제목이 집계와 다릅니다.');
 
   // 요약 숫자: 집계값, 접수 단지 세대수·분양가, 주간 날짜의 월·일, 연도만 허용

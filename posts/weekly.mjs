@@ -2,10 +2,12 @@
 // node posts/weekly.mjs [--week 2026-10-26] [--data <파일|URL>]   새 초안 (summary는 비워 둠)
 // node posts/weekly.mjs --render drafts/2026-10-26_weekly.json      summary를 고친 뒤 본문만 다시 그림
 // --auto: 요약 2~3줄을 집계로 채운다(매주 자동 실행용 — 숫자·단지명만, 평가 없음)
+// --deep-links [--links <파일|URL>]: 우리의 집 심층 분석 글이 있는 단지에만 그 글 링크(기본 꺼짐). 고른 주소는 초안 deepLinks에 저장, --render는 저장값만 쓴다
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 
 export const SCHEDULE_URL = 'https://juholee97.github.io/cheongyak_blog/schedule.json';
+export const LINKS_URL = 'https://juholee97.github.io/cheongyak_blog/auleezip_links.json'; // 공고키 → 우리의 집 글 주소(달력과 같은 장부)
 export const BLOG_URL = 'https://aulee.tistory.com/';
 export const DISCLAIMER = '청약 일정은 입주자모집공고 기준이며 사업주체 사정에 따라 변경될 수 있습니다. 신청 전 반드시 청약홈의 입주자모집공고를 확인하세요.';
 const PH = { sp: '특별공급', p1: '1순위', p2: '2순위', win: '당첨자 발표', con: '계약' };
@@ -99,8 +101,69 @@ export const CAL_URL = BLOG_URL + 'category/' + encodeURIComponent('청약일정
 export const IMG = (key) => `<p>[[IMG:${key}]]</p>`;
 export const IMG_RE = /<p>\[\[IMG:([\w:-]+)\]\]<\/p>/g;
 
+// 우리의 집 심층 분석 링크(2026-11-16, 기본 꺼짐 — --deep-links). 구글이 읽는 티스토리 → 공고별 글 정적 링크
+// 장부 열쇠: 달력 calendar.js postLink와 같다(청약홈은 id의 - 앞 공고번호, lh-·youth- 등은 id 전체)
+export const linkKey = (it) => { const id = String(it.id); return /^\d+-\d+$/.test(id) ? id.split('-')[0] : id; };
+// 주소 판정은 todo.js wpLink와 같은 규칙에서 심층 분석만: https://auleezip.com/슬러그/ 한 칸, deep- 또는 한글 슬러그(%인코딩 포함).
+// apt-(시세 비교, 2026-11-16 검색 제외)·영문만인 주소·밖 주소·깨진 인코딩은 null. 주소는 받은 그대로 돌려준다(쿼리 안 붙임)
+export function deepUrl(url) {
+  const m = /^https:\/\/auleezip\.com\/([^/?#\s]+)\/$/.exec(String(url || ''));
+  if (!m || /^apt-./.test(m[1])) return null;
+  let slug;
+  try { slug = decodeURIComponent(m[1]); } catch { return null; }
+  if (/[/?#\s]/.test(slug)) return null;
+  return /^deep-./.test(m[1]) || /[가-힣]/.test(slug) ? url : null;
+}
+const CHROME_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
+// 글이 실제로 열리는지: 상태 200이고 최종 주소가 우리의 집 첫 화면(/)이 아니어야(예약 글 404, 옛 주소 → 첫 화면 넘김 방지)
+export async function pageLive(url, fetchImpl = fetch) {
+  try {
+    const r = await fetchImpl(url, { redirect: 'follow', headers: { 'user-agent': CHROME_UA, accept: 'text/html' }, signal: AbortSignal.timeout(10000) });
+    await r.body?.cancel?.().catch(() => {});
+    const fin = new URL(r.url || url);
+    if (r.status !== 200) return { ok: false, reason: `상태 ${r.status}`, final: fin.href };
+    if (fin.hostname !== 'auleezip.com' || fin.pathname === '/') return { ok: false, reason: `첫 화면·밖으로 넘어감(${fin.href})`, final: fin.href };
+    return { ok: true, final: fin.href };
+  } catch (e) { return { ok: false, reason: '요청 실패(' + (e.name === 'TimeoutError' ? '10초 초과' : e.message) + ')' }; }
+}
+// 그 주 글에 나오는 단지(접수·발표·계약) 중 심층 분석 글이 열리는 단지만 {단지 id: 주소}. 요청은 후보마다 한 번, 차례로(다시 시도 없음)
+// rows: 단지마다 결과(보고·미리보기용). 장부·요청이 실패해도 던지지 않는다 — 그 단지는 링크 없이
+export async function pickDeepLinks(w, ledger, { fetchImpl = fetch, log = console.log } = {}) {
+  const items = new Map();
+  for (const [sec, xs] of [['접수', w.receipt], ['발표', w.win], ['계약', w.con]]) for (const { it } of xs) {
+    if (!items.has(it.id)) items.set(it.id, { it, secs: [] });
+    if (!items.get(it.id).secs.includes(sec)) items.get(it.id).secs.push(sec);
+  }
+  const links = {}, rows = [], live = new Map(); // 같은 글을 가리키는 단지(3·4단지 등)는 요청 한 번
+  for (const { it, secs } of items.values()) {
+    const key = linkKey(it), raw = ledger && Object.prototype.hasOwnProperty.call(ledger, key) ? ledger[key] : null;
+    const row = { id: it.id, name: it.name, key, secs, url: raw || '' };
+    if (!raw) row.result = '글 없음';
+    else if (/^https:\/\/auleezip\.com\/apt-/.test(raw)) row.result = '뺌: apt(시세 비교)';
+    else if (!deepUrl(raw)) row.result = '뺌: 심층 분석 주소 아님';
+    else {
+      if (!live.has(raw)) live.set(raw, await pageLive(raw, fetchImpl));
+      const r = live.get(raw);
+      row.final = r.final;
+      if (r.ok) { links[it.id] = raw; row.result = '넣음'; }
+      else { row.result = '뺌: ' + r.reason; log(`- 심층 분석 링크 뺌: ${it.name} ${raw} (${r.reason})`); }
+    }
+    rows.push(row);
+  }
+  return { links, rows };
+}
+export async function loadLedger(src = LINKS_URL, log = console.log) {
+  try {
+    const d = await loadData(src);
+    if (!d || typeof d !== 'object' || Array.isArray(d)) throw new Error('형식이 다름');
+    return d;
+  } catch (e) { log(`- 우리의 집 장부를 못 받음(${src}: ${e.message}) — 심층 분석 링크 없이 만듭니다`); return null; }
+}
+
 // images: [{key:'weekly'|'card:{id}'|'map:{id}', file, alt}] — 있는 것만 자리를 만든다
-export function render(w, summary = [], images = []) {
+// deepLinks: {단지 id: 우리의 집 심층 분석 주소} — 비면 지금과 같은 본문. deepUrl을 통과한 주소만 그린다
+export function render(w, summary = [], images = [], deepLinks = {}) {
+  const deep = (it) => (deepLinks && Object.prototype.hasOwnProperty.call(deepLinks, it.id) ? deepUrl(deepLinks[it.id]) : null);
   const has = new Set(images.map((i) => i.key));
   const img = (k) => (has.has(k) ? IMG(k) + '\n' : '');
   const kindText = Object.entries(w.facts.kinds).map(([k, n]) => `${k} ${n}`).join(' · ');
@@ -131,14 +194,15 @@ ${w.receipt.map(({ it, firstP }) => `<tr><td ${TD}>${span(firstP)} ${label(it, f
 ${img('card:' + it.id)}${img('map:' + it.id)}<p style="font-weight:700">${facts}</p>
 <table style="border-collapse:collapse;width:100%;table-layout:fixed"><tbody>
 ${it.phases.map((p) => `<tr><th ${TH}>${label(it, p.k)}</th><td ${TD}>${span(p, full)}</td></tr>`).join('\n')}
-</tbody></table>${it.applyhomeUrl ? `\n<p style="margin:14px 0 0"><a href="${esc(it.applyhomeUrl)}" target="_blank" rel="noopener">${it.kind === '청년안심주택' ? '청년안심주택 공고 보기' : it.source === 'lh' ? 'LH청약플러스 공고 보기' : '청약홈 공고 보기'} →</a></p>` : ''}
+</tbody></table>${it.applyhomeUrl ? `\n<p style="margin:14px 0 0"><a href="${esc(it.applyhomeUrl)}" target="_blank" rel="noopener">${it.kind === '청년안심주택' ? '청년안심주택 공고 보기' : it.source === 'lh' ? 'LH청약플러스 공고 보기' : '청약홈 공고 보기'} →</a></p>` : ''}${deep(it) ? `\n<p style="margin:${it.applyhomeUrl ? 6 : 14}px 0 0"><a href="${esc(deep(it))}" target="_blank" rel="noopener">${esc(it.name)} 심층 분석 보기 →</a></p>` : ''}
 </div>`);
     });
   }
 
   const list = (rows, fmt) => (rows.length ? `<ul>\n${rows.map(fmt).join('\n')}\n</ul>` : '<p>이번 주에는 없습니다.</p>');
-  out.push('<h2 style="font-weight:700">이번 주 당첨자 발표</h2>', list(w.win, ({ it, date }) => `<li>${md(date)} ${esc(it.name)} · ${esc(where(it))}</li>`));
-  out.push('<h2 style="font-weight:700">이번 주 계약</h2>', list(w.con, ({ it, p }) => `<li>${span(p)} ${esc(it.name)} · ${esc(where(it))}</li>`));
+  const deepTail = (it) => (deep(it) ? ` · <a href="${esc(deep(it))}" target="_blank" rel="noopener">심층 분석</a>` : '');
+  out.push('<h2 style="font-weight:700">이번 주 당첨자 발표</h2>', list(w.win, ({ it, date }) => `<li>${md(date)} ${esc(it.name)} · ${esc(where(it))}${deepTail(it)}</li>`));
+  out.push('<h2 style="font-weight:700">이번 주 계약</h2>', list(w.con, ({ it, p }) => `<li>${span(p)} ${esc(it.name)} · ${esc(where(it))}${deepTail(it)}</li>`));
 
   out.push(`<h2 style="font-weight:700">지역별로 보려면</h2>
 <p>시·도와 서울 자치구별 일정은 청약일정 메뉴의 청약 달력에서 매일 아침 갱신됩니다. <a href="${CAL_URL}">청약 달력 바로가기</a></p>`);
@@ -156,12 +220,14 @@ export async function loadData(src = SCHEDULE_URL) {
   return JSON.parse(await readFile(src, 'utf8'));
 }
 
-export function draftOf(data, start, summary = [], images = []) {
+// deepLinks가 비면 초안 JSON에 칸을 만들지 않는다(링크를 안 켠 초안은 지금과 같게)
+export function draftOf(data, start, summary = [], images = [], deepLinks = {}) {
   const w = build(data, start);
+  const dl = deepLinks && Object.keys(deepLinks).length ? { deepLinks } : {};
   return {
     week: { start: w.start, end: w.end }, dataUpdatedAt: data.updatedAt, dataSource: SCHEDULE_URL,
-    title: titleOf(w), category: '청약일정', tags: tagsOf(w), summary, facts: w.facts, images,
-    html: render(w, summary, images),
+    title: titleOf(w), category: '청약일정', tags: tagsOf(w), summary, facts: w.facts, images, ...dl,
+    html: render(w, summary, images, deepLinks || {}),
   };
 }
 
@@ -172,7 +238,7 @@ async function main() {
     // 같은 수집본으로 다시 그려야 사실 대조가 맞는다: 초안에 기록된 데이터를 다시 받지 않고 저장된 사본을 쓴다
     const d = JSON.parse(await readFile(renderPath, 'utf8'));
     const data = JSON.parse(await readFile(renderPath.replace(/\.json$/, '.data.json'), 'utf8'));
-    const next = draftOf(data, d.week.start, d.summary, d.images || []);
+    const next = draftOf(data, d.week.start, d.summary, d.images || [], d.deepLinks); // 링크도 저장된 값만(다시 확인하지 않음)
     await writeFile(renderPath, JSON.stringify(next, null, 2));
     console.log(`다시 그림: ${renderPath} (${next.title})`);
     return;
@@ -186,7 +252,16 @@ async function main() {
     return;
   }
   const data = await loadData(arg('--data') || SCHEDULE_URL);
-  const draft = draftOf(data, start, process.argv.includes('--auto') ? autoSummary(build(data, start)) : []);
+  let deepLinks = {};
+  if (process.argv.includes('--deep-links')) {
+    const ledger = await loadLedger(arg('--links') || LINKS_URL);
+    if (ledger) {
+      const r = await pickDeepLinks(build(data, start), ledger);
+      deepLinks = r.links;
+      console.log(`심층 분석 링크 ${Object.keys(deepLinks).length}곳 (후보 단지 ${r.rows.length}곳 중)`);
+    }
+  }
+  const draft = draftOf(data, start, process.argv.includes('--auto') ? autoSummary(build(data, start)) : [], [], deepLinks);
   await mkdir('drafts', { recursive: true });
   await writeFile(base + '.data.json', JSON.stringify(data)); // 검수·다시 그리기용 수집본 사본
   await writeFile(base + '.json', JSON.stringify(draft, null, 2));
