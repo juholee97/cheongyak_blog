@@ -42,8 +42,8 @@ assert.equal(deepUrl(APT), null); assert.equal(deepUrl('https://auleezip.com/met
 const linked = render(lw, [], [], { [sale.id]: KO, [lh.id]: DEEP, [aptOnly.id]: APT });
 assert.ok(linked.includes(`청약홈 공고 보기 →</a></p>\n<p style="margin:6px 0 0"><a href="${KO}" target="_blank" rel="noopener">표본 자이 심층 분석 보기 →</a></p>`));
 assert.ok(linked.includes(`<p style="margin:14px 0 0"><a href="${DEEP}" target="_blank" rel="noopener">행복주택 심층 분석 보기 →</a></p>`)); // 공고 링크가 없으면 그 자리
-assert.ok(linked.includes(`<li>11.06(금) 표본 자이 · 서울 강남구 · <a href="${KO}" target="_blank" rel="noopener">심층 분석</a></li>`));
-assert.ok(linked.includes(`<li>11.07(토) 행복주택 · 경기 수원시 · <a href="${DEEP}" target="_blank" rel="noopener">심층 분석</a></li>`));
+assert.ok(linked.includes(`<li>11.06(금) 표본 자이 · 서울 강남구 · <a href="${KO}" target="_blank" rel="noopener"><span style="white-space:nowrap">심층 분석</span></a></li>`));
+assert.ok(linked.includes(`<li>11.07(토) 행복주택 · 경기 수원시 · <a href="${DEEP}" target="_blank" rel="noopener"><span style="white-space:nowrap">심층 분석</span></a></li>`));
 assert.ok(!linked.includes('apt-') && !linked.includes('nofollow') && !linked.includes('utm'));
 assert.equal(linked.split('심층 분석').length - 1, 4);
 // 고르기: 장부의 apt-·영문만 주소는 요청도 안 하고 뺌, 200이 아니거나 첫 화면으로 넘어가면 뺌, 요청은 후보마다 한 번

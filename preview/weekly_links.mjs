@@ -1,9 +1,9 @@
 // 주간 글 + 우리의 집 심층 분석 링크(--deep-links) 미리보기 — drafts/는 건드리지 않는다
-// node preview/weekly_links.mjs [--week 2026-11-16 --week 2026-11-23] [--out preview/out/weekly_links_20261116]
+// node preview/weekly_links.mjs [--week 2026-11-16 --week 2026-11-23] [--out preview/out/weekly_links_20261116] [--reuse]
 // 공개 수집본(SCHEDULE_URL)·장부(LINKS_URL)로 주마다 바꾸기 전/후 본문을 그리고, 글 화면(preview/serve.mjs의 /post 틀)에 넣어
 // 1280·375px 폭으로 링크가 들어간 단지 상자와 발표·계약 목록을 캡처한다. 우리의 집에는 후보 주소마다 GET 한 번(두 주에 겹치면 한 번만).
 import { spawn } from 'node:child_process';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from 'playwright';
@@ -34,6 +34,7 @@ const seen = new Map();
 const onceFetch = (u, o) => { if (!seen.has(u)) seen.set(u, fetch(u, o)); return seen.get(u); };
 
 await mkdir(OUT, { recursive: true });
+const reuse = argv.includes('--reuse') ? await readFile(join(OUT, 'links_report.json'), 'utf8').then(JSON.parse, () => null) : null;
 const data = await loadData(SCHEDULE_URL);
 const ledger = await loadLedger(LINKS_URL);
 console.log(`수집본 ${data.items.length}건(기준 ${data.updatedAt}) · 장부 ${ledger ? Object.keys(ledger).length + '건' : '못 받음'}`);
@@ -42,7 +43,8 @@ const report = { scheduleUrl: SCHEDULE_URL, dataUpdatedAt: data.updatedAt, links
 try {
   for (const wk of weeks) {
     const w = build(data, wk), summary = autoSummary(w), title = titleOf(w);
-    const { links, rows } = ledger ? await pickDeepLinks(w, ledger, { fetchImpl: onceFetch }) : { links: {}, rows: [] };
+    const old = reuse?.weeks.find((x) => x.week === wk); // --reuse: 지난번 결과의 링크를 그대로(우리의 집에 다시 요청하지 않음)
+    const { links, rows } = old ? { links: old.links, rows: old.rows } : ledger ? await pickDeepLinks(w, ledger, { fetchImpl: onceFetch }) : { links: {}, rows: [] };
     const before = render(w, summary), after = render(w, summary, [], links);
     const count = (xs) => xs.filter(({ it }) => links[it.id]).length;
     const sum = { week: wk, title, receipt: `${count(w.receipt)}/${w.receipt.length}`, win: `${count(w.win)}/${w.win.length}`, con: `${count(w.con)}/${w.con.length}`, links, rows };
@@ -83,6 +85,7 @@ try {
   await browser.close();
   server?.kill();
 }
-report.requests = [...seen.keys()];
+if (reuse) report.weeks.unshift(...reuse.weeks.filter((x) => !weeks.includes(x.week))); // 이번에 안 그린 주의 지난 결과는 남긴다
+report.requests =[...new Set([...(reuse?.requests || []), ...seen.keys()])];
 await writeFile(join(OUT, 'links_report.json'), JSON.stringify(report, null, 2));
 console.log(`\n우리의 집 요청 ${seen.size}건 · 결과 ${OUT}`);

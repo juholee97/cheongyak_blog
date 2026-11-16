@@ -200,7 +200,8 @@ ${it.phases.map((p) => `<tr><th ${TH}>${label(it, p.k)}</th><td ${TD}>${span(p, 
   }
 
   const list = (rows, fmt) => (rows.length ? `<ul>\n${rows.map(fmt).join('\n')}\n</ul>` : '<p>이번 주에는 없습니다.</p>');
-  const deepTail = (it) => (deep(it) ? ` · <a href="${esc(deep(it))}" target="_blank" rel="noopener">심층 분석</a>` : '');
+  // 「심층 분석」 두 낱말이 휴대폰 폭에서 줄 끝에 걸려 갈리지 않게 span으로 묶는다(편집기는 span의 style을 지킨다). 글자는 그대로라 저장본 대조에 영향 없음
+  const deepTail = (it) => (deep(it) ? ` · <a href="${esc(deep(it))}" target="_blank" rel="noopener"><span style="white-space:nowrap">심층 분석</span></a>` : '');
   out.push('<h2 style="font-weight:700">이번 주 당첨자 발표</h2>', list(w.win, ({ it, date }) => `<li>${md(date)} ${esc(it.name)} · ${esc(where(it))}${deepTail(it)}</li>`));
   out.push('<h2 style="font-weight:700">이번 주 계약</h2>', list(w.con, ({ it, p }) => `<li>${span(p)} ${esc(it.name)} · ${esc(where(it))}${deepTail(it)}</li>`));
 
