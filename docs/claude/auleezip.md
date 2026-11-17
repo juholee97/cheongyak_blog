@@ -33,7 +33,7 @@
 ## 수정 한도와 멈춤 스위치 (`zip/wp.mjs`)
 일괄 수정 뒤 글이 색인에서 빠진 일(2026-11-09~11) 때문에 생긴 장치다. **사용자 결정 없이 풀지 않는다.**
 - `UPDATE_CAP` = 공개 글 수정 하루 10편(`data/zip_update_budget.json`, 넘치면 다음 날). 제목 단계 표시([종료])와 청약 결과(`deep.mjs --publish --urgent`)는 한도 밖.
-- `deep.mjs` `RESULT_REPUBLISH_HOLD = true`(2026-11-17) — 청약 결과로 공개 글을 다시 저장하지 않음(결과는 「청약 결과 모음」 페이지로, `RESULTS_PAGE_LIVE`는 미리보기 승인 뒤). 자세히는 `auleezip-deep.md` 「청약 결과 추적」.
+- `deep.mjs` `RESULT_REPUBLISH_HOLD = true`(2026-11-17) — 청약 결과로 공개 글을 다시 저장하지 않음(결과는 「청약 결과 모음」 페이지로, `RESULTS_PAGE_LIVE = true` — 2026-11-17 승인·공개, 위·바닥 메뉴 「청약 결과」). 자세히는 `auleezip-deep.md` 「청약 결과 추적」.
 - `APT_EDIT_HOLD = true` — 공개된 `apt-` 글 본문 수정 멈춤(`deferred`). 풀면 밀린 글이 하루 10편씩 나간다.
 - `APT_NEW_HOLD = true` — 새 `apt-` 글을 만들거나 공개하지 않음(상태 `stopped`). 풀려면 `false`와 `--check` 줄.
 - `zip/stage.mjs` `UNSTAMP_FROM = 9999-12-31` — 옛 「[신청마감]」 떼기 미룸(`unstampHeld`). 색인 회복 확인 뒤 사용자가 날짜를 넣는다. 그날 `publish.mjs --check`의 `unstampHeld` 줄도 고친다.
