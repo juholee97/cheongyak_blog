@@ -98,6 +98,15 @@ if (process.argv.includes('--check')) {
     assert.ok(h.includes('<td class="n" data-label="평균 경쟁률">34.5대 1</td>') && h.includes('<td class="n" data-label="공급 (세대)">15</td>') && h.includes('<td class="n" data-label="접수 (건)">613</td>'));
     assert.ok(!/우리 가족|우리 아기|우리 아이|아기와|우리집|두 분|우리 부부|두 사람|\/apt-|낮다|높다|% (낮|높)|추천합니다|청약하세요/.test(h), '금지 표현');
     assert.ok(resultsPage({}, ps).includes('아직 모은 청약 결과가 없습니다'));
+    { // 경쟁률 모양(2026-11-18): 이 페이지만 1,000 이상은 소수점 없이 쉼표(요약 표·한 줄 요약·상세 표 모두), 1,000 미만은 예전 그대로
+      const N = String.fromCharCode(160), R = (s) => `${s}대${N}1`;
+      const big = { 5: { at: '2026-11-17', apt: [r('059.9000A', 25650, 10), r('084.9000B', 307, 10)], score: [] }, 6: { at: '2026-11-16', remndr: [r('074.1000', 112920, 10)] }, 7: { at: '2026-11-15', remndr: [r('084.1000', 99995, 100), r('059.1000', 99994, 100)] } };
+      const hb = resultsPage(big, [{ key: '5', nos: ['5'], name: '마 단지', url: null }, { key: '6', nos: ['6'], name: '바 단지', url: null }, { key: '7', nos: ['7'], name: '사 단지', url: null }]);
+      assert.ok(!/\d{4,}\.\d대/.test(hb), '1,000 이상 옛 모양');
+      assert.ok(hb.includes(`<td class="n" data-label="평균 경쟁률">${R('1,298')}</td>`) && hb.includes(`<td class="n" data-label="평균 경쟁률">${R('11,292')}</td>`), '요약 표');
+      assert.ok(hb.includes(`가장 몰린 주택형은 59A(${R('2,565')})`) && hb.includes(`가장 몰린 주택형은 74(${R('11,292')})`), '한 줄 요약');
+      assert.ok(hb.includes(`<span>${R('2,565')}</span>`) && hb.includes(`<span>${R('30.7')}</span>`) && hb.includes(`<span>${R('1,000')}</span>`) && hb.includes(`<span>${R('999.9')}</span>`), '상세 표(999.95는 1,000, 999.94는 999.9)');
+    }
   }
   console.log('publish 점검 통과');
 } else if (process.argv[1]?.endsWith('publish.mjs')) {

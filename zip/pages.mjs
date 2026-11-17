@@ -186,12 +186,13 @@ export const methodPage = () => page([
 // 가격 판정·청약 권유는 쓰지 않는다. 상세 절 id="r-<키>"는 새 글의 「청약 결과 모음」 한 줄이 가리키는 자리
 export function resultsPage(res, posts) {
   const dot = (s) => String(s || '').replaceAll('-', '.');
-  const rows = posts.map((p) => ({ ...p, st: resultStats(p.nos, res) })).filter((p) => p.st).sort((a, b) => (a.st.at === b.st.at ? (a.key < b.key ? 1 : -1) : a.st.at < b.st.at ? 1 : -1));
+  // 경쟁률은 1,000 이상이면 소수점 없이 천 단위 쉼표(2,565대 1 — 2026-11-18). 심층 분석 글의 결과 절은 예전 모양 그대로라 이 페이지만 comma=true
+  const rows = posts.map((p) => ({ ...p, st: resultStats(p.nos, res, true) })).filter((p) => p.st).sort((a, b) => (a.st.at === b.st.at ? (a.key < b.key ? 1 : -1) : a.st.at < b.st.at ? 1 : -1));
   const at = rows.map((p) => p.st.at).filter(Boolean).sort().at(-1);
   const name = (p) => (p.url ? link(p.url, p.name) : esc(p.name));
   const cell = (t) => `<span>${esc(t)}</span>`;
   const detail = (p) => {
-    const [, take, tb, s] = resultBlocks(p.nos, res, p.win); // [소제목, 한 줄 요약, 주택형별 표, 출처 줄] — 소제목(평균 경쟁률)은 위 요약 표에 있어 단지 이름으로 바꾼다
+    const [, take, tb, s] = resultBlocks(p.nos, res, p.win, true); // [소제목, 한 줄 요약, 주택형별 표, 출처 줄] — 소제목(평균 경쟁률)은 위 요약 표에 있어 단지 이름으로 바꾼다
     return [
       `<h2 id="r-${esc(p.key)}">${esc(p.name)}</h2>`,
       `<p class="az-take">${esc(take.take)}</p>`,

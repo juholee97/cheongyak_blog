@@ -50,9 +50,13 @@ export function tyLabels(tys) {
   return out;
 }
 const n0 = (v) => Number(String(v).replace(/,/g, '')) || 0;
-const rate = (req, sup) => (sup ? `${(req / sup).toFixed(1)}대\u00a01` : '-');
+// 경쟁률 글자. comma(「청약 결과 모음」 페이지만, 2026-11-18): 소수 첫째 자리로 반올림한 값이 1,000 이상이면 소수점을 떼고 천 단위 쉼표(2565.0 → 2,565, 999.95 → 1,000).
+// 1,000 미만은 같은 모양. 기본(글의 「청약 결과」 절·resultsChanged)은 예전 그대로 — 공개 글 HTML이 바뀌면 안 된다
+const rateNum = (v, comma) => { const f = v.toFixed(1); return comma && Number(f) >= 1000 ? Math.round(v).toLocaleString('en-US') : f; };
+export const rate = (req, sup, comma = false) => (sup ? `${rateNum(req / sup, comma)}대\u00a01` : '-');
 // 한 글(공고번호 여럿일 수 있음)의 결과 숫자: 주택형별 공급·접수와 합계. 결과가 없으면 null. 글의 「청약 결과」 절과 「청약 결과 모음」 페이지(pages.mjs resultsPage)가 같이 쓴다
-export function resultStats(nos, res) {
+// comma: 경쟁률 모양(rate 참고) — 모음 페이지만 true
+export function resultStats(nos, res, comma = false) {
   const rows = (k) => nos.flatMap((no) => res[no]?.[k] || []), apt = rows('apt'), score = rows('score'), rem = rows('remndr'), at = nos.map((no) => res[no]?.at).filter(Boolean).sort().at(-1);
   if (!apt.length && !rem.length) return null;
   const types = [...new Set([...apt, ...rem].map((r) => r.HOUSE_TY))], lab = tyLabels(types);
@@ -64,18 +68,18 @@ export function resultStats(nos, res) {
     const sc = score.find((r) => r.HOUSE_TY === ty && r.RESIDE_SENM === '해당지역' && r.LWET_SCORE && r.LWET_SCORE !== '-');
     return { ty: lab.get(ty), s, q, q2, sc };
   });
-  return { apt, rem, at, body, sup, req, kind: apt.length ? '1순위' : '무순위', avg: rate(req, sup) };
+  return { apt, rem, at, body, sup, req, kind: apt.length ? '1순위' : '무순위', avg: rate(req, sup, comma) };
 }
-// 한 글(공고번호 여럿일 수 있음)의 결과 → 글 블록. 결과가 없으면 []
-export function resultBlocks(nos, res, winDate) {
-  const st = resultStats(nos, res);
+// 한 글(공고번호 여럿일 수 있음)의 결과 → 글 블록. 결과가 없으면 []. comma: 모음 페이지만 true(rate 참고)
+export function resultBlocks(nos, res, winDate, comma = false) {
+  const st = resultStats(nos, res, comma);
   if (!st) return [];
   const { apt, at, body, sup, req, kind } = st, out = [];
   const any2 = body.some((b) => b.q2), anySc = body.some((b) => b.sc);
   const top = [...body].sort((x, y) => y.q / (y.s || 1) - x.q / (x.s || 1))[0], short = body.filter((b) => b.q < b.s);
-  out.push({ h: `청약 결과: ${kind} 평균 ${rate(req, sup)}` });
-  out.push({ take: `${kind} ${apt.length ? '일반공급 ' : ''}${sup.toLocaleString()}세대에 ${req.toLocaleString()}건이 접수됐습니다. 가장 몰린 주택형은 ${top.ty}(${rate(top.q, top.s)})${short.length ? `이고, ${short.map((b) => b.ty).join('·')}은 접수가 공급보다 적었습니다` : '입니다'}.` });
-  out.push({ table: { compact: true, head: ['주택형', '공급', `${kind} 접수`, '접수 ÷ 공급', ...(any2 ? ['2순위 접수'] : []), ...(anySc ? ['당첨 가점(해당지역 최저·평균)'] : [])], rows: body.map((b) => [b.ty, `${b.s}세대`, `${b.q.toLocaleString()}건`, rate(b.q, b.s), ...(any2 ? [b.q2 ? `${b.q2.toLocaleString()}건` : '-'] : []), ...(anySc ? [b.sc ? `${b.sc.LWET_SCORE}점 · ${b.sc.AVRG_SCORE}점` : '-'] : [])]) } });
+  out.push({ h: `청약 결과: ${kind} 평균 ${rate(req, sup, comma)}` });
+  out.push({ take: `${kind} ${apt.length ? '일반공급 ' : ''}${sup.toLocaleString()}세대에 ${req.toLocaleString()}건이 접수됐습니다. 가장 몰린 주택형은 ${top.ty}(${rate(top.q, top.s, comma)})${short.length ? `이고, ${short.map((b) => b.ty).join('·')}은 접수가 공급보다 적었습니다` : '입니다'}.` });
+  out.push({ table: { compact: true, head: ['주택형', '공급', `${kind} 접수`, '접수 ÷ 공급', ...(any2 ? ['2순위 접수'] : []), ...(anySc ? ['당첨 가점(해당지역 최저·평균)'] : [])], rows: body.map((b) => [b.ty, `${b.s}세대`, `${b.q.toLocaleString()}건`, rate(b.q, b.s, comma),...(any2 ? [b.q2 ? `${b.q2.toLocaleString()}건` : '-'] : []), ...(anySc ? [b.sc ? `${b.sc.LWET_SCORE}점 · ${b.sc.AVRG_SCORE}점` : '-'] : [])]) } });
   out.push({ src: `청약홈 경쟁률 공개 자료 ${String(at || '').replaceAll('-', '.')} 기준. ${apt.length ? '접수 건수는 거주지역(해당·기타) 합계이고, ' : ''}${apt.length ? '지역별 경쟁률과 특별공급은 청약홈에서 확인할 수 있습니다.' : '무순위는 추첨이라 가점이 없습니다.'}${anySc || !apt.length ? '' : ` 당첨 가점은 ${winDate ? `당첨자 발표(${winDate.slice(5).replace('-', '.')}) 뒤 ` : ''}청약홈에 올라오면 덧붙입니다.`}` });
   return out;
 }
@@ -533,6 +537,23 @@ if (process.argv[1]?.endsWith('deep.mjs')) {
       const st = resultStats(['1'], { 1: { at: '2026-11-11', apt: [r('084.7637A', '해당지역', 610, 10), r('084.7637A', '기타지역', 682, 10), r('059.9000B', '해당지역', 3, 5)] } });
       assert.deepEqual([st.kind, st.sup, st.req, st.avg, st.at], ['1순위', 15, 1295, '86.3대 1', '2026-11-11']);
       assert.equal(resultStats(['3'], {}), null);
+      { // 경쟁률 모양(2026-11-18): 기본(글 결과 절)은 예전 그대로, 모음 페이지(comma)는 반올림 값 1,000 이상이면 소수점 없이 쉼표. 1,000 미만은 양쪽 같음
+        const N = String.fromCharCode(160), R = (s) => `${s}대${N}1`;
+        assert.equal(rate(25650, 10), R('2565.0')); assert.equal(rate(25650, 10, true), R('2,565'));
+        assert.equal(rate(112920, 10), R('11292.0')); assert.equal(rate(112920, 10, true), R('11,292'));
+        for (const [q, s] of [[307, 10], [1, 10], [0, 5], [9999, 10], [99994, 100]]) assert.equal(rate(q, s, true), rate(q, s), `${q}/${s}`); // 30.7·0.1·0.0·999.9·999.94
+        assert.equal(rate(99994, 100, true), R('999.9'));
+        assert.equal(rate(99995, 100), R('1000.0')); assert.equal(rate(99995, 100, true), R('1,000')); // 999.95 → 반올림하면 1000.0이라 1,000
+        assert.equal(rate(1000, 1), R('1000.0')); assert.equal(rate(1000, 1, true), R('1,000'));
+        assert.equal(rate(2001, 2, true), R('1,001')); // 1000.5
+        assert.equal(rate(5, 0, true), '-');
+        const big = { 5: { at: '2026-11-11', apt: [r('059.9000A', '해당지역', 25650, 10), r('084.9000B', '해당지역', 307, 10)], score: [] } };
+        const [h0, t0, b0] = resultBlocks(['5'], big), [h1, t1, b1] = resultBlocks(['5'], big, undefined, true);
+        assert.ok(t0.take.includes(`59A(${R('2565.0')})`) && t1.take.includes(`59A(${R('2,565')})`));
+        assert.deepEqual([b0.table.rows.map((x) => x[3]), b1.table.rows.map((x) => x[3])], [[R('2565.0'), R('30.7')], [R('2,565'), R('30.7')]]);
+        assert.deepEqual([h0.h, h1.h, resultStats(['5'], big).avg, resultStats(['5'], big, true).avg], [`청약 결과: 1순위 평균 ${R('1297.8')}`, `청약 결과: 1순위 평균 ${R('1,298')}`, R('1297.8'), R('1,298')]); // 25957/20 = 1297.85(toFixed는 1297.8)
+        assert.equal(JSON.stringify(resultBlocks(['1'], { 1: { at: '2026-11-11', apt: [r('084.7637A', '해당지역', 610, 10)] } }, '2026-11-17', true)), JSON.stringify(resultBlocks(['1'], { 1: { at: '2026-11-11', apt: [r('084.7637A', '해당지역', 610, 10)] } }, '2026-11-17')), '1,000 미만만 있으면 같은 블록');
+      }
       assert.equal(winOf(['9'], [{ id: '9', phases: [{ k: 'p1', date: '2026-11-10' }, { k: 'win', date: '2026-11-17' }] }, { id: '8', phases: [{ k: 'win', date: '2026-11-01' }] }]), '2026-11-17');
     }
     { // 2026-11-17 주인 결정: 결과로 공개 글을 다시 저장하지 않음 · 모음 페이지는 미리보기 승인 뒤 · 새 글만 모음 페이지 한 줄
