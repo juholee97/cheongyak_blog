@@ -33,11 +33,12 @@
 ## 수정 한도와 멈춤 스위치 (`zip/wp.mjs`)
 일괄 수정 뒤 글이 색인에서 빠진 일(2026-11-09~11) 때문에 생긴 장치다. **사용자 결정 없이 풀지 않는다.**
 - `UPDATE_CAP` = 공개 글 수정 하루 10편(`data/zip_update_budget.json`, 넘치면 다음 날). 제목 단계 표시([종료])와 청약 결과(`deep.mjs --publish --urgent`)는 한도 밖.
+- `deep.mjs` `RESULT_REPUBLISH_HOLD = true`(2026-11-17) — 청약 결과로 공개 글을 다시 저장하지 않음(결과는 「청약 결과 모음」 페이지로, `RESULTS_PAGE_LIVE`는 미리보기 승인 뒤). 자세히는 `auleezip-deep.md` 「청약 결과 추적」.
 - `APT_EDIT_HOLD = true` — 공개된 `apt-` 글 본문 수정 멈춤(`deferred`). 풀면 밀린 글이 하루 10편씩 나간다.
 - `APT_NEW_HOLD = true` — 새 `apt-` 글을 만들거나 공개하지 않음(상태 `stopped`). 풀려면 `false`와 `--check` 줄.
 - `zip/stage.mjs` `UNSTAMP_FROM = 9999-12-31` — 옛 「[신청마감]」 떼기 미룸(`unstampHeld`). 색인 회복 확인 뒤 사용자가 날짜를 넣는다. 그날 `publish.mjs --check`의 `unstampHeld` 줄도 고친다.
 - 색인 감시 `zip/index_watch.mjs` — 「크롤링됨 - 현재 색인이 생성되지 않음」 비율이 오르면 `wp.mjs upsert`가 새 공개 글을 멈춘다(`held`). `--release`는 사용자만.
-- 바뀐 게 없는 글·페이지는 다시 보내지 않는다(`data/zip_wp_state.json`, `ZIP_FORCE=1`로 강제). 시세 비교 글 「함께 보면 좋은 글」은 처음 고른 2편으로 고정(`data/zip_more.json`). 청약 결과는 보이는 표가 바뀔 때만 다시 올림(`resultsChanged`).
+- 바뀐 게 없는 글·페이지는 다시 보내지 않는다(`data/zip_wp_state.json`, `ZIP_FORCE=1`로 강제). 시세 비교 글 「함께 보면 좋은 글」은 처음 고른 2편으로 고정(`data/zip_more.json`). 청약 결과는 보이는 표가 바뀐 글만 반영 대기에 적는다(`resultsChanged`, 지금은 다시 올리지 않음).
 
 ## 제목 단계 표시 (`zip/stage.mjs`, 장부 `data/zip_stage.json`)
 - 자료에 있는 일정이 모두 끝나면 제목 앞 「[종료]」(무순위는 당첨자 발표 다음 날). 주소는 그대로. [종료] 글은 매일 다시 올리기·`--verify all`에서 빠지고 되돌리지 않는다. 고쳐야 하면 `node zip/stage.mjs --reopen <slug>`. 틀을 바꿀 때 [종료] 글도 올리려면 `publish.mjs --go --include-ended`.

@@ -57,8 +57,11 @@
 - 문구 원칙(2026-10-31 사용자 반복 피드백): 사는 사람이 얻는 것을 앞에, 사실만. 「높다?」 같은 부정 끝맺음, 「예정」·「계약 때」 같은 서류 말투 금지. 「이유는?」을 쓰면 글에 이유가 있어야 한다. 가격은 주변보다 아주 쌀 때만 내세우고 나머지는 생활 이득으로. 숫자 나열은 지루하다. 사실이 아니면 쓰지 않는다(역세권·조망 등).
 
 ## 청약 결과 추적 (2026-11-11)
-- 청약홈 경쟁률 공개 자료(odcloud ApplyhomeInfoCmpetRtSvc, guard datago)를 `deep.mjs updateResults`가 받아 `data/zip_results.json`에. 숫자가 바뀐 공개 글([종료] 제외)만 다시 올린다. 글 맨 위 「청약 결과」 절.
-- 매일 `publish.mjs --go` 끝 + 감시 예약 작업 0b(`--results`). 보이는 표가 바뀔 때만 다시 올림.
+- 청약홈 경쟁률 공개 자료(odcloud ApplyhomeInfoCmpetRtSvc, guard datago)를 `deep.mjs updateResults`가 받아 `data/zip_results.json`에. 매일 `publish.mjs --go` 끝 + 감시 예약 작업 0b(`--results`).
+- **결과로 공개 글을 다시 저장하지 않는다**(2026-11-17 주인 결정, `deep.mjs` `RESULT_REPUBLISH_HOLD = true` — 풀기는 주인 결정 뒤에만). 결과 자료는 계속 쌓고, 보이는 표가 바뀐 글은 반영 대기 `data/zip_results_pending.json`(키 → 처음 바뀐 날)에 적는다. 풀면 대기 글을 한 편씩 `--publish --urgent`(한 편 실패해도 계속, 성공한 키만 지움 → 실패한 글은 다음 실행이 다시) — 하루 수정 한도 밖이라 풀기 전에 대기 수를 본다.
+- 이미 결과 절이 들어간 공개 글은 그대로 그려진다(글 맨 위 「청약 결과」 절).
+- **「청약 결과 모음」 고정 페이지** `/results/`(`pages.mjs resultsPage`, 재료 `deep.mjs resultPosts`·`resultStats`·`resultBlocks`): 요약 표(최신 결과순, 공개된 심층 분석 글만 링크) + 글별 상세(`id="r-<키>"`). 기준일은 결과 자료의 가장 늦은 날이라 결과가 그대로면 페이지도 안 바뀐다. `publish.mjs --go`가 `updateResults` 뒤에 올린다 — `RESULTS_PAGE_LIVE`(`deep.mjs`, `publish.mjs`가 다시 내보냄)가 `true`일 때만. 지금 `false`(미리보기 `preview/results_20261117/` 승인 대기).
+- 새 글 링크: `RESULTS_PAGE_LIVE`가 켜져 있고 아직 공개된 적 없는 글(`liveDeep` 거짓 — 초안·예약 시각 전)은 결과 절 대신 맨 위 출처 줄 밑에 「청약 결과(경쟁률)는 접수가 끝난 뒤 청약 결과 모음에서 볼 수 있습니다」 한 줄(`/results/#r-<키>`). `--draft`/`--publish`가 자료에 `resultsLink: true`를 남겨 공개 뒤에도 같은 HTML(`resultsLinkOf`). 이미 공개된 글은 스위치를 켜도 HTML이 한 글자도 안 바뀐다(2026-11-17 전 글 57편 렌더 해시로 확인).
 
 ## 화면
 - PC: `.az-deep-post` 1280px, 본문 880px + 오른쪽 280px 안내 칸(목차·핵심 숫자·함께 보기). 1100px 아래는 한 단.

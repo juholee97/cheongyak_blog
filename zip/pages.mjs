@@ -6,6 +6,7 @@ import { stageOf, stamped } from './stage.mjs';
 import { table, cmpBar, note, src } from './ui.mjs';
 import { GAP, RATE } from './deals.mjs';
 import { won } from './timeline.mjs';
+import { resultStats, resultBlocks } from './deep.mjs';
 
 const link = (u, t) => `<a href="${esc(u)}">${esc(t)}</a>`;
 const page = (html) => `<!-- wp:html -->\n<div class="az az-page">\n${html}\n</div>\n<!-- /wp:html -->`;
@@ -178,6 +179,35 @@ export const methodPage = () => page([
   '<h2>비교 글에서 지키는 것</h2>',
   '<ul><li>숫자는 공고문과 국토교통부 실거래 자료에서만 가져오고, 계산은 이 페이지에 적은 방법 그대로 합니다.</li><li>기사·영상의 이야기는 공식 자료와 맞춰 본 것만 「확인」으로 적습니다.</li><li>광고나 협찬을 받은 글은 글 첫머리에 따로 밝힙니다.</li></ul>',
 ].join('\n'));
+
+// 「청약 결과 모음」(2026-11-17 주인 결정): 결과가 나와도 글을 다시 저장하지 않고 이 페이지 한 장에 모은다(주소 /results/, 공고마다 따로 글을 만들지 않는다).
+// res: data/zip_results.json(공고번호 → { apt, score, remndr, at }). posts: deep.mjs resultPosts() — { key, nos, name, url(공개된 심층 분석 글만, 아니면 null), win }.
+// 숫자와 문장은 글의 「청약 결과」 절과 같은 계산(deep.mjs resultStats·resultBlocks). 기준일은 결과 자료 날짜 중 가장 늦은 날 — 결과가 그대로면 페이지도 그대로(다시 보내지 않음)
+// 가격 판정·청약 권유는 쓰지 않는다. 상세 절 id="r-<키>"는 새 글의 「청약 결과 모음」 한 줄이 가리키는 자리
+export function resultsPage(res, posts) {
+  const dot = (s) => String(s || '').replaceAll('-', '.');
+  const rows = posts.map((p) => ({ ...p, st: resultStats(p.nos, res) })).filter((p) => p.st).sort((a, b) => (a.st.at === b.st.at ? (a.key < b.key ? 1 : -1) : a.st.at < b.st.at ? 1 : -1));
+  const at = rows.map((p) => p.st.at).filter(Boolean).sort().at(-1);
+  const name = (p) => (p.url ? link(p.url, p.name) : esc(p.name));
+  const cell = (t) => `<span>${esc(t)}</span>`;
+  const detail = (p) => {
+    const [, take, tb, s] = resultBlocks(p.nos, res, p.win); // [소제목, 한 줄 요약, 주택형별 표, 출처 줄] — 소제목(평균 경쟁률)은 위 요약 표에 있어 단지 이름으로 바꾼다
+    return [
+      `<h2 id="r-${esc(p.key)}">${esc(p.name)}</h2>`,
+      `<p class="az-take">${esc(take.take)}</p>`,
+      table(tb.table.head, tb.table.rows.map((r) => r.map(cell)), { stack: !tb.table.compact }),
+      src(`${esc(s.src)}${p.url ? ` 공고 분석은 ${link(p.url, `${p.name} 심층 분석`)}에 있습니다.` : ''}`),
+    ].join('\n');
+  };
+  return page([
+    `<p>우리의 집이 분석한 공고의 청약 결과(경쟁률)를 한곳에 모았습니다. 청약홈 경쟁률 공개 자료 기준이며 ${esc(dot(at))} 기준입니다.</p>`,
+    // 휴대폰 폭(390)에서 표가 옆으로 밀리지 않게: 구분(1순위·무순위)과 기준일은 단지 이름 밑 작은 줄에, 단위(세대·건)는 칸 이름에(칸 5개 436px, 단위를 칸마다 쓰면 376px로 358px 칸을 넘었다 — 2026-11-17 미리보기)
+    rows.length ? table(['단지', { t: '공급 <br>(세대)', n: true }, { t: '접수 <br>(건)', n: true }, { t: '평균 <br>경쟁률', n: true }], rows.map((p) => [`${name(p)}<small>${p.st.kind} · ${esc(mdd(p.st.at))} 기준 · <a href="#r-${esc(p.key)}">주택형별</a></small>`, p.st.sup.toLocaleString(), p.st.req.toLocaleString(), p.st.avg]), { stack: false }) : '<p>아직 모은 청약 결과가 없습니다.</p>',
+    src('단지 이름 밑의 1순위는 일반공급 1순위 접수, 무순위는 무순위(잔여세대) 접수입니다. 평균 경쟁률은 접수 건수 합계를 공급 세대수 합계로 나눈 값입니다.'),
+    ...rows.map(detail),
+    src('경쟁률은 청약홈 경쟁률 공개 자료를 옮긴 것입니다. 특별공급과 지역별 경쟁률, 당첨 가점은 청약홈에서 확인할 수 있습니다. 이 페이지는 청약 판단을 돕는 정보이고 청약이나 투자를 권하지 않습니다.'),
+  ].join('\n'));
+}
 
 export const aboutPage = () => page([
   // 2026-11-01 사용자 문안. 첫 문단이 검색 설명(Rank Math 자동)이 되니 두 문장을 한 문단에. 「최소 5명」은 실제와 달라(중앙하이츠 구성 1명·엘리프 시흥 3명 등) 「여러」로 — 수를 적으려면 영상별 폴더의 채널 수로 확인

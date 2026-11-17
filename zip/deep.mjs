@@ -29,6 +29,14 @@ export const loadDeep = async (key) => JSON.parse(await readFile(join(DIR, `${ke
 // 청약 결과(2026-11-11 사용자 결정): 접수가 끝난 공고의 경쟁률·당첨 가점을 청약홈 공개 자료(한국부동산원 청약홈 경쟁률 API, 공공데이터포털 같은 키)에서 받아
 // 글 맨 위 「청약 결과」 절로 붙인다. 접수 뒤 「○○ 경쟁률」「당첨 가점」 검색을 받기 위해서다. 자료는 data/zip_results.json(공고번호 → 행), 바뀌면 그 글을 다시 올린다
 const RESULTS = join(ROOT, 'data/zip_results.json'), CMPET = 'https://api.odcloud.kr/api/ApplyhomeInfoCmpetRtSvc/v1/';
+// 2026-11-17 주인 결정: 구글 색인이 빠진 동안 결과가 나와도 공개 글을 다시 저장하지 않는다 — 결과 자료(zip_results.json)만 계속 받아 쌓고, 보여 주는 곳은 「청약 결과 모음」 페이지.
+// 풀 때(false)는 주인 결정 뒤에만. 풀면 묶여 있던 동안 쌓인 반영 대기 글(RESULTS_PENDING)이 다음 실행에서 한꺼번에 다시 올라간다(--urgent라 하루 수정 한도 밖) — 풀기 전에 그 수를 확인한다
+export const RESULT_REPUBLISH_HOLD = true;
+// 「청약 결과 모음」 고정 페이지(pages.mjs resultsPage, 주소 /results/)를 올리고 새 글에 그 페이지로 가는 한 줄을 넣는다. 주인이 미리보기를 승인한 뒤에 켠다(publish.mjs --check 줄도 함께 고친다)
+export const RESULTS_PAGE_LIVE = false;
+export const RESULTS_URL = 'https://auleezip.com/results/';
+// 결과가 바뀌었는데 아직 글에 반영 못 한 글 키 → 처음 바뀐 날. 다시 올리기에 성공한 키만 지운다(실패한 글은 다음 실행이 다시 시도)
+const RESULTS_PENDING = join(ROOT, 'data/zip_results_pending.json');
 const OPS = { apt: 'getAPTLttotPblancCmpet', score: 'getAptLttotPblancScore', remndr: 'getRemndrLttotPblancCmpet' };
 export const loadResults = async () => JSON.parse(await readFile(RESULTS, 'utf8').catch(() => '{}'));
 // 주택형 이름: 084.7637A → 84A. 글자 없는 주택형이 같은 이름(84·84)이 되면 소수점 둘째 자리부터 갈릴 때까지 늘린다(84.95·84.49, 2026-11-12)
@@ -43,11 +51,11 @@ export function tyLabels(tys) {
 }
 const n0 = (v) => Number(String(v).replace(/,/g, '')) || 0;
 const rate = (req, sup) => (sup ? `${(req / sup).toFixed(1)}대\u00a01` : '-');
-// 한 글(공고번호 여럿일 수 있음)의 결과 → 글 블록. 결과가 없으면 []
-export function resultBlocks(nos, res, winDate) {
+// 한 글(공고번호 여럿일 수 있음)의 결과 숫자: 주택형별 공급·접수와 합계. 결과가 없으면 null. 글의 「청약 결과」 절과 「청약 결과 모음」 페이지(pages.mjs resultsPage)가 같이 쓴다
+export function resultStats(nos, res) {
   const rows = (k) => nos.flatMap((no) => res[no]?.[k] || []), apt = rows('apt'), score = rows('score'), rem = rows('remndr'), at = nos.map((no) => res[no]?.at).filter(Boolean).sort().at(-1);
-  if (!apt.length && !rem.length) return [];
-  const types = [...new Set([...apt, ...rem].map((r) => r.HOUSE_TY))], lab = tyLabels(types), out = [];
+  if (!apt.length && !rem.length) return null;
+  const types = [...new Set([...apt, ...rem].map((r) => r.HOUSE_TY))], lab = tyLabels(types);
   let sup = 0, req = 0;
   const body = types.map((ty) => {
     const a1 = apt.filter((r) => r.HOUSE_TY === ty && r.SUBSCRPT_RANK_CODE == 1), a2 = apt.filter((r) => r.HOUSE_TY === ty && r.SUBSCRPT_RANK_CODE == 2), rm = rem.filter((r) => r.HOUSE_TY === ty);
@@ -56,7 +64,14 @@ export function resultBlocks(nos, res, winDate) {
     const sc = score.find((r) => r.HOUSE_TY === ty && r.RESIDE_SENM === '해당지역' && r.LWET_SCORE && r.LWET_SCORE !== '-');
     return { ty: lab.get(ty), s, q, q2, sc };
   });
-  const any2 = body.some((b) => b.q2), anySc = body.some((b) => b.sc), kind = apt.length ? '1순위' : '무순위';
+  return { apt, rem, at, body, sup, req, kind: apt.length ? '1순위' : '무순위', avg: rate(req, sup) };
+}
+// 한 글(공고번호 여럿일 수 있음)의 결과 → 글 블록. 결과가 없으면 []
+export function resultBlocks(nos, res, winDate) {
+  const st = resultStats(nos, res);
+  if (!st) return [];
+  const { apt, at, body, sup, req, kind } = st, out = [];
+  const any2 = body.some((b) => b.q2), anySc = body.some((b) => b.sc);
   const top = [...body].sort((x, y) => y.q / (y.s || 1) - x.q / (x.s || 1))[0], short = body.filter((b) => b.q < b.s);
   out.push({ h: `청약 결과: ${kind} 평균 ${rate(req, sup)}` });
   out.push({ take: `${kind} ${apt.length ? '일반공급 ' : ''}${sup.toLocaleString()}세대에 ${req.toLocaleString()}건이 접수됐습니다. 가장 몰린 주택형은 ${top.ty}(${rate(top.q, top.s)})${short.length ? `이고, ${short.map((b) => b.ty).join('·')}은 접수가 공급보다 적었습니다` : '입니다'}.` });
@@ -69,7 +84,18 @@ export function resultsChanged(nos, before, after, winDate) {
   const key = (r) => JSON.stringify(r), norm = (res) => Object.fromEntries(nos.filter((no) => res[no]).map((no) => [no, { ...Object.fromEntries(Object.keys(OPS).map((k) => [k, [...(res[no][k] || [])].sort((a, b) => (key(a) < key(b) ? -1 : 1))])), at: '2000-01-01' }]));
   return JSON.stringify(resultBlocks(nos, norm(before), winDate)) !== JSON.stringify(resultBlocks(nos, norm(after), winDate));
 }
-// 청약홈에서 최근 결과를 받아(API 3번) 우리 글 공고만 남기고, 바뀐 글을 다시 올린다. analysis_auto.bat의 publish.mjs --go 끝과 예약 작업에서 부른다
+// 새 글의 결과 자리(2026-11-17 주인 결정): 결과 절 대신 「청약 결과 모음」으로 가는 한 줄. 이미 그 한 줄로 올라간 글(자료 resultsLink)은 스위치와 관계없이 계속 그 한 줄,
+// 스위치가 켜져 있으면 아직 공개된 적 없는 글(초안·예약 시각 전)만 새로 그 한 줄로. 이미 공개된 글은 HTML이 그대로여야 해서(바뀌면 다음 저장 때 공개 글이 수정된다) 예전처럼 결과 절
+export const resultsLinkOf = (d, live = RESULTS_PAGE_LIVE, now) => d?.resultsLink === true || (live && !liveDeep(d || {}, now));
+// 청약홈 일정 수집본에서 그 글 공고들의 당첨자 발표일(결과 절 출처 줄의 「당첨자 발표(11.17) 뒤」)
+export const winOf = (nos, items) => items.filter((it) => nos.includes(noOf(it))).flatMap((it) => it.phases || []).find((p) => p.k === 'win')?.date;
+// 반영 대기 글을 한 편씩 다시 올린다. 한 편이 실패해도 나머지를 계속하고, 실패한 키를 돌려준다(run: 키 → 다시 올리기, 실패면 throw)
+export function republishAll(keys, run) {
+  const done = [], failed = [];
+  for (const k of keys) { try { run(k); done.push(k); } catch (e) { failed.push(k); console.log(`청약 결과 다시 올리기 실패 ${k}: ${String(e.message).split('\n')[0]}`); } }
+  return { done, failed };
+}
+// 청약홈에서 최근 결과를 받아(API 3번) 우리 글 공고만 남긴다. 바뀐 글은 반영 대기에 적고, RESULT_REPUBLISH_HOLD가 꺼져 있을 때만 대기 글을 다시 올린다. analysis_auto.bat의 publish.mjs --go 끝과 예약 작업에서 부른다
 export async function updateResults({ republish = true } = {}) {
   const { env } = await import('./wp.mjs'), { useApi } = await import('./guard.mjs'), { loadStages, isEnded } = await import('./stage.mjs');
   let key = (await env('DATA_GO_KR_KEY')) || '';
@@ -85,6 +111,7 @@ export async function updateResults({ republish = true } = {}) {
     raw[k] = (await r.json()).data || [];
   }
   const stages = await loadStages(), today = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10), res = await loadResults(), changed = [];
+  const pending = JSON.parse(await readFile(RESULTS_PENDING, 'utf8').catch(() => '{}'));
   for (const [, nos] of Object.entries(await folders())) {
     const d = await loadDeep(nos[0]);
     if (!d || d.status !== 'publish' || isEnded(stages, `deep-${nos[0]}`)) continue;
@@ -96,11 +123,33 @@ export async function updateResults({ republish = true } = {}) {
     if (!resultsChanged(nos, res, next)) continue; // 보이는 표가 같으면 저장본(날짜 포함)도 그대로
     for (const no of nos) res[no] = next[no];
     changed.push(nos[0]);
+    if (!resultsLinkOf(d)) pending[nos[0]] ||= today; // 결과 절 대신 모음 페이지 한 줄을 단 글은 다시 올려도 바뀌는 게 없다
   }
+  for (const k of Object.keys(pending)) if (isEnded(stages, `deep-${k}`)) delete pending[k]; // [종료] 글은 더 고치지 않는다
   await writeFile(RESULTS, JSON.stringify(res));
   console.log(`청약 결과: 바뀐 글 ${changed.length}편 ${changed.join(' ')}`);
-  if (republish) for (const k of changed) (await import('node:child_process')).execFileSync(process.execPath, [join(ROOT, 'zip/deep.mjs'), '--publish', k, '--urgent'], { stdio: 'inherit', cwd: ROOT });
+  if (RESULT_REPUBLISH_HOLD || !republish) {
+    await writeFile(RESULTS_PENDING, JSON.stringify(pending, null, 1));
+    console.log(`청약 결과: 글은 다시 저장하지 않음(${RESULT_REPUBLISH_HOLD ? 'RESULT_REPUBLISH_HOLD — 결과 모음 페이지로' : 'republish 끔'}) · 반영 대기 ${Object.keys(pending).length}편`);
+    return changed;
+  }
+  const { execFileSync } = await import('node:child_process');
+  const { done, failed } = republishAll(Object.keys(pending), (k) => execFileSync(process.execPath, [join(ROOT, 'zip/deep.mjs'), '--publish', k, '--urgent'], { stdio: 'inherit', cwd: ROOT }));
+  for (const k of done) delete pending[k];
+  await writeFile(RESULTS_PENDING, JSON.stringify(pending, null, 1));
+  console.log(`청약 결과: 다시 올림 ${done.length}편 ${done.join(' ')}${failed.length ? ` · 실패 ${failed.length}편 ${failed.join(' ')}(반영 대기에 남겨 다음 실행에서 다시)` : ''}`);
   return changed;
+}
+// 「청약 결과 모음」 페이지 재료: 결과가 있는 글마다 { key, nos, name(분석기 폴더 이름에서 괄호 뺀 단지 이름), url(공개된 심층 분석 글만, 아니면 null), win }
+export async function resultPosts(items = []) {
+  const out = [];
+  for (const [folder, nos] of Object.entries(await folders())) {
+    const d = await loadDeep(nos[0]);
+    if (!d) continue;
+    const url = liveDeep(d) ? deepUrl(d, nos[0]) : null;
+    out.push({ key: nos[0], nos, name: folder.replace(/\s*\(.*\)$/, '').trim(), url: url && !url.includes('/apt-') ? url : null, win: winOf(nos, items) });
+  }
+  return out;
 }
 export async function allDeep() {
   const out = [];
@@ -257,7 +306,9 @@ export async function render(key, { local = false } = {}) {
   // 2026-11-10 사용자 요청: 썸네일과 같은 조망도를 첫 소제목(「어떤 단지인가」) 바로 밑에. 본문에 이미 있던 같은 그림은 그 자리로 옮긴다
   if (views[key]?.file) { const own = d.blocks.find((x) => x.view === key) || { view: key, alt: `${String(folder || '').replace(/\s*\(.*\)$/, '')} ${views[key].label || '조감도'}`.trim() }, at = d.blocks.findIndex((x) => x.h) + 1; d.blocks = d.blocks.filter((x) => x !== own); d.blocks.splice(at, 0, own); }
   // 청약 결과 절은 맨 위(접수가 끝난 뒤 들어오는 사람이 찾는 것이 결과라서). 조망도 자리를 정한 뒤에 넣는다
-  { const nos = (await folders())[folder] || [key], { items } = await loadData(), win = items.filter((it) => nos.includes(noOf(it))).flatMap((it) => it.phases || []).find((p) => p.k === 'win')?.date; d.blocks.unshift(...resultBlocks(nos, await loadResults(), win)); }
+  // 2026-11-17 주인 결정: 새 글(resultsLinkOf)은 결과 절 대신 「청약 결과 모음」으로 가는 한 줄을 글 맨 위 출처 줄 밑에 둔다. 이미 공개된 글은 예전처럼 결과 절
+  const toResults = resultsLinkOf(d) ? src(`청약 결과(경쟁률)는 접수가 끝난 뒤 <a href="${esc(`${RESULTS_URL}#r-${key}`)}">청약 결과 모음</a>에서 볼 수 있습니다.`) : '';
+  if (!toResults) { const nos = (await folders())[folder] || [key], { items } = await loadData(); d.blocks.unshift(...resultBlocks(nos, await loadResults(), winOf(nos, items))); }
   const heads = [...d.blocks.filter((b) => b.h).map((b) => b.h), '이 글의 자료'];
   let hn = 0;
   const more = d.blocks.find((b) => b.links && b.links.some(([, u]) => u.includes('/apt-')))?.links || [];
@@ -287,6 +338,7 @@ export async function render(key, { local = false } = {}) {
   };
   const html = [
     src(`공고문과 공식 자료를 기준으로 우리의 집이 다시 검토한 글입니다. 공고 기준일 ${((await noticeDateOf(key, d)) || '').replaceAll('-', '.')} · <a href="${esc(officialOf(d) || '')}" rel="nofollow noopener">공고 원문</a> · <a href="#s${heads.length}">자료와 작성 기준 보기</a>`),
+    toResults, // 새 글만(없으면 빈 글자 — 아래 filter가 빼서 예전 글 HTML은 한 글자도 안 바뀐다)
     /\[\[[rybg]:/.test(JSON.stringify(d.blocks)) ? legend() : '', // 색 표시가 있을 때만(문장 속 링크 [[l:]]만 있으면 안 붙인다)
     ...d.blocks.map(block),
     `<h2 id="s${heads.length}">이 글의 자료</h2>`,
@@ -477,6 +529,27 @@ if (process.argv[1]?.endsWith('deep.mjs')) {
       const d = resultBlocks(['4'], { 4: { apt: [r('084.9594 ', '해당지역', 50, 10), r('084.4998 ', '해당지역', 5, 10)] } });
       assert.deepEqual(d[2].table.rows.map((x) => x[0]), ['84.95', '84.49']);
       assert.ok(d[1].take.includes('가장 몰린 주택형은 84.95(') && d[1].take.includes('84.49은'));
+      // 모음 페이지와 같은 숫자: resultStats 합계·평균이 결과 절 제목과 같다
+      const st = resultStats(['1'], { 1: { at: '2026-11-11', apt: [r('084.7637A', '해당지역', 610, 10), r('084.7637A', '기타지역', 682, 10), r('059.9000B', '해당지역', 3, 5)] } });
+      assert.deepEqual([st.kind, st.sup, st.req, st.avg, st.at], ['1순위', 15, 1295, '86.3대 1', '2026-11-11']);
+      assert.equal(resultStats(['3'], {}), null);
+      assert.equal(winOf(['9'], [{ id: '9', phases: [{ k: 'p1', date: '2026-11-10' }, { k: 'win', date: '2026-11-17' }] }, { id: '8', phases: [{ k: 'win', date: '2026-11-01' }] }]), '2026-11-17');
+    }
+    { // 2026-11-17 주인 결정: 결과로 공개 글을 다시 저장하지 않음 · 모음 페이지는 미리보기 승인 뒤 · 새 글만 모음 페이지 한 줄
+      assert.equal(RESULT_REPUBLISH_HOLD, true); // 풀면 이 줄을 고친다(주인 결정 뒤에만)
+      assert.equal(RESULTS_PAGE_LIVE, false); // 켜면 이 줄을 고친다(미리보기 승인 뒤)
+      // 다시 올리기: 한 편이 실패해도 나머지를 계속하고 실패한 키를 돌려준다
+      const ran = [], log = console.log; console.log = () => {};
+      const out = republishAll(['a', 'b', 'c'], (k) => { ran.push(k); if (k === 'b') throw new Error('점검 실패\n자세히'); });
+      console.log = log;
+      assert.deepEqual([ran, out.done, out.failed], [['a', 'b', 'c'], ['a', 'c'], ['b']]);
+      // 새 글 한 줄 조건: 표시가 있으면 늘, 스위치가 켜졌으면 공개된 적 없는 글만. 공개된 글(예약 시각이 지난 글 포함)은 스위치를 켜도 예전 그대로
+      const N = '2026-11-17 12:00', pub = { link: 'x', status: 'publish' }, fut = (at) => ({ link: 'x', status: 'future', at });
+      assert.deepEqual([pub, {}, { status: 'draft', link: 'x' }, fut('2026-11-20 06:00'), fut('2026-11-17 06:00')].map((x) => resultsLinkOf(x, true, N)), [false, true, true, true, false]);
+      assert.deepEqual([pub, {}, fut('2026-11-20 06:00')].map((x) => resultsLinkOf(x, false, N)), [false, false, false]); // 꺼져 있으면 아무 글도 안 바뀐다
+      assert.deepEqual([true, false].map((live) => resultsLinkOf({ ...pub, resultsLink: true }, live, N)), [true, true]); // 한 줄로 올라간 글은 스위치와 관계없이
+      assert.equal(resultsLinkOf({ ...pub, resultsLink: 'yes' }, false, N), false);
+      assert.equal(RESULTS_URL, 'https://auleezip.com/results/');
     }
     { // 워드프레스 주소(2026-11-16): 한글 slug는 소문자 퍼센트 인코딩 주소, 없으면 deep-<키>·자료 link 그대로
       const u = siteUrl('더샵-트리센트-분양');
@@ -550,7 +623,8 @@ if (process.argv[1]?.endsWith('deep.mjs')) {
     const pl = now && d.status !== 'publish' ? planOf(phases, today, { lead: 7, time: '06:00' }) : { mode: 'now', why: '이미 공개된 글' };
     if (now) console.log(`공개 계획: ${pl.mode === 'at' ? `${pl.at} 예약` : '바로'} · ${pl.why}`);
     const o = await upsert(post, now && pl.mode === 'at' ? pl.at : null, now && pl.mode === 'now');
-    if (o.ok) await writeFile(join(DIR, `${key}.json`), JSON.stringify({ ...d, noticeDate: await noticeDateOf(key, d), link: o.status === 'future' ? siteUrl(post.wpSlug || post.slug) : o.link, status: o.status, id: o.id, at: o.status === 'future' ? pl.at : undefined }, null, 1));
+    // resultsLink: 「청약 결과 모음」 한 줄로 올린 글이라는 표시 — 공개 뒤에도 같은 HTML로 그려지게 남긴다(2026-11-17). 예전 글은 이 칸이 생기지 않는다
+    if (o.ok) await writeFile(join(DIR, `${key}.json`), JSON.stringify({ ...d, ...(resultsLinkOf(d) ? { resultsLink: true } : {}), noticeDate: await noticeDateOf(key, d), link: o.status === 'future' ? siteUrl(post.wpSlug || post.slug) : o.link, status: o.status, id: o.id, at: o.status === 'future' ? pl.at : undefined }, null, 1));
     console.log(`${o.ok ? '✓' : '✗'} ${o.status} ${o.link}${o.status === 'draft' || o.status === 'future' ? ` (미리보기 https://auleezip.com/?p=${o.id}&preview=true)` : ''}`);
     if (o.ok && o.status === 'publish') await verifyLive(o.link);
     if (o.ok && o.status === 'future') console.log(`게시 뒤 검수는 공개(${pl.at}) 뒤 매일 실행의 --verify all에서`);

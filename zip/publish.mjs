@@ -12,8 +12,10 @@ import { ROOT } from '../tistory/common.mjs';
 import { upsert, upsertPage, uploadMedia, wp, heldNew } from './wp.mjs';
 import { closedOf, planOf, liveDeep } from './post.mjs';
 export { planOf }; // zip/sh_write.mjs가 여기서 불러 쓴다
-import { openPage, methodPage, aboutPage, privacyPage, saleList, deepList, rentList, withSchedule, rentals } from './pages.mjs';
-import { allDeep, folders as deepFolders } from './deep.mjs';
+import { openPage, methodPage, aboutPage, privacyPage, saleList, deepList, rentList, withSchedule, rentals, resultsPage } from './pages.mjs';
+import { allDeep, folders as deepFolders, RESULTS_PAGE_LIVE, resultPosts, loadResults } from './deep.mjs';
+// 「청약 결과 모음」 고정 페이지(/results/, 2026-11-17 주인 결정) 스위치는 deep.mjs에 있다(새 글의 모음 페이지 한 줄과 같이 켜고 끈다). 미리보기 승인 뒤 켠다
+export { RESULTS_PAGE_LIVE };
 import { loadViews } from './views.mjs';
 import { loadLog, saveLog, applyLog } from './revlog.mjs';
 import { purge } from './site.mjs';
@@ -82,6 +84,20 @@ if (process.argv.includes('--check')) {
     const R = (no) => ({ no, name: `단지${no}`, region: '서울', phases: [{ k: 'p1', date: `2026-12-0${no}` }] }), V = { url: 'v.jpg' };
     const html = saleList([R(1), R(2), R(3)], '2026-11-13', {}, { 1: { link: 'a' }, 2: { link: 'b' }, 3: { link: 'c' } }, { 2: V, 3: V });
     assert.deepEqual([...html.matchAll(/<img [^>]*?(loading="\w+"(?: fetchpriority="high")?)/g)].map((m) => m[1]), ['loading="eager" fetchpriority="high"', 'loading="lazy"']);
+  }
+  { // 「청약 결과 모음」(2026-11-17): 공개는 미리보기 승인 뒤. 요약 표는 최신 결과 순, 공개 글만 링크, 상세 절 id="r-<키>", 금지 표현·가격 판정 없음
+    assert.equal(RESULTS_PAGE_LIVE, false); // 켜면 이 줄을 고친다
+    const r = (ty, req, sup, rank = 1) => ({ HOUSE_TY: ty, RESIDE_SENM: '해당지역', REQ_CNT: String(req), SUPLY_HSHLDCO: sup, SUBSCRPT_RANK_CODE: rank });
+    const res = { 1: { at: '2026-11-12', apt: [r('084.7637A', 610, 10), r('059.9000B', 3, 5)], score: [] }, 2: { at: '2026-11-17', remndr: [r('084.9452A', 69, 2)] }, 3: { at: '2026-11-11', remndr: [r('074.1000', 5, 1)] } };
+    const ps = [{ key: '1', nos: ['1'], name: '가 단지', url: 'https://auleezip.com/%ea%b0%80-%eb%b6%84%ec%96%91/' }, { key: '2', nos: ['2'], name: '나 단지', url: 'https://auleezip.com/deep-2/' }, { key: '3', nos: ['3'], name: '다 단지', url: null }, { key: '4', nos: ['4'], name: '결과 없음', url: 'https://auleezip.com/deep-4/' }];
+    const h = resultsPage(res, ps), ids = [...h.matchAll(/<h2 id="r-(\w+)">/g)].map((m) => m[1]);
+    assert.deepEqual(ids, ['2', '1', '3']); // 결과 기준일 최신순, 결과 없는 글은 빠짐
+    assert.ok(h.includes('2026.11.17 기준입니다') && h.includes('<a href="https://auleezip.com/%ea%b0%80-%eb%b6%84%ec%96%91/">가 단지</a>') && h.includes('<a href="#r-1">주택형별</a>'));
+    assert.ok(!h.includes('>다 단지</a>') && h.includes('다 단지<small>무순위 · 11.11 기준')); // 공개 글이 없으면 이름만, 구분·기준일은 이름 밑 작은 줄
+    assert.ok(h.includes('가 단지</a><small>1순위 · 11.12 기준') && h.includes('data-label="평균 경쟁률"'));
+    assert.ok(h.includes('<td class="n" data-label="평균 경쟁률">34.5대 1</td>') && h.includes('<td class="n" data-label="공급 (세대)">15</td>') && h.includes('<td class="n" data-label="접수 (건)">613</td>'));
+    assert.ok(!/우리 가족|우리 아기|우리 아이|아기와|우리집|두 분|우리 부부|두 사람|\/apt-|낮다|높다|% (낮|높)|추천합니다|청약하세요/.test(h), '금지 표현');
+    assert.ok(resultsPage({}, ps).includes('아직 모은 청약 결과가 없습니다'));
   }
   console.log('publish 점검 통과');
 } else if (process.argv[1]?.endsWith('publish.mjs')) {
@@ -170,7 +186,10 @@ ${html}
       console.log(`${t?.content?.raw === content ? '✓' : '✗'} 목록 템플릿 ${slug} ${cat.name}`);
     }
     // 청약 결과(경쟁률·당첨 가점, 2026-11-11 사용자 결정): 바뀐 심층 분석 글을 다시 올린다. 실패해도 매일 작업은 계속
+    // 2026-11-17 주인 결정: 결과로 글을 다시 저장하지 않는다(deep.mjs RESULT_REPUBLISH_HOLD) — 결과 자료만 받아 「청약 결과 모음」 페이지에 모은다
     try { await (await import('./deep.mjs')).updateResults(); } catch (e) { console.log('청약 결과 갱신 실패', e.message); }
+    // 「청약 결과 모음」: 위에서 받은 그날 결과까지 넣으려고 고정 페이지 목록(위 pages)과 따로 결과를 받은 뒤에 올린다. RESULTS_PAGE_LIVE(미리보기 승인 뒤)가 켜져 있을 때만
+    for (const [slug, title, html] of RESULTS_PAGE_LIVE ? [['results', '청약 결과 모음', resultsPage(await loadResults(), await resultPosts(sched))]] : []) { const o = await upsertPage({ slug, title, html }); console.log(`${o.ok ? '✓' : '✗'} 페이지 ${slug} ${o.link}`); }
     console.log('캐시 비우기', (await purge()) ? '✓' : '✗'); // 이 사이트는 글을 고쳐도 캐시를 자동으로 안 비운다
   }
 }
