@@ -33,7 +33,7 @@ const RESULTS = join(ROOT, 'data/zip_results.json'), CMPET = 'https://api.odclou
 // 풀 때(false)는 주인 결정 뒤에만. 풀면 묶여 있던 동안 쌓인 반영 대기 글(RESULTS_PENDING)이 다음 실행에서 한꺼번에 다시 올라간다(--urgent라 하루 수정 한도 밖) — 풀기 전에 그 수를 확인한다
 export const RESULT_REPUBLISH_HOLD = true;
 // 「청약 결과 모음」 고정 페이지(pages.mjs resultsPage, 주소 /results/)를 올리고 새 글에 그 페이지로 가는 한 줄을 넣는다. 주인이 미리보기를 승인한 뒤에 켠다(publish.mjs --check 줄도 함께 고친다)
-export const RESULTS_PAGE_LIVE = false;
+export const RESULTS_PAGE_LIVE = true;
 export const RESULTS_URL = 'https://auleezip.com/results/';
 // 결과가 바뀌었는데 아직 글에 반영 못 한 글 키 → 처음 바뀐 날. 다시 올리기에 성공한 키만 지운다(실패한 글은 다음 실행이 다시 시도)
 const RESULTS_PENDING = join(ROOT, 'data/zip_results_pending.json');
@@ -537,7 +537,7 @@ if (process.argv[1]?.endsWith('deep.mjs')) {
     }
     { // 2026-11-17 주인 결정: 결과로 공개 글을 다시 저장하지 않음 · 모음 페이지는 미리보기 승인 뒤 · 새 글만 모음 페이지 한 줄
       assert.equal(RESULT_REPUBLISH_HOLD, true); // 풀면 이 줄을 고친다(주인 결정 뒤에만)
-      assert.equal(RESULTS_PAGE_LIVE, false); // 켜면 이 줄을 고친다(미리보기 승인 뒤)
+      assert.equal(RESULTS_PAGE_LIVE, true); // 2026-11-17 주인 승인(「공개해 줘」)으로 켬. 끄면 이 줄을 고친다
       // 다시 올리기: 한 편이 실패해도 나머지를 계속하고 실패한 키를 돌려준다
       const ran = [], log = console.log; console.log = () => {};
       const out = republishAll(['a', 'b', 'c'], (k) => { ran.push(k); if (k === 'b') throw new Error('점검 실패\n자세히'); });

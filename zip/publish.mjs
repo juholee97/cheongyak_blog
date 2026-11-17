@@ -86,7 +86,7 @@ if (process.argv.includes('--check')) {
     assert.deepEqual([...html.matchAll(/<img [^>]*?(loading="\w+"(?: fetchpriority="high")?)/g)].map((m) => m[1]), ['loading="eager" fetchpriority="high"', 'loading="lazy"']);
   }
   { // 「청약 결과 모음」(2026-11-17): 공개는 미리보기 승인 뒤. 요약 표는 최신 결과 순, 공개 글만 링크, 상세 절 id="r-<키>", 금지 표현·가격 판정 없음
-    assert.equal(RESULTS_PAGE_LIVE, false); // 켜면 이 줄을 고친다
+    assert.equal(RESULTS_PAGE_LIVE, true); // 2026-11-17 주인 승인으로 켬. 끄면 이 줄을 고친다
     const r = (ty, req, sup, rank = 1) => ({ HOUSE_TY: ty, RESIDE_SENM: '해당지역', REQ_CNT: String(req), SUPLY_HSHLDCO: sup, SUBSCRPT_RANK_CODE: rank });
     const res = { 1: { at: '2026-11-12', apt: [r('084.7637A', 610, 10), r('059.9000B', 3, 5)], score: [] }, 2: { at: '2026-11-17', remndr: [r('084.9452A', 69, 2)] }, 3: { at: '2026-11-11', remndr: [r('074.1000', 5, 1)] } };
     const ps = [{ key: '1', nos: ['1'], name: '가 단지', url: 'https://auleezip.com/%ea%b0%80-%eb%b6%84%ec%96%91/' }, { key: '2', nos: ['2'], name: '나 단지', url: 'https://auleezip.com/deep-2/' }, { key: '3', nos: ['3'], name: '다 단지', url: null }, { key: '4', nos: ['4'], name: '결과 없음', url: 'https://auleezip.com/deep-4/' }];
