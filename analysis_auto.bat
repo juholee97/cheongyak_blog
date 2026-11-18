@@ -33,21 +33,8 @@ call crawler\push_house.bat
 rem analysis posts off 2026-11-10
 set RC=0         
 if not exist data\logs mkdir data\logs
-rem Tistory saves here: at most 1 a day (2026-11-13 user decision). The second save of a morning usually hits Tistory's security check (reCAPTCHA)
-rem and nobody is at the PC at 07:00. Manual runs and weekly_auto.bat keep 3 a day (tistory\draft.mjs, data\tistory_usage.json).
-rem A failed try also uses the save, so later steps end with code 5 without opening a browser. Order: weekly retry, urgent posts, Tue/Fri guide, refresh.
-set TISTORY_DAY_MAX=1
-rem Weekly schedule post retry (2026-11-11): on Monday, if Sunday 18:00 could not save this week's post, it goes first here
-rem Errors go to a separate file: redirecting to weekly_auto.log locks it, and auto.mjs (which writes that log itself) died with EBUSY (fixed 2026-11-19)
-node posts\auto.mjs --catch-up > nul 2>> data\logs\weekly_auto_err.log
-rem Approved time-sensitive posts (policy news) first: data\priority_queue.txt, earliest free 09:30 or 15:30 slot from one hour later (2026-10-27)
-echo ===== %DATE% %TIME% priority >> data\logs\guide_queue.log
-node tistory\schedule_guides.mjs --queue data\priority_queue.txt --soon --times 09:30,15:30 --max 1 >> data\logs\guide_queue.log 2>&1
-echo ===== %DATE% %TIME% >> data\logs\guide_queue.log
-call tistory\guide_week.bat
-rem Monthly refresh of published guides (new check date and month stamp, queue data\guide_refresh.txt), after the Tue/Fri guide since 2026-11-13
-echo ===== %DATE% %TIME% >> data\logs\guide_refresh.log
-node posts\refresh_run.mjs --max 2 >> data\logs\guide_refresh.log 2>&1
+rem Tistory saves (weekly retry, urgent posts, Tue/Fri guide, monthly refresh) moved to tistory_save_auto.bat at 11:30 (2026-11-19 user decision):
+rem from 11-10 every 07:00 save stopped at Tistory's security check (reCAPTCHA) because nobody is at the PC then.
 rem Retrofit of published analysis posts stopped 2026-11-10.                                                                         
 rem off                                                    
 rem off                                                                         

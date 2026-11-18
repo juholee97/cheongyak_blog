@@ -16,7 +16,7 @@
 - `posts/auto.mjs` + `weekly_auto.bat` — 주간 글 매주 자동(초안 → 그림 → 검수 → 임시저장 → 대조 → 알림 창). `weekly_auto.bat check` = 저장 없는 시험. 기록 `data/logs/weekly_auto.log`.
 - `posts/guide.mjs` — 청약가이드·대출·정책 글(`drafts/guide_*.json`, 근거 `docs/policy/*.md`). `related.json`(관련 글), `published.json`·`scheduled.json`(발행·예약 장부), `refresh_guides.mjs`·`refresh_run.mjs`(월간 갱신), `policy_watch.mjs`(정책 소식 후보), `about.mjs`(소개 페이지), `card.mjs`(썸네일), `images.mjs`·`map.mjs`(그림·지도), `seo_near.mjs`(11~20위 글 찾기).
 - 분양분석(2026-11-10 중단, 코드는 남음): `analysis_post.mjs`, `analysis_auto.mjs`, `notice_post.mjs`, `notice_terms.mjs`, `money.mjs`, `kapt_fee.mjs`, `trades.mjs`, `nearby.mjs`, `schools.mjs`, `bus.mjs`, `routes.mjs`, `floorplan.mjs`, `retrofit_analysis.mjs`.
-- `tistory/` — 저장 자동화(Playwright 1.63.0, `npm install`). `common.mjs`(전용 프로필 `data/tistory-session/` — 커밋 금지, 발행 가드 GUARD, 통계·광고 차단 TRACKERS, 자동 재로그인 `ensureLogin`), `login.mjs`(+`tistory_login.bat`, 로그인은 사람이), `draft.mjs`(저장·예약·대조), `schedule_guides.mjs`(대기열 예약), `guide_week.bat`(화·금 가이드), `page.mjs`(페이지), `apply_skin.mjs`·`apply_blog_images.mjs`·`set_rss.mjs`(스킨·블로그 설정), `probe*.mjs`(화면 읽기 전용 실측 → `tistory/probe-out/`), `selectors.json`(실측 근거 셀렉터), `*.check.mjs`(자체 점검). 자세히는 `tistory-automation.md`.
+- `tistory/` — 저장 자동화(Playwright 1.63.0, `npm install`). `common.mjs`(전용 프로필 `data/tistory-session/` — 커밋 금지, 발행 가드 GUARD, 통계·광고 차단 TRACKERS, 자동 재로그인 `ensureLogin`), `login.mjs`(+`tistory_login.bat`, 로그인은 사람이), `draft.mjs`(저장·예약·대조), `notify.mjs`(저장 직전 카톡 알림), `schedule_guides.mjs`(대기열 예약), `guide_week.bat`(화·금 가이드), `page.mjs`(페이지), `apply_skin.mjs`·`apply_blog_images.mjs`·`set_rss.mjs`(스킨·블로그 설정), `probe*.mjs`(화면 읽기 전용 실측 → `tistory/probe-out/`), `selectors.json`(실측 근거 셀렉터), `*.check.mjs`(자체 점검). 자세히는 `tistory-automation.md`.
 
 ## 우리의 집 auleezip.com (`zip/`)
 - `wp.mjs`(워드프레스 REST·수정 한도·멈춤 스위치), `publish.mjs`(매일 발행·페이지·캐시, `--check`), `post.mjs`(시세 비교 글 틀·공개 시점 `planOf`), `deals.mjs`(분양가 vs 실거래), `pages.mjs`(첫 화면·목록·비교 기준·개인정보), `site.mjs`+`site.css`(사이트 모양 — 원본은 이 저장소), `ui.mjs`(화면 조각), `stage.mjs`(제목 [종료] 표시), `new_notices.mjs`(새 공고·정정공고 알림), `index_watch.mjs`(색인 감시 장부), `revlog.mjs`(고친 기록), `views.mjs`(조감도), `thumb.mjs`(대표 이미지), `buzz.mjs`(관심도), `official.mjs`·`check_analysis.mjs`·`history.mjs`(시세 비교 분석 점검), `guard.mjs`(외부 API 한도), `shot.mjs`(화면 점검 브라우저).
@@ -37,10 +37,11 @@
 | 작업 | 시각 | 실행기 | 상태 |
 |---|---|---|---|
 | `cheongyak_analysis_auto` | 매일 07:00 | `analysis_auto.bat` | 켜짐 |
+| `cheongyak_tistory_save` | 매일 11:30 | `tistory_save_auto.bat` | 켜짐(2026-11-19) |
 | `cheongyak_weekly_auto` | 일요일 18:00(놓치면 켜질 때) | `weekly_auto.bat` | 켜짐(2026-11-13 다시 켬) |
 | `cheongyak_guide_queue` | 00:30 | `guide_queue.bat` | 사용 안 함(2026-10-27) |
 
-`analysis_auto.bat`가 하는 일(순서대로): 정책 소식 후보 → 우리의 집 일일 갱신(`buzz.mjs --max-age 6.5` → `post.mjs` → `publish.mjs --go` → `push_links.bat` → `deep.mjs --verify all` → `deep_targets.mjs --make`) → SH 첨부 OCR·`push_attach.bat` → `push_house.bat` → 티스토리 저장(하루 1번: 월요일 주간 글 재시도 → 급한 글 → 화·금 가이드 → 월간 갱신) → 맨 끝에 새 공고 알림창(`new_notices.mjs`). 실행기는 실행 중일 때 고치면 오동작한다.
+`analysis_auto.bat`가 하는 일(순서대로): 정책 소식 후보 → 우리의 집 일일 갱신(`buzz.mjs --max-age 6.5` → `post.mjs` → `publish.mjs --go` → `push_links.bat` → `deep.mjs --verify all` → `deep_targets.mjs --make`) → SH 첨부 OCR·`push_attach.bat` → `push_house.bat` → 맨 끝에 새 공고 알림창(`new_notices.mjs`). 티스토리 저장은 2026-11-19부터 `tistory_save_auto.bat`(11:30, 하루 1번: 월요일 주간 글 재시도 → 급한 글 → 화·금 가이드 → 월간 갱신, 저장 직전 카톡 알림 `tistory/notify.mjs`). 실행기는 실행 중일 때 고치면 오동작한다.
 
 ## Claude 예약 작업 (`C:\Users\leejuho\.claude\scheduled-tasks\`)
 - `auleezip-deep-report-watch` — 13:00·19:00. 새 분석기 리포트 → 심층 분석 글, 청약 결과 갱신(`--results`), 발행 보류 확인, 최근 2일 공개 글 구글 색인 요청.

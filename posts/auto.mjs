@@ -10,7 +10,7 @@ import { nextMonday } from './weekly.mjs';
 
 const arg = (k) => { const i = process.argv.indexOf(k); return i > 0 ? process.argv[i + 1] : null; };
 const dryRun = process.argv.includes('--dry-run');
-// --catch-up(매일 07:00 analysis_auto.bat, 2026-11-11): 월요일에만, 일요일 18:00에 저장 못 한 이번 주 글을 다시 만든다(그날 다른 글보다 먼저). 다른 요일은 아무것도 안 함
+// --catch-up(매일 11:30 tistory_save_auto.bat — 2026-11-19까지는 07:00 analysis_auto.bat, 2026-11-11): 월요일에만, 일요일 18:00에 저장 못 한 이번 주 글을 다시 만든다(그날 다른 글보다 먼저). 다른 요일은 아무것도 안 함
 const kstNow = new Date(Date.now() + 9 * 3600e3);
 const catchUp = process.argv.includes('--catch-up');
 if (catchUp && kstNow.getUTCDay() !== 1) process.exit(0);
@@ -35,7 +35,7 @@ const run = async (name, args) => {
   return r.status;
 };
 
-const DRAFT_EXIT = { 1: '티스토리 입력 중 오류', 2: '저장본 대조 불일치(티스토리 임시저장 목록 확인 필요)', 3: '티스토리 로그인 필요 — tistory_login.bat으로 직접 로그인', 4: '검수 실패', 5: `티스토리 저장 한도(하루 ${dayMax()}번·쉬는 기간) — ${catchUp ? '이번 주 글은 weekly_auto.bat으로 직접 실행' : '월요일 07:00에 다시 시도'}`, 6: '티스토리 보안 확인(reCAPTCHA) — 사람이 직접 확인 필요' };
+const DRAFT_EXIT = { 1: '티스토리 입력 중 오류', 2: '저장본 대조 불일치(티스토리 임시저장 목록 확인 필요)', 3: '티스토리 로그인 필요 — tistory_login.bat으로 직접 로그인', 4: '검수 실패', 5: `티스토리 저장 한도(하루 ${dayMax()}번·쉬는 기간) — ${catchUp ? '이번 주 글은 weekly_auto.bat으로 직접 실행' : '월요일 11:30에 다시 시도'}`, 6: '티스토리 보안 확인(reCAPTCHA) — 사람이 직접 확인 필요' };
 
 async function main() {
   await log(`\n===== ${new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 16).replace('T', ' ')} KST · ${week} 주${dryRun ? ' · 시험' : ''} =====`);

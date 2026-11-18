@@ -22,8 +22,8 @@
 - **사용자 결정이 미뤄진 일은 멈춤이 기본.** 답이 없다고 진행하지 않는다.
 - **멈춰 둔 것은 사용자 결정 없이 풀지 않는다**: `zip/wp.mjs`의 `APT_NEW_HOLD`(새 시세 비교 글 안 올림)·`APT_EDIT_HOLD`(공개된 시세 비교 글 본문 수정 멈춤)·`UPDATE_CAP`(공개 글 수정 하루 10편), `zip/stage.mjs`의 `UNSTAMP_FROM`, 티스토리 분양분석 중단(2026-11-10). 목록은 `docs/claude/open-items.md`.
 - **티스토리 보안 확인(reCAPTCHA)이 뜨면 멈춘다.** 대신 풀거나 넘기지 않는다. 로그인·비밀번호는 사람이.
-- 티스토리 저장은 하루 3번·30분 간격, 07:00 무인 실행은 하루 1번이다.
-- 실행기(`analysis_auto.bat`·`weekly_auto.bat`·`guide_queue.bat`)와 폴더 경로는 윈도우 작업 스케줄러·바로가기가 쓴다. 새 단계에 알림창·입력 대기가 있으면 맨 뒤에 두고, 실행 중인 실행기는 고치지 않는다. 실행기가 이 폴더에서 `git commit`·`git push`를 하고 배포는 `main` 푸시 기준이니, 이 폴더는 `main`으로 둔다.
+- 티스토리 저장은 하루 3번·30분 간격, 무인 실행(11:30 `tistory_save_auto.bat`, 저장 직전 카톡 알림)은 하루 1번이다.
+- 실행기(`analysis_auto.bat`·`tistory_save_auto.bat`·`weekly_auto.bat`·`guide_queue.bat`)와 폴더 경로는 윈도우 작업 스케줄러·바로가기가 쓴다. 새 단계에 알림창·입력 대기가 있으면 맨 뒤에 두고, 실행 중인 실행기는 고치지 않는다. 실행기가 이 폴더에서 `git commit`·`git push`를 하고 배포는 `main` 푸시 기준이니, 이 폴더는 `main`으로 둔다.
 - 새 외부 API는 `zip/guard.mjs` `useApi`를 거치고 `DEFAULTS`에 한도를 먼저 등록한다(유료 과금 방지).
 - 우리의 집: 출처 매체(채널·영상 이름)를 밝히지 않는다. 사이트 CSS 원본은 `zip/site.css`(사이트 편집기에서 고치지 않음). 방화벽 설정은 건드리지 않고 글 안에 스크립트를 넣지 않는다. WPCode 스니펫 1055·1621은 끄거나 지우지 않는다. 화면 점검은 `zip/shot.mjs`로(맨 playwright는 방문·광고 노출로 잡힌다).
 - 디자인 변경은 미리보기·영상으로 먼저 승인받고 적용한다.
@@ -33,7 +33,7 @@
 | 할 일 | 읽을 파일 |
 |---|---|
 | 파일·실행기·예약 작업이 어디 있는지 | `structure.md` |
-| 티스토리 저장·예약·대기열·07:00 실행기 | `tistory-automation.md` |
+| 티스토리 저장·예약·대기열·11:30 저장 실행기 | `tistory-automation.md` |
 | 주간 일정 글 | `.claude/skills/weekly-post/SKILL.md`, `docs/weekly-post-design.md` |
 | 가이드·대출·정책·계산기 글 | `tistory-posts.md`(근거 `docs/policy/*.md`) |
 | 스킨·홈·달력 화면·내 청약 할 일 | `skin.md`, `docs/design_handoff/README.md` |

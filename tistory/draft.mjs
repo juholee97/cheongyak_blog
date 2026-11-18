@@ -12,10 +12,11 @@ import { checkAnalysis, areaOf } from '../posts/analysis_post.mjs';
 import { checkNotice } from '../posts/notice_post.mjs';
 import { checkGuide } from '../posts/guide.mjs';
 import { IMG_RE } from '../posts/weekly.mjs';
+import { notifySave } from './notify.mjs';
 
 const SEL = JSON.parse(await readFile(join(ROOT, 'tistory', 'selectors.json'), 'utf8'));
 // 티스토리 쪽 부담 줄이기(2026-10-30 사용자 결정: 하루에 저장·대조가 몰린 뒤 보안 확인이 잦아짐).
-// 저장(예약·임시저장·고치기)은 모든 스크립트를 합쳐 하루 DAY_MAX번(기본 3, TISTORY_DAY_MAX로 낮춤 — 07:00 무인 실행은 1), 저장 사이는 GAP_MIN분 — 기다릴 땐 브라우저를 띄우기 전에 기다린다.
+// 저장(예약·임시저장·고치기)은 모든 스크립트를 합쳐 하루 DAY_MAX번(기본 3, TISTORY_DAY_MAX로 낮춤 — 11:30 무인 실행 tistory_save_auto.bat은 1), 저장 사이는 GAP_MIN분 — 기다릴 땐 브라우저를 띄우기 전에 기다린다.
 // 한도에 걸리면 코드 5(부르는 쪽은 「내일 다시」). 저장 단추를 누르기 직전에 센다(markSave) — 보안 확인으로 실패한 시도도 1번. REST_UNTIL 전까지는 저장을 모두 쉰다(2026-10-31 사용자 결정: 5일 포스팅 정지 — 이미 예약된 글은 제시간에 공개). 기록 data/tistory_usage.json
 const DAY_MAX = dayMax(), GAP_MIN = 30, REST_UNTIL = '2026-11-05';
 const USAGE = join(ROOT, 'data', 'tistory_usage.json');
@@ -102,11 +103,14 @@ async function main() {
     if (wait > 0) { log(`저장 사이 ${GAP_MIN}분 — ${Math.ceil(wait / 60e3)}분 기다림`); await new Promise((r) => setTimeout(r, wait)); }
     if (when && !updatePub && new Date(when.replace(' ', 'T') + ':00') - Date.now() < (updateSched ? 12 : 15) * 60e3) { log(`기다리는 사이 예약 시각(${when})이 15분 안으로 다가옴 — 시각을 다시 골라 주세요`); return 4; }
   }
+  // 실제 저장하러 브라우저를 띄우기 직전 카톡 나에게 보내기(TISTORY_NOTIFY=kakao — tistory_save_auto.bat 11:30, 2026-11-19). 한도·검수에 걸린 실행과 시험·대조 전용은 여기 오지 않는다.
+  // 실패해도 저장은 계속(기록 한 줄만, 최대 90초)
+  const kakao = !verifyOnly && !verifySched && !dryRun ? await notifySave({ title: draft.title, when, mode: updatePub ? 'update-published' : updateSched ? 'update-scheduled' : when ? 'schedule' : 'save' }) : null;
 
   // TISTORY_HEADED=1: 브라우저를 화면에 띄워 실행 — 보안 확인(reCAPTCHA)이 뜨면 사람이 그 창에서 직접 풀 수 있게 기다린다
   const headed = process.env.TISTORY_HEADED === '1';
   const { context, page } = await launch({ headless: !headed });
-  const report = { draft: path, title: draft.title, mode: updatePub ? 'update-published' : updateSched ? 'update-scheduled' : verifySched ? 'verify-scheduled' : verifyOnly ? 'verify-only' : dryRun ? 'dry-run' : when ? 'schedule' : 'save', when, at: new Date().toISOString(), steps: [] };
+  const report = { draft: path, title: draft.title, mode: updatePub ? 'update-published' : updateSched ? 'update-scheduled' : verifySched ? 'verify-scheduled' : verifyOnly ? 'verify-only' : dryRun ? 'dry-run' : when ? 'schedule' : 'save', when, at: new Date().toISOString(), steps: [], ...(kakao ? { kakao: kakao.line } : {}) };
   const guard = { ...SEL.publishGuard, schedule: !!when && !verifySched && !updatePub, republish: updatePub }; // 시험 실행은 POST를 막으므로 레이어를 열어 예약 칸까지 채워 봐도 저장·발행이 안 된다
   const step = (s, ok = true, extra) => { report.steps.push({ s, ok, ...extra }); log((ok ? '✓ ' : '✗ ') + s + (extra ? ' ' + JSON.stringify(extra) : '')); };
   const shot = async (name) => { const p = path.replace(/\.json$/, `.${name}.png`); await page.screenshot({ path: p, fullPage: true }); return p; };

@@ -19,6 +19,7 @@ export const DEFAULTS = {
   sh: { day: 400, month: 6000, paid: false, note: 'SH 공고 게시판 읽기(공식 API 없음 — 목록·글·첨부 쪽 이미지 한 번에 1회). 사이트 부담을 줄이는 한도(2026-10-28 첨부 읽기 때문에 200→400)' },
   searchad: { day: 50, month: 500, paid: true, note: '네이버 검색광고 API 키워드 도구(tools/keyword_volume.mjs) — 조회는 광고비가 나가지 않는다고 알려졌지만 확인 못 함, 묶음 5개당 1회' },
   datago: { day: 8000, month: 160000, paid: false, note: '공공데이터포털(개발계정 API당 일 10,000)' },
+  kakao_notify: { day: 5, month: 100, paid: true, note: '티스토리 무인 저장 카톡 알림(tistory/notify.mjs — claude -p haiku + PlayMCP 나와의 채팅방, 2026-11-19). API 키 로그인이면 과금될 수 있어 낮게' },
 };
 const FILE = () => process.env.ZIP_USAGE_FILE || join(ROOT, 'data/api_usage.json');
 const read = (f, d) => { try { return JSON.parse(readFileSync(f, 'utf8')); } catch { return d; } };
