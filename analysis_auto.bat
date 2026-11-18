@@ -38,7 +38,8 @@ rem and nobody is at the PC at 07:00. Manual runs and weekly_auto.bat keep 3 a d
 rem A failed try also uses the save, so later steps end with code 5 without opening a browser. Order: weekly retry, urgent posts, Tue/Fri guide, refresh.
 set TISTORY_DAY_MAX=1
 rem Weekly schedule post retry (2026-11-11): on Monday, if Sunday 18:00 could not save this week's post, it goes first here
-node posts\auto.mjs --catch-up > nul 2>> data\logs\weekly_auto.log
+rem Errors go to a separate file: redirecting to weekly_auto.log locks it, and auto.mjs (which writes that log itself) died with EBUSY (fixed 2026-11-19)
+node posts\auto.mjs --catch-up > nul 2>> data\logs\weekly_auto_err.log
 rem Approved time-sensitive posts (policy news) first: data\priority_queue.txt, earliest free 09:30 or 15:30 slot from one hour later (2026-10-27)
 echo ===== %DATE% %TIME% priority >> data\logs\guide_queue.log
 node tistory\schedule_guides.mjs --queue data\priority_queue.txt --soon --times 09:30,15:30 --max 1 >> data\logs\guide_queue.log 2>&1

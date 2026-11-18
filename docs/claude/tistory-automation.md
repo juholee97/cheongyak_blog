@@ -29,7 +29,7 @@
 - 자동화 브라우저는 방문 통계·광고 요청을 막는다(`TRACKERS`: tiara·wcslog·gtag·애드센스) — 점검 방문이 조회수·무효 트래픽에 섞이지 않게(2026-11-01).
 
 ## 07:00 실행의 티스토리 순서 (하루 1번을 누가 쓰나)
-1. 월요일만: 주간 글 재시도 `posts/auto.mjs --catch-up`(일요일 저장이 실패했을 때)
+1. 월요일만: 주간 글 재시도 `posts/auto.mjs --catch-up`(일요일 저장이 실패했을 때). 실행기는 이 단계의 오류 출력을 `data\logs\weekly_auto_err.log`로 넘긴다 — `weekly_auto.log`로 넘기면 파일이 잠겨 `auto.mjs`가 기록을 못 쓴다(2026-11-19 고침)
 2. 급한 글 `data/priority_queue.txt` — `schedule_guides.mjs --soon --times 09:30,15:30 --max 1`(1시간 뒤부터 빈 자리)
 3. 화·금요일만: 가이드 1편 `tistory/guide_week.bat` — `data/guide_queue.txt`에서 다음 빈 12:00(2026-11-10 주 2편, 대기열이 비면 안 올림. `guide_week.bat check`는 오늘 판정만)
 4. 공개 글 월간 갱신 `posts/refresh_run.mjs`(`data/guide_refresh.txt`)

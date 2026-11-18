@@ -18,7 +18,8 @@ const week = arg('--week') || (catchUp ? kstNow.toISOString().slice(0, 10) : nex
 const base = `drafts/${week}_weekly`;
 const LOG = join(ROOT, 'data', 'logs', 'weekly_auto.log');
 await mkdir(join(ROOT, 'data', 'logs'), { recursive: true });
-const log = async (s) => { console.log(s); await appendFile(LOG, s + '\n'); };
+// 기록 파일을 못 써도(다른 프로그램이 잠금 — 2026-11-16 월요일 재시도가 EBUSY로 죽음) 글 만들기는 계속한다
+const log = async (s) => { console.log(s); await appendFile(LOG, s + '\n').catch((e) => console.error(`기록 못 씀(${e.code || e.message}): ${s}`)); };
 
 // 끝 알림: 로그인한 사용자 화면에 창 하나
 function notify(msg) {
