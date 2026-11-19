@@ -13,7 +13,7 @@
 
 ## 티스토리 글 (`posts/`, `tistory/`)
 - `posts/weekly.mjs` — schedule.json → 주간 글 초안(`drafts/{월요일}_weekly.json` + 수집본 사본 `.data.json`). `--render`로 summary 고친 뒤 본문 다시 그림. `posts/check.mjs` — 본문 재현·요약 숫자·금지 표현·필수 문구 검수. 설계 `docs/weekly-post-design.md`, 절차 `.claude/skills/weekly-post/SKILL.md`, 실행기 `weekly_post.bat`(초안·미리보기만).
-- `posts/auto.mjs` + `weekly_auto.bat` — 주간 글 매주 자동(초안 → 그림 → 검수 → 임시저장 → 대조 → 알림 창). `weekly_auto.bat check` = 저장 없는 시험. 기록 `data/logs/weekly_auto.log`.
+- `posts/auto.mjs` + `weekly_auto.bat` — 주간 글 매주 자동(초안 → 그림 → 검수 → 임시저장 → 대조 → 알림 창). `weekly_auto.bat check` = 저장 없는 시험. 실제 저장 직전 카톡 알림(2026-11-19). 기록 `data/logs/weekly_auto.log`.
 - `posts/guide.mjs` — 청약가이드·대출·정책 글(`drafts/guide_*.json`, 근거 `docs/policy/*.md`). `related.json`(관련 글), `published.json`·`scheduled.json`(발행·예약 장부), `refresh_guides.mjs`·`refresh_run.mjs`(월간 갱신), `policy_watch.mjs`(정책 소식 후보), `about.mjs`(소개 페이지), `card.mjs`(썸네일), `images.mjs`·`map.mjs`(그림·지도), `seo_near.mjs`(11~20위 글 찾기).
 - 분양분석(2026-11-10 중단, 코드는 남음): `analysis_post.mjs`, `analysis_auto.mjs`, `notice_post.mjs`, `notice_terms.mjs`, `money.mjs`, `kapt_fee.mjs`, `trades.mjs`, `nearby.mjs`, `schools.mjs`, `bus.mjs`, `routes.mjs`, `floorplan.mjs`, `retrofit_analysis.mjs`.
 - `tistory/` — 저장 자동화(Playwright 1.63.0, `npm install`). `common.mjs`(전용 프로필 `data/tistory-session/` — 커밋 금지, 발행 가드 GUARD, 통계·광고 차단 TRACKERS, 자동 재로그인 `ensureLogin`), `login.mjs`(+`tistory_login.bat`, 로그인은 사람이), `draft.mjs`(저장·예약·대조), `notify.mjs`(저장 직전 카톡 알림), `schedule_guides.mjs`(대기열 예약), `guide_week.bat`(화·금 가이드), `page.mjs`(페이지), `apply_skin.mjs`·`apply_blog_images.mjs`·`set_rss.mjs`(스킨·블로그 설정), `probe*.mjs`(화면 읽기 전용 실측 → `tistory/probe-out/`), `selectors.json`(실측 근거 셀렉터), `*.check.mjs`(자체 점검). 자세히는 `tistory-automation.md`.

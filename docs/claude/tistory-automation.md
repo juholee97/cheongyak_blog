@@ -30,7 +30,7 @@
 
 ## 11:30 저장 실행기 (`tistory_save_auto.bat`, 하루 1번을 누가 쓰나)
 - 작업 스케줄러 `cheongyak_tistory_save` 매일 11:30(2026-11-19 사용자 결정). 07:00 `analysis_auto.bat`에 있던 저장 단계를 옮겼다 — 11-10부터 07:00 저장이 6번 연속 보안 확인에 막혔다(PC 앞에 사람이 없음). `tistory_save_auto.bat check` = 발행 가드 점검 + 알림 점검(저장·전송 없음).
-- 카톡 알림(`tistory/notify.mjs`, `TISTORY_NOTIFY=kakao`): `draft.mjs`가 한도·간격·검수·승인을 다 지나 실제 저장하러 브라우저를 띄우기 직전에 `claude -p --model haiku --allowedTools mcp__claude_ai_PlayMCP`(프롬프트는 stdin, 작업 폴더는 임시 폴더)로 카카오톡 「나와의 채팅방」에 한 통. 시험·대조 전용·코드 5 실행에선 안 보낸다. 도구 없음·실패·90초 초과·호출 한도(`zip/guard.mjs` `kakao_notify` 하루 5·달 100)는 기록 한 줄(「카톡 알림: …」, 각 단계 기록 파일과 `.save.json` `kakao`)만 남기고 저장을 계속한다. 점검 `node tistory/notify.check.mjs`(가짜 실행기), `node tistory/notify.mjs --check`(보내지 않음), `--test`(시험 한 통 — PlayMCP 도구함에 「카카오톡 나와의 채팅방」을 담은 뒤).
+- 카톡 알림(`tistory/notify.mjs`, `TISTORY_NOTIFY=kakao` — 11:30 `tistory_save_auto.bat`과 일요일 18:00 `weekly_auto.bat`이 켠다, 사람이 직접 돌리는 실행은 안 보냄): `draft.mjs`가 한도·간격·검수·승인을 다 지나 실제 저장하러 브라우저를 띄우기 직전에 `claude -p --model haiku --allowedTools mcp__claude_ai_PlayMCP`(프롬프트는 stdin, 작업 폴더는 임시 폴더)로 카카오톡 「나와의 채팅방」에 한 통. 시험·대조 전용·코드 5 실행에선 안 보낸다. 도구 없음·실패·90초 초과·호출 한도(`zip/guard.mjs` `kakao_notify` 하루 5·달 100)는 기록 한 줄(「카톡 알림: …」, 각 단계 기록 파일과 `.save.json` `kakao`)만 남기고 저장을 계속한다. 점검 `node tistory/notify.check.mjs`(가짜 실행기), `node tistory/notify.mjs --check`(보내지 않음), `--test`(시험 한 통 — PlayMCP 도구함에 「카카오톡 나와의 채팅방」을 담은 뒤).
 
 1. 월요일만: 주간 글 재시도 `posts/auto.mjs --catch-up`(일요일 저장이 실패했을 때). 실행기는 이 단계의 오류 출력을 `data\logs\weekly_auto_err.log`로 넘긴다 — `weekly_auto.log`로 넘기면 파일이 잠겨 `auto.mjs`가 기록을 못 쓴다(2026-11-19 고침)
 2. 급한 글 `data/priority_queue.txt` — `schedule_guides.mjs --soon --times 09:30,15:30 --max 1`(1시간 뒤부터 빈 자리 — 11:30 실행이면 그날 15:30 자리, 차 있으면 다음 날 09:30)

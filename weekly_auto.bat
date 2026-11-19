@@ -6,6 +6,8 @@ setlocal
 title cheongyak
 rem Tistory shows reCAPTCHA to headless browsers, so the browser window is shown (2026-10-24)
 set TISTORY_HEADED=1
+rem One KakaoTalk note to me right before the browser opens for a real save (tistory\notify.mjs, 2026-11-19). The check run sends nothing.
+set TISTORY_NOTIFY=kakao
 cd /d "%~dp0"
 if /i "%~1"=="check" (
   node posts\auto.mjs --dry-run %2 %3 %4
