@@ -59,7 +59,7 @@ assert.equal((await notifySave({ title: 't' }, opts(fake({ stdout: 'FAILED: 서�
 assert.equal((await notifySave({ title: 't' }, opts(fake({ stdout: '', status: null, timedOut: true })))).status, 'failed');
 assert.equal((await notifySave({ title: 't' }, opts(async () => { throw new Error('spawn 터짐'); }))).status, 'failed');
 assert.equal((await notifySave({ title: 't' }, opts(fake({ status: 9009 })))).status, 'no_cmd');
-assert.deepEqual(lines.slice(0, 3), ['카톡 알림: 보냄', '카톡 알림: 도구 없음 — PlayMCP 도구함에 「카카오톡 나와의 채팅방」을 담아야 보냄', '카톡 알림: 실패(서버 오류)']);
+assert.deepEqual(lines.slice(0, 3), ['카톡 알림: 보냄', '카톡 알림: 도구 없음 — PlayMCP 연결(인증)이 풀렸거나 도구함에 「카카오톡 나와의 채팅방」이 없음(claude mcp list로 확인)', '카톡 알림: 실패(서버 오류)']);
 assert.match(lines[3], /^카톡 알림: 실패\(시간 초과 90초\)$/);
 assert.match(lines[4], /^카톡 알림: 실패\(spawn 터짐\)$/);
 assert.match(lines[5], /^카톡 알림: claude 명령 없음/);

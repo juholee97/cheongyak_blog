@@ -88,7 +88,7 @@ export function parseResult({ stdout = '', stderr = '', status = 0, timedOut = f
 
 export const describe = (r) => ({
   sent: '카톡 알림: 보냄',
-  no_tool: '카톡 알림: 도구 없음 — PlayMCP 도구함에 「카카오톡 나와의 채팅방」을 담아야 보냄',
+  no_tool: '카톡 알림: 도구 없음 — PlayMCP 연결(인증)이 풀렸거나 도구함에 「카카오톡 나와의 채팅방」이 없음(claude mcp list로 확인)',
   no_cmd: `카톡 알림: claude 명령 없음(${r.reason})`,
   skipped: `카톡 알림: 건너뜀(${r.reason})`,
 }[r.status] || `카톡 알림: 실패(${r.reason})`);
