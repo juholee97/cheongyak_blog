@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { buildMessage, buildPrompt, parseResult, notifySave, MAX_CHARS, CLAUDE_ARGS } from './notify.mjs';
+import { buildMessage, buildPrompt, parseResult, notifySave, MAX_CHARS, CLAUDE_ARGS, findClaude, spawnPlan, decodeOutput, runClaude, describe } from './notify.mjs';
 
 process.env.ZIP_USAGE_FILE = join(mkdtempSync(join(tmpdir(), 'notify-check-')), 'u.json'); // 진짜 data/api_usage.json은 건드리지 않는다
 const len = (s) => [...s].length;
@@ -73,5 +73,84 @@ for (let i = 0; i < 7; i++) real.push(await notifySave({ title: 't' }, { env: on
 assert.deepEqual(real.map((r) => r.status), ['sent', 'sent', 'sent', 'sent', 'sent', 'skipped', 'skipped']);
 assert.equal(calls, 5);
 assert.match(real[5].line, /^카톡 알림: 건너뜀\(호출 한도/);
+
+// claude 위치 찾기(가짜 파일 목록·환경 — 진짜 디스크·PATH는 안 봄)
+const fakeFs = (files) => {
+  const norm = (p) => p.toLowerCase();
+  const map = new Map(Object.entries(files).map(([p, t]) => [norm(p), t]));
+  return {
+    isFile: (p) => map.has(norm(p)),
+    readdir: (d) => { const pre = norm(d).replace(/\\$/, '') + '\\'; return [...new Set(Object.keys(files).filter((k) => norm(k).startsWith(pre)).map((k) => k.slice(pre.length).split('\\')[0]))]; },
+    mtime: (p) => map.get(norm(p)) || 0,
+  };
+};
+const AD = 'C:\\Users\\u\\AppData\\Roaming', HOME = 'C:\\Users\\u';
+const fnmOld = `${AD}\\fnm\\node-versions\\v20.1.0\\installation\\claude.cmd`, fnmNew = `${AD}\\fnm\\node-versions\\v22.22.2\\installation\\claude.cmd`;
+const baseEnv = { APPDATA: AD, USERPROFILE: HOME, Path: 'C:\\Program Files\\nodejs;C:\\Windows\\system32;C:\\Windows' };
+// PATH에 없어도 정해 둔 자리(fnm, 여러 버전이면 가장 최근에 고쳐진 것)에서 찾음
+let f = findClaude({ platform: 'win32', env: baseEnv, fs: fakeFs({ [fnmOld]: 100, [fnmNew]: 200, [`${HOME}\\.local\\bin\\claude.exe`]: 300 }) });
+assert.deepEqual([f.path, f.source, f.kind], [fnmNew, '정해 둔 자리', 'cmd']);
+f = findClaude({ platform: 'win32', env: baseEnv, fs: fakeFs({ [fnmOld]: 300, [fnmNew]: 200 }) });
+assert.equal(f.path, fnmOld);
+f = findClaude({ platform: 'win32', env: baseEnv, fs: fakeFs({ [`${HOME}\\.local\\bin\\claude.exe`]: 1 }) });
+assert.deepEqual([f.path, f.source, f.kind], [`${HOME}\\.local\\bin\\claude.exe`, '정해 둔 자리', 'exe']);
+f = findClaude({ platform: 'win32', env: baseEnv, fs: fakeFs({ [`${AD}\\npm\\claude.cmd`]: 1, [`${HOME}\\.local\\bin\\claude.exe`]: 1 }) });
+assert.equal(f.path, `${AD}\\npm\\claude.cmd`);
+// PATH가 먼저(대소문자 Path·PATH 둘 다), 폴더 안에선 .cmd → .exe
+f = findClaude({ platform: 'win32', env: { ...baseEnv, Path: `C:\\Tools;"C:\\My Bin"` }, fs: fakeFs({ 'C:\\My Bin\\claude.exe': 1, 'C:\\My Bin\\claude.cmd': 1, [fnmNew]: 1 }) });
+assert.deepEqual([f.path, f.source, f.kind], ['C:\\My Bin\\claude.cmd', 'PATH', 'cmd']);
+f = findClaude({ platform: 'win32', env: { APPDATA: AD, PATH: 'C:\\x' }, fs: fakeFs({ 'C:\\x\\claude.exe': 1, [fnmNew]: 1 }) });
+assert.deepEqual([f.path, f.source, f.kind], ['C:\\x\\claude.exe', 'PATH', 'exe']);
+// CLAUDE_CMD가 맨 먼저(파일이 있을 때만)
+f = findClaude({ platform: 'win32', env: { ...baseEnv, CLAUDE_CMD: 'D:\\x\\claude.exe' }, fs: fakeFs({ 'D:\\x\\claude.exe': 1, [fnmNew]: 1 }) });
+assert.deepEqual([f.path, f.source], ['D:\\x\\claude.exe', 'CLAUDE_CMD']);
+f = findClaude({ platform: 'win32', env: { ...baseEnv, CLAUDE_CMD: 'D:\\없음\\claude.exe' }, fs: fakeFs({ [fnmNew]: 1 }) });
+assert.equal(f.source, '정해 둔 자리');
+// 어디에도 없으면 path null + 찾아본 자리 수, runClaude는 띄우지 않고 noCmd → no_cmd
+f = findClaude({ platform: 'win32', env: baseEnv, fs: fakeFs({}) });
+assert.equal(f.path, null);
+assert.ok(f.tried >= 8, `찾아본 자리 ${f.tried}`); // PATH 3폴더×2 + npm + .local
+const r0 = await runClaude(['--version'], '', 1000, { found: f }); // 진짜 runClaude지만 띄우지 않고 바로 돌아옴
+assert.equal(r0.status, null);
+assert.match(r0.noCmd, /claude 위치 못 찾음\(찾아본 자리 \d+곳\)/);
+assert.equal(parseResult(r0).status, 'no_cmd');
+assert.match(describe(parseResult(r0)), /^카톡 알림: claude 명령 없음\(claude 위치 못 찾음/);
+// 윈도우가 아니면 지금처럼 claude
+assert.deepEqual(findClaude({ platform: 'linux', env: {}, fs: fakeFs({}) }).path, 'claude');
+
+// 띄울 모양: .cmd는 cmd /d /s /c ""경로" 인자…"(verbatim), .exe는 바로
+const sp = spawnPlan({ path: 'C:\\Program Files\\my tools\\claude.cmd', kind: 'cmd' }, CLAUDE_ARGS);
+assert.equal(sp.file, 'cmd.exe');
+assert.equal(sp.verbatim, true);
+assert.deepEqual(sp.args.slice(0, 3), ['/d', '/s', '/c']);
+assert.equal(sp.args[3], `""C:\\Program Files\\my tools\\claude.cmd" ${CLAUDE_ARGS.join(' ')}"`);
+const spe = spawnPlan({ path: 'C:\\Users\\u\\.local\\bin\\claude.exe', kind: 'exe' }, ['--version']);
+assert.deepEqual(spe, { file: 'C:\\Users\\u\\.local\\bin\\claude.exe', args: ['--version'], verbatim: false });
+
+// 출력 풀기: UTF-8은 그대로, cp949 바이트는 읽히는 글자로
+const notFoundMsg = "'claude'은(는) 내부 또는 외부 명령, 실행할 수 있는 프로그램, 또는\r\n배치 파일이 아닙니다.\r\n";
+const enc949 = (s) => { // 점검용 cp949 인코더: euc-kr 디코더로 2바이트 표를 거꾸로 만든다
+  const dec = new TextDecoder('euc-kr'); const table = new Map();
+  for (let a = 0x81; a <= 0xfe; a++) for (let b = 0x41; b <= 0xfe; b++) { const ch = dec.decode(Buffer.from([a, b])); if ([...ch].length === 1 && ch !== '\ufffd' && !table.has(ch)) table.set(ch, [a, b]); }
+  return Buffer.from([...s].flatMap((ch) => (ch.charCodeAt(0) < 0x80 ? [ch.charCodeAt(0)] : table.get(ch))));
+};
+const nf949 = enc949(notFoundMsg);
+assert.notEqual(nf949.toString('utf8'), notFoundMsg); // UTF-8로 읽으면 깨짐(로그의 「��ġ ������ �ƴմϴ�」)
+assert.equal(decodeOutput(nf949), notFoundMsg);
+assert.equal(decodeOutput(Buffer.from('SENT 보냄', 'utf8')), 'SENT 보냄');
+assert.equal(decodeOutput('이미 문자열'), '이미 문자열');
+assert.equal(decodeOutput(null), '');
+
+// 「배치 파일이 아닙니다」 + 종료 1 → no_cmd (Buffer로 와도, 영어 문구여도)
+const nf = parseResult({ status: 1, stderr: nf949, stdout: Buffer.alloc(0) });
+assert.equal(nf.status, 'no_cmd');
+assert.match(nf.reason, /배치 파일이 아닙니다/);
+assert.equal(parseResult({ status: 1, stderr: "'claude' is not recognized as an internal or external command," }).status, 'no_cmd');
+assert.equal(parseResult({ status: 2, stderr: '배치 파일이 아닙니다.' }).status, 'failed'); // 1일 때만
+// 실패 이유 꼬리는 120자까지
+const longErr = 'e'.repeat(200);
+assert.equal(parseResult({ status: 3, stderr: longErr }).reason, `종료 코드 3 · ${'e'.repeat(120)}`);
+// 켜진 알림에서도 명령 못 찾음은 no_cmd 한 줄
+assert.match((await notifySave({ title: 't' }, opts(fake({ status: 1, stderr: nf949 }), () => {}))).line, /^카톡 알림: claude 명령 없음\(cmd가 claude를 못 찾음/);
 
 console.log('notify.check 통과');

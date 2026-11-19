@@ -4,12 +4,13 @@
 // (--allowedTools mcp__claude_ai_PlayMCP). 프롬프트는 stdin으로 — 글 제목이 명령줄 인자로 깨지거나 셸에 해석되지 않게.
 // 알림 실패는 저장을 막지 않는다: 명령 없음·시간 초과(90초)·도구 없음·실패·호출 한도 모두 기록 한 줄만 남기고 돌아온다. 예외를 던지지 않는다.
 // 호출 수 한도는 zip/guard.mjs DEFAULTS.kakao_notify(useApi). 보낼 때만 불러온다 — guard.mjs는 명령줄에 --check가 있으면 자기 점검을 돌리므로 notify.mjs --check에서 불러오지 않게.
-// node tistory/notify.mjs --check   보내지 않고 claude 명령이 있는지와 메시지 예시(글자 수)만
+// claude 위치는 PATH에 기대지 않고 findClaude가 직접 찾는다(CLAUDE_CMD → PATH → 정해 둔 자리). 못 찾으면 띄우지 않고 「claude 명령 없음」.
+// node tistory/notify.mjs --check   보내지 않고 claude 위치·버전(claude --version만)과 메시지 예시(글자 수)만
 // node tistory/notify.mjs --test    실제로 시험 메시지 한 통(PlayMCP 도구함에 「카카오톡 나와의 채팅방」을 담은 뒤)
 // 점검(가짜 실행기, 네트워크 없음): node tistory/notify.check.mjs
 import { spawn } from 'node:child_process';
-import { mkdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { mkdirSync, statSync, readdirSync } from 'node:fs';
+import { join, win32 } from 'node:path';
 import { tmpdir } from 'node:os';
 
 export const MAX_CHARS = 200;
@@ -52,11 +53,27 @@ export function buildPrompt(message) {
   ].join('\n');
 }
 
-// claude 출력 판독 → { status: 'sent'|'no_tool'|'failed', reason? }
-export function parseResult({ stdout = '', stderr = '', status = 0, timedOut = false, error = null } = {}) {
+// 자식 출력 풀기: Buffer(또는 문자열)를 UTF-8로, UTF-8로 못 읽는 바이트면 cp949(euc-kr)로 — 한국어 윈도우 cmd의 오류 문구가 깨지지 않게
+export function decodeOutput(b) {
+  if (b == null) return '';
+  if (typeof b === 'string') return b;
+  const buf = Buffer.isBuffer(b) ? b : Buffer.from(b);
+  try { return new TextDecoder('utf-8', { fatal: true }).decode(buf); } catch { /* cp949로 */ }
+  try { return new TextDecoder('euc-kr').decode(buf); } catch { return buf.toString('latin1'); }
+}
+const NOT_FOUND_RE = /배치 파일이 아닙니다|is not recognized/i;
+const lastLine = (s) => String(s).trim().split(/\r?\n/).map((l) => l.trim()).filter(Boolean).at(-1) || '';
+const oneLine = (s) => String(s).trim().split(/\r?\n/).map((l) => l.trim()).filter(Boolean).join(' ');
+
+// claude 출력 판독 → { status: 'sent'|'no_tool'|'failed'|'no_cmd', reason? }
+export function parseResult({ stdout = '', stderr = '', status = 0, timedOut = false, error = null, noCmd = null } = {}) {
+  stdout = decodeOutput(stdout); stderr = decodeOutput(stderr);
+  if (noCmd) return { status: 'no_cmd', reason: String(noCmd) }; // findClaude가 못 찾아 띄우지 않음
   if (timedOut) return { status: 'failed', reason: `시간 초과 ${TIMEOUT_MS / 1000}초` };
   if (error) return { status: 'no_cmd', reason: String(error.code || error.message || error) };
   if (status === 9009) return { status: 'no_cmd', reason: 'claude 명령 없음(cmd 9009)' }; // cmd /c 에서 명령을 못 찾을 때
+  // cmd /c 는 명령을 못 찾으면 1로 끝나기도 한다(2026-11-19 11:30 스케줄러 실행: 「…배치 파일이 아닙니다.」 cp949)
+  if (status === 1 && NOT_FOUND_RE.test(`${stderr}\n${stdout}`)) return { status: 'no_cmd', reason: `cmd가 claude를 못 찾음(종료 1 · ${oneLine(stderr || stdout).slice(0, 120)})` };
   const lines = String(stdout).split(/\r?\n/).map((l) => l.trim().replace(/^[`*]+|[`*]+$/g, '')).filter(Boolean);
   for (let i = lines.length - 1; i >= 0; i--) {
     const l = lines[i];
@@ -65,7 +82,7 @@ export function parseResult({ stdout = '', stderr = '', status = 0, timedOut = f
     if (/^NO_TOOL\b/.test(l)) return { status: 'no_tool' };
     if (/^SENT\b/.test(l)) return { status: 'sent' };
   }
-  const tail = (lines.at(-1) || String(stderr).trim().split(/\r?\n/).at(-1) || '').slice(0, 60);
+  const tail = (lines.at(-1) || lastLine(stderr) || '').slice(0, 120);
   return { status: 'failed', reason: status ? `종료 코드 ${status}${tail ? ' · ' + tail : ''}` : `알 수 없는 응답${tail ? ': ' + tail : ''}` };
 }
 
@@ -81,23 +98,68 @@ const workDir = () => { const d = join(tmpdir(), 'cheongyak-notify'); try { mkdi
 
 export const CLAUDE_ARGS = ['-p', '--model', 'haiku', '--allowedTools', 'mcp__claude_ai_PlayMCP', '--permission-mode', 'dontAsk', '--no-session-persistence'];
 
-// claude 실행: 윈도우에서는 claude.cmd라 cmd /c로(인자는 고정 ASCII, 프롬프트는 stdin). 시간이 넘으면 프로세스 트리째 끈다(cmd만 끄면 claude가 남는다).
+// claude 위치 찾기(2026-11-19: 11:30 스케줄러 실행에서 cmd가 PATH로 claude를 못 찾아 첫 알림 실패 → PATH에 기대지 않고 직접 찾는다).
+// 윈도우 순서: CLAUDE_CMD → PATH(Path) 각 폴더의 claude.cmd·claude.exe → 정해 둔 자리
+// (%APPDATA%\fnm\node-versions\*\installation\claude.cmd 중 가장 최근에 고쳐진 것, %APPDATA%\npm\claude.cmd, %USERPROFILE%\.local\bin\claude.exe).
+// 돌려줌: { path, source: 'CLAUDE_CMD'|'PATH'|'정해 둔 자리', kind: 'cmd'|'exe'|'bin', tried } 또는 { path: null, tried }
+// opts.env·platform·fs(isFile·readdir·mtime)는 점검용 가짜를 넣는 자리
+const realFs = {
+  isFile: (p) => { try { return statSync(p).isFile(); } catch { return false; } },
+  readdir: (d) => { try { return readdirSync(d); } catch { return []; } },
+  mtime: (p) => { try { return statSync(p).mtimeMs; } catch { return 0; } },
+};
+export function findClaude({ env = process.env, platform = process.platform, fs = realFs } = {}) {
+  if (platform !== 'win32') return { path: 'claude', source: 'PATH', kind: 'bin', tried: 0 };
+  const get = (name) => { const k = Object.keys(env).find((x) => x.toUpperCase() === name); return k ? env[k] : undefined; };
+  let tried = 0;
+  const hit = (p) => { tried++; return fs.isFile(p); };
+  const kindOf = (p) => (/\.exe$/i.test(p) ? 'exe' : 'cmd');
+  const own = (get('CLAUDE_CMD') || '').trim().replace(/^"|"$/g, '');
+  if (own && hit(own)) return { path: own, source: 'CLAUDE_CMD', kind: kindOf(own), tried };
+  const dirs = String(get('PATH') || '').split(';').map((d) => d.trim().replace(/^"|"$/g, '')).filter(Boolean);
+  for (const d of dirs) for (const n of ['claude.cmd', 'claude.exe']) { const p = win32.join(d, n); if (hit(p)) return { path: p, source: 'PATH', kind: kindOf(p), tried }; }
+  const appData = get('APPDATA'), home = get('USERPROFILE');
+  const fixed = [];
+  if (appData) {
+    const base = win32.join(appData, 'fnm', 'node-versions');
+    const fnm = fs.readdir(base).map((v) => win32.join(base, v, 'installation', 'claude.cmd')).filter(hit);
+    fnm.sort((a, b) => fs.mtime(b) - fs.mtime(a));
+    if (fnm[0]) return { path: fnm[0], source: '정해 둔 자리', kind: 'cmd', tried };
+    fixed.push(win32.join(appData, 'npm', 'claude.cmd'));
+  }
+  if (home) fixed.push(win32.join(home, '.local', 'bin', 'claude.exe'));
+  for (const p of fixed) if (hit(p)) return { path: p, source: '정해 둔 자리', kind: kindOf(p), tried };
+  return { path: null, source: null, kind: null, tried };
+}
+
+// 띄울 모양: .exe면 바로, .cmd면 cmd.exe /d /s /c ""경로" 인자…" (windowsVerbatimArguments — /s가 바깥 따옴표 한 쌍만 벗겨 경로의 빈칸이 안전)
+export function spawnPlan(found, args) {
+  if (found.kind === 'cmd') return { file: 'cmd.exe', args: ['/d', '/s', '/c', `""${found.path}" ${args.join(' ')}"`], verbatim: true };
+  return { file: found.path, args: [...args], verbatim: false };
+}
+
+// claude 실행(인자는 고정 ASCII, 프롬프트는 stdin). 시간이 넘으면 프로세스 트리째 끈다(cmd만 끄면 claude가 남는다).
 // windowsHide + 모든 입출력 파이프 → 자식은 콘솔이 없다(claude.cmd의 title 명령이 실행기 창 제목을 바꾸지 않음).
-export function runClaude(args, input, timeoutMs = TIMEOUT_MS) {
+// 못 찾으면 띄우지 않고 { noCmd } — parseResult가 no_cmd로. 결과의 claude에 찾은 위치.
+export function runClaude(args, input, timeoutMs = TIMEOUT_MS, opts = {}) {
   return new Promise((done) => {
     const win = process.platform === 'win32';
-    let child, out = '', err = '', timedOut = false, finished = false;
-    const finish = (r) => { if (!finished) { finished = true; clearTimeout(timer); done({ stdout: out, stderr: err, ...r }); } };
+    const found = opts.found || findClaude();
+    if (!found.path) { done({ stdout: '', stderr: '', status: null, noCmd: `claude 위치 못 찾음(찾아본 자리 ${found.tried}곳)`, claude: found }); return; }
+    const plan = spawnPlan(found, args);
+    let child, timedOut = false, finished = false;
+    const out = [], err = [];
+    const finish = (r) => { if (!finished) { finished = true; clearTimeout(timer); done({ stdout: decodeOutput(Buffer.concat(out)), stderr: decodeOutput(Buffer.concat(err)), claude: found, ...r }); } };
     try {
-      child = spawn(win ? 'cmd.exe' : 'claude', win ? ['/d', '/s', '/c', 'claude', ...args] : args, { cwd: workDir(), windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] });
-    } catch (e) { done({ stdout: '', stderr: '', status: null, error: e }); return; }
+      child = spawn(plan.file, plan.args, { cwd: workDir(), windowsHide: true, windowsVerbatimArguments: plan.verbatim, stdio: ['pipe', 'pipe', 'pipe'] });
+    } catch (e) { done({ stdout: '', stderr: '', status: null, error: e, claude: found }); return; }
     const timer = setTimeout(() => {
       timedOut = true;
       try { if (win) spawn('taskkill', ['/pid', String(child.pid), '/t', '/f'], { windowsHide: true, stdio: 'ignore' }).on('error', () => {}); else child.kill('SIGKILL'); } catch { /* 무시 */ }
       setTimeout(() => finish({ status: null, timedOut: true }), 3000).unref?.(); // 끄는 데 늦어도 기다리지 않는다
     }, timeoutMs);
-    child.stdout.on('data', (d) => (out += d));
-    child.stderr.on('data', (d) => (err += d));
+    child.stdout.on('data', (d) => out.push(Buffer.from(d)));
+    child.stderr.on('data', (d) => err.push(Buffer.from(d)));
     child.on('error', (e) => finish({ status: null, error: e, timedOut }));
     child.on('close', (code) => finish({ status: code, timedOut }));
     child.stdin.on('error', () => {});
@@ -126,11 +188,13 @@ export async function notifySave({ title, when, mode } = {}, opts = {}) {
 
 if (process.argv[1] && /notify\.mjs$/.test(process.argv[1].replace(/\\/g, '/'))) {
   if (process.argv.includes('--check')) {
-    const v = await runClaude(['--version'], '', 20e3);
+    const where = findClaude();
+    console.log(where.path ? `claude 위치: ${where.path}  (${where.source}에서 찾음, 띄우기 ${where.kind === 'cmd' ? 'cmd.exe /d /s /c' : '바로'})` : `claude 위치: 못 찾음 (찾아본 자리 ${where.tried}곳 — PATH·정해 둔 자리·CLAUDE_CMD)`);
+    const v = await runClaude(['--version'], '', 20e3, { found: where });
     const found = v.status === 0 && /\d+\.\d+/.test(v.stdout);
-    console.log(found ? `claude 명령 있음: ${v.stdout.trim()}` : `claude 명령 없음/실패: ${v.error?.code || (v.timedOut ? '시간 초과' : `종료 ${v.status}`)} ${(v.stderr || v.stdout).trim().slice(0, 100)}`);
+    console.log(found ? `claude 명령 있음: ${v.stdout.trim()}` : `claude 명령 없음/실패: ${v.noCmd || v.error?.code || (v.timedOut ? '시간 초과' : `종료 ${v.status}`)} ${oneLine(v.stderr || v.stdout).slice(0, 120)}`);
     console.log(`TISTORY_NOTIFY=${process.env.TISTORY_NOTIFY || '(없음 — 이 실행에선 알림 안 보냄)'}`);
-    console.log(`보낼 명령: claude ${CLAUDE_ARGS.join(' ')}  (작업 폴더 ${join(tmpdir(), 'cheongyak-notify')}, 제한 ${TIMEOUT_MS / 1000}초)`);
+    console.log(`보낼 명령: ${where.path || 'claude'} ${CLAUDE_ARGS.join(' ')}  (작업 폴더 ${join(tmpdir(), 'cheongyak-notify')}, 제한 ${TIMEOUT_MS / 1000}초)`);
     const samples = [
       { title: '청년 전세임대 신청 방법, 서류와 순서 한 번에 정리', when: '2026-11-20 15:38', mode: 'schedule' },
       { title: '2026년 11월 넷째 주 청약 일정', mode: 'save' },
