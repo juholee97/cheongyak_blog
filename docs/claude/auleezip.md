@@ -3,7 +3,7 @@
 워드프레스 사이트의 발행·수정·화면·설정을 다룰 때 읽는다. 심층 분석 글 쓰기는 `auleezip-deep.md`, 색인·통계는 `seo-analytics.md`. 괄호 안 날짜로 `history.md` 검색.
 
 ## 사이트
-- 카페24 뉴매니지드 워드프레스, 도메인 Cloudflare Registrar(DNS만, 프록시 끔). 이름 「우리의 집」(로고 루비 aulee·zip). 말투는 **합쇼체**(…합니다, 2026-10-29) — `check_analysis.mjs`·`deep.mjs --lint`가 해요체를 잡는다. 제목의 「…일까?」는 그대로.
+- 카페24 뉴매니지드 워드프레스, 도메인 Cloudflare Registrar(DNS만, 프록시 끔 — **프록시를 켜면 안 된다**: 카페24 서버가 Cloudflare 해외 지점 주소로 온 요청에 봇 확인 쿠키(cupid.js)를 걸고 403을 낸다. 2026-11-17 03:46~11-20 16:41 켜져 있었고 11-19 아침부터 403, 11-20 다시 끔). 이름 「우리의 집」(로고 루비 aulee·zip). 말투는 **합쇼체**(…합니다, 2026-10-29) — `check_analysis.mjs`·`deep.mjs --lint`가 해요체를 잡는다. 제목의 「…일까?」는 그대로.
 - 연결: `zip/wp.mjs`(REST + 애플리케이션 비밀번호, https만). 로그인 비밀번호는 입력하지 않는다. 사이트 제목(blogname)은 REST로 안 바뀐다(관리자 화면 설정→일반, Rank Math 로컬 SEO 웹사이트 이름).
 - **사이트 CSS 원본은 `zip/site.css`** — 사이트 편집기에서 고치지 않는다. `node zip/site.mjs --go`로 올려야 반영(`--purge` 캐시 비우기).
 - **방화벽(NinjaFirewall)이 글 안 `<script>`와 이벤트 속성을 403으로 막는다 → 스크립트 없이 라디오·체크박스 + CSS `:has()`·counter로 만든다. 방화벽 설정은 건드리지 않는다**(2026-10-30). HeadlessChrome UA도 403.
