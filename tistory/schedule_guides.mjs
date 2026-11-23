@@ -36,6 +36,45 @@ if (queue && !slugs.length) { console.log(raw.length ? `오늘 차례 없음 —
 const json = async (p, d = {}) => JSON.parse(await readFile(join(ROOT, p), 'utf8').catch(() => JSON.stringify(d)));
 const pad = (n) => String(n).padStart(2, '0');
 
+// --draft(2026-11-23 사용자 결정: 11:30 예약발행이 보안 확인에 계속 막혀, 무인 실행은 임시저장까지만 하고 발행은 사람이 직접):
+// node tistory/schedule_guides.mjs --queue <파일> --draft [--max 1] [--hold 2] [--dry-run]
+// 오늘 차례 글 중 지금 이미 공개된 관련 글이 가장 많은 글(같으면 대기열 순서) → guide.mjs --at <지금>으로 다시 그려 검수 → draft.mjs --approved(예약 없음).
+// 저장되면 대기열에서 빼고 data/drafted_pending.json에 더한다(발행 뒤 기록은 tistory/record_published.mjs). 빈 예약 자리·toDrafts는 쓰지 않는다.
+// 쌓임 방지: 저장 전 발행 확인(syncPending)을 한 번 하고, 발행 안 된 대기 글이 --hold편 이상이면 브라우저를 띄우지 않고 끝낸다. --dry-run은 대기열·대기 목록을 바꾸지 않는다.
+if (process.argv.includes('--draft')) {
+  if (!queue) { console.log('사용: node tistory/schedule_guides.mjs --queue <파일> --draft [--max 1] [--hold 2] [--dry-run]'); process.exit(4); }
+  const { syncPending, addPending, shouldHold, holdLine, localNow } = await import('./record_published.mjs');
+  const dry = process.argv.includes('--dry-run');
+  const maxDraft = +(arg('--max') ?? 1), hold = +(arg('--hold') ?? 2);
+  const { left: waiting } = await syncPending({ dryRun: dry });
+  if (shouldHold(waiting, hold)) { console.log(holdLine(waiting)); process.exit(0); }
+  const run = (args) => spawnSync(process.execPath, args, { cwd: ROOT, stdio: 'inherit' }).status;
+  const left = [...slugs];
+  let done = 0;
+  while (left.length && done < maxDraft) {
+    const at = localNow();
+    const scored = [];
+    for (const s of left) scored.push([s, (await relatedOf(s, at)).length]); // 지금 이미 공개된 관련 글 수
+    scored.sort((a, b) => b[1] - a[1]); // 안정 정렬 — 같으면 대기열 순서
+    const [slug, n] = scored[0];
+    const file = `drafts/guide_${slug}.json`;
+    console.log(`\n=== ${at} ${slug} (관련 글 ${n}) 임시저장${dry ? ' 시험' : ''}`);
+    if (run(['posts/guide.mjs', file, '--at', at]) !== 0) { console.log(`검수 실패 — ${slug}에서 멈춤`); process.exit(4); }
+    const code = run(['tistory/draft.mjs', file, dry ? '--dry-run' : '--approved']);
+    if (code === 5) { console.log(`티스토리 하루 저장 한도 — ${left.length}편은 대기열에 남겨 두고 다음에 다시`); process.exit(0); }
+    if (code === 6) { const m = `티스토리 보안 확인(reCAPTCHA)이 떠서 임시저장 멈춤 — ${left.length}편은 대기열에 남김. 티스토리에서 직접 글을 한 번 저장해 보거나 시간이 지난 뒤 다시`; console.log(m); notify(m); process.exit(6); }
+    if (code !== 0) { const m = `임시저장 실패(코드 ${code}) — ${slug}에서 멈춤. 티스토리 임시저장 목록을 확인하세요.`; console.log(m); notify(m); process.exit(code ?? 1); }
+    left.splice(left.indexOf(slug), 1);
+    done++;
+    if (dry) continue; // 시험: 대기열·대기 목록 그대로
+    const { title } = JSON.parse(await readFile(join(ROOT, file), 'utf8')); // guide.mjs가 다시 쓴 제목(저장된 제목과 같음)
+    await writeFile(join(ROOT, queue), queueLeft(raw, left, today).join(' '));
+    await addPending({ slug, title, savedAt: at });
+  }
+  console.log(dry ? `\n시험 실행 끝(${done}편) — 저장·대기열·대기 목록 변경 없음` : `\n${done}편 임시저장했습니다 — 발행은 티스토리에서 직접. 같은 제목으로 발행하면 다음 실행 때 자동 기록(제목을 바꿨으면 tistory_pending.bat)`);
+  process.exit(0);
+}
+
 if (!start || !slugs.length) { console.log('사용: node tistory/schedule_guides.mjs --start "YYYY-MM-DD HH:MM" [--times 08:00,12:00,19:00] slug ...'); process.exit(4); }
 
 // 빈 시각: start부터 하루씩 times(기준 시각)를 돌며, 이미 글이 있는 자리는 건너뛴다. 실제 예약은 기준 시각에서 3~17분 뒤(nudged — 정각 피함, 2026-11-13)

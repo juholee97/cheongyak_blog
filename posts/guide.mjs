@@ -56,7 +56,7 @@ export async function checkGuide(d) {
 
 // 관련 글: posts/related.json(slug → 관련 slug) 중 이미 발행된 글만 링크. 발행 주소는 RSS에서 제목으로 찾아 posts/published.json에 쌓는다(RSS는 최근 글만 보여 줘서)
 const PUB = join(ROOT, 'posts/published.json');
-const decode = (s) => s.replace(/&amp;/g, '&').replace(/&mdash;/g, '—').replace(/&middot;/g, '·').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+export const decode = (s) => s.replace(/&amp;/g, '&').replace(/&mdash;/g, '—').replace(/&middot;/g, '·').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>');
 let rss;
 export async function published() {
   const before = await readFile(PUB, 'utf8').catch(() => '{}');

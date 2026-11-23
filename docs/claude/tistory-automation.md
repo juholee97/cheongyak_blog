@@ -9,7 +9,7 @@
 - 예외 3 — 페이지 비공개 저장(`page.mjs`, privateSave, 2026-10-25): 소개 페이지 등은 비공개 저장만, 공개는 사람이.
 - 예외 4 — 사용자가 공개로 바꾼 페이지 고치기 `page.mjs --update <번호>`(pageUpdate, 그 페이지 편집 주소에서만).
 - 주간 글은 검수 통과 시 채팅 승인 없이 임시저장(2026-10-22), 발행은 사람이.
-- 가이드·대출·정책 글은 채팅 승인 뒤 대기열에 넣어 `tistory/schedule_guides.mjs`가 예약한다.
+- 가이드·대출·정책 글은 채팅 승인 뒤 대기열에 넣는다. 무인 실행(11:30)은 **임시저장까지만**(`schedule_guides.mjs --draft`), 발행은 사람이(2026-11-23 — 예약 단계에서 보안 확인에 계속 막힘). 예약발행(`--draft` 없이)은 사용자가 따로 승인한 글을 손으로 돌릴 때만.
 - 티스토리 분양분석 자동 예약(`posts/analysis_auto.mjs`, 접수 7일 전 10:00)은 **2026-11-10 중단** — `--force` 없이는 바로 끝난다.
 
 ## 저장 한도와 쉬는 장치 (`tistory/draft.mjs`)
@@ -29,22 +29,29 @@
 - 자동화 브라우저는 방문 통계·광고 요청을 막는다(`TRACKERS`: tiara·wcslog·gtag·애드센스) — 점검 방문이 조회수·무효 트래픽에 섞이지 않게(2026-11-01).
 
 ## 11:30 저장 실행기 (`tistory_save_auto.bat`, 하루 1번을 누가 쓰나)
-- 작업 스케줄러 `cheongyak_tistory_save` 매일 11:30(2026-11-19 사용자 결정). 07:00 `analysis_auto.bat`에 있던 저장 단계를 옮겼다 — 11-10부터 07:00 저장이 6번 연속 보안 확인에 막혔다(PC 앞에 사람이 없음). `tistory_save_auto.bat check` = 발행 가드 점검 + 알림 점검(저장·전송 없음).
+- 작업 스케줄러 `cheongyak_tistory_save` 매일 11:30(2026-11-19 사용자 결정). 07:00 `analysis_auto.bat`에 있던 저장 단계를 옮겼다 — 11-10부터 07:00 저장이 6번 연속 보안 확인에 막혔다(PC 앞에 사람이 없음). `tistory_save_auto.bat check` = 발행 가드 점검 + 알림 점검 + 대기 목록 점검(`pending.check.mjs`)(저장·전송 없음).
+- **2026-11-23부터 임시저장까지만**: 11:30에도 예약 단계에서 보안 확인에 계속 막혔다. 임시저장(`draft.mjs --approved`, `--schedule` 없음)은 막힌 적이 없다. 발행은 사용자가 티스토리 임시저장 목록에서 직접.
 - 카톡 알림(`tistory/notify.mjs`, `TISTORY_NOTIFY=kakao` — 11:30 `tistory_save_auto.bat`과 일요일 18:00 `weekly_auto.bat`이 켠다, 사람이 직접 돌리는 실행은 안 보냄): `draft.mjs`가 한도·간격·검수·승인을 다 지나 실제 저장하러 브라우저를 띄우기 직전에 `claude -p --model haiku --allowedTools mcp__claude_ai_PlayMCP,mcp__playmcp`(claude.ai 커넥터와 명령줄에 직접 등록한 서버 `playmcp` 둘 다 허용 — 둘 다 있으면 `playmcp` 쪽 한 번만. 프롬프트는 stdin, 작업 폴더는 임시 폴더 — claude 위치는 `CLAUDE_CMD` → 새 설치본 `.local\bin\claude.exe` → PATH → 정해 둔 자리(fnm `node-versions\*\installation\claude.cmd`·`%APPDATA%\npm`) 순으로 직접 찾고 못 찾으면 띄우지 않음 — 2026-11-19 11:30 스케줄러 실행에서 PATH로 못 찾아 첫 알림 실패, 11-20부터 옛 npm 설치본(2.1.87, 공유 로그인 풀림 수정 전)보다 새 설치본을 먼저. 로그인: 환경 변수 `CLAUDE_CODE_OAUTH_TOKEN`이 비었으면 `.env`의 같은 이름 줄(`claude setup-token` 1년 토큰 — 이 토큰으로는 claude.ai 커넥터를 못 불러와 직접 등록한 `playmcp`가 있어야 함)을 자식 claude의 env에만 넘김)로 카카오톡 「나와의 채팅방」에 한 통. 시험·대조 전용·코드 5 실행에선 안 보낸다. 도구 없음·클로드 로그인 풀림(「Not logged in」·401 등 → 「로그인 풀림」)·실패·90초 초과·호출 한도(`zip/guard.mjs` `kakao_notify` 하루 5·달 100)는 기록 한 줄(「카톡 알림: …」, 각 단계 기록 파일과 `.save.json` `kakao`)만 남기고 저장을 계속한다. 점검 `node tistory/notify.check.mjs`(가짜 실행기), `node tistory/notify.mjs --check`(보내지 않음 — 고른 claude 위치와 「장기 토큰: 있음/없음」), `--test`(시험 한 통 — PlayMCP 도구함에 「카카오톡 나와의 채팅방」을 담은 뒤).
 
 1. 월요일만: 주간 글 재시도 `posts/auto.mjs --catch-up`(일요일 저장이 실패했을 때). 실행기는 이 단계의 오류 출력을 `data\logs\weekly_auto_err.log`로 넘긴다 — `weekly_auto.log`로 넘기면 파일이 잠겨 `auto.mjs`가 기록을 못 쓴다(2026-11-19 고침)
-2. 급한 글 `data/priority_queue.txt` — `schedule_guides.mjs --soon --times 09:30,15:30 --max 1`(1시간 뒤부터 빈 자리 — 11:30 실행이면 그날 15:30 자리, 차 있으면 다음 날 09:30)
-3. 화·금요일만: 가이드 1편 `tistory/guide_week.bat` — `data/guide_queue.txt`에서 다음 빈 12:00(대기열은 내일부터라 11:30 실행도 그날 12:00은 안 고름, 2026-11-10 주 2편, 대기열이 비면 안 올림. `guide_week.bat check`는 오늘 판정만)
-4. 공개 글 월간 갱신 `posts/refresh_run.mjs`(`data/guide_refresh.txt`, 원래 공개 시각 그대로)
+2. 급한 글 `data/priority_queue.txt` — `schedule_guides.mjs --draft --max 1`로 임시저장(2026-11-23. 그 전엔 `--soon --times 09:30,15:30` 예약)
+3. 화·금요일만: 가이드 1편 `tistory/guide_week.bat` — `data/guide_queue.txt`에서 `--draft --max 1`로 임시저장(2026-11-10 주 2편, 대기열이 비면 안 올림. `guide_week.bat check`는 오늘 판정만)
+4. (없앰) 공개 글 월간 갱신 `posts/refresh_run.mjs`는 2026-11-23부터 자동 실행하지 않는다. 대신하는 도구도 없다. `refresh_run.mjs`·`data/guide_refresh.txt`는 지우지 않고 남김.
 
+- `--draft`(`schedule_guides.mjs --queue <파일> --draft [--max 1] [--hold 2] [--dry-run]`): 오늘 차례 글 중 지금 공개된 관련 글이 가장 많은 글(같으면 대기열 순서) → `guide.mjs --at <지금>` 검수(실패면 코드 4) → `draft.mjs --approved`. 0이면 대기열에서 빼고 `data/drafted_pending.json`에 더함, 5면 대기열 그대로 코드 0, 6이면 알림 창·코드 6, 그 밖은 알림 창·그 코드. 빈 예약 자리·`drafted_fallback.txt`는 안 씀. `--dry-run`은 `draft.mjs --dry-run`이고 대기열·대기 목록을 안 바꾼다.
+- 쌓임 방지: `--draft`는 저장 전에 발행 확인(`syncPending`)을 한 번 하고, 발행 안 된 대기 글이 `--hold`(기본 2)편 이상이면 브라우저를 띄우지 않고 한 줄 찍고 코드 0.
+- 발행 뒤 기록 `tistory/record_published.mjs`: 대기 목록 `data/drafted_pending.json`(`[{slug, title, savedAt}]`)의 제목과 **정확히 같은** RSS 항목이 있으면 `posts/published.json`(제목 → 주소)·`posts/scheduled.json`(제목 → {url, when}, when = RSS pubDate 한국 시각)에 그 항목만 더하고 대기 목록에서 뺀다. RSS 실패면 그대로 두고 한 줄만. 관련 글 링크는 초안 제목으로 장부를 찾으니 기록도 초안 제목으로.
+  - 실행기 `tistory_pending.bat`(바로가기 「티스토리 임시저장 대기 글 확인」) = 동기화 뒤 남은 대기 글 표.
+  - 제목을 바꿔 발행해 못 찾은 글: `record_published.mjs --set <slug> <주소> ["YYYY-MM-DD HH:MM"]`(시각 생략 = 지금). 안 올리기로 한 글: `--drop <slug>`(기록 없이 대기 목록에서만 뺌). 티스토리 임시저장본은 자동으로 지우지 않는다.
+  - 점검 `node tistory/pending.check.mjs`(RSS 해석·제목 일치·hold 판정·장부 쓰기, 네트워크·파일 쓰기 없음).
 - 대기열 항목 `slug@YYYY-MM-DD`는 그날(한국 시각) 전엔 건너뛰고 남긴다. 점검 `tistory/queue.check.mjs`.
-- 코드 5면 `--soon` 글도 임시저장하지 않고 남긴다. 그 밖의 예약 실패는 임시저장해 두고 `data/drafted_fallback.txt`에 적는다(예약되면 임시저장본은 사람이 지움, 2026-10-27).
+- `--draft` 없는 예약 실행(손으로 돌릴 때): 코드 5면 `--soon` 글도 임시저장하지 않고 남긴다. 그 밖의 예약 실패는 임시저장해 두고 `data/drafted_fallback.txt`에 적는다(예약되면 임시저장본은 사람이 지움, 2026-10-27).
 - **실행기에 새 단계를 넣을 때 알림창·입력 대기가 있으면 맨 뒤에 둔다**(2026-11-14 — 07:00 `analysis_auto.bat`에 뜬 알림창이 뒤 단계를 전부 막았다). 알림은 기다리지 않는 방식으로.
 - `analysis_auto.bat`·`tistory_save_auto.bat`은 실행 중인 창이 있을 때 고치면 오동작한다. 그때는 창을 끝내고 고치거나, 앞부분 바이트 길이를 바꾸지 않는다(2026-11-10).
 - 작업 창 제목(`title cheongyak`·`process.title`)을 지우지 않는다 — 없으면 `Assertion failed: process_title`로 꺼진다(2026-10-24).
 
 ## 예약 시각
-- 기준 시각: 급한 글 09:30·15:30, 화·금 가이드 12:00, 기본 08:00·12:00·19:00.
+- 기준 시각(예약할 때 — 11:30 무인 실행은 2026-11-23부터 예약하지 않음): 급한 글 09:30·15:30, 화·금 가이드 12:00, 기본 08:00·12:00·19:00.
 - 실제 예약은 기준 시각에서 3~17분 뒤, 분이 5의 배수가 아닌 시각(`common.mjs` `nudged`, 날짜·기준 시각으로 정해져 다시 돌려도 같음, 2026-11-13). `slotTaken`은 기준 시각~17분 뒤 사이 예약이 있으면 찬 자리.
 - 공개 글 고치기(원래 시각)·주간 글(임시저장)·`.bat`의 `--times`·작업 스케줄러 시각(07:00·11:30)은 정각 그대로.
 - 관련 글 링크는 예약 시각이 더 이른 글만 걸린다. 서로 걸려면 먼저 나갈 글을 먼저 예약하고, 반대 방향은 나중 글 공개 뒤 다시 저장한다.
